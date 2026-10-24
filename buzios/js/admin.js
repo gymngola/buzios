@@ -6,7 +6,7 @@
 
   // —— Config (edit for new clients) ——
   const ADMIN_PASSWORD = 'buzios2026';           // Change after handoff
-  const PUBLISH_URL = '';                        // e.g. https://buzios-publish.xxx.workers.dev/publish
+  const PUBLISH_URL = 'https://buzios-publish.gymngola.workers.dev/publish';
   const CLOUD_NAME = 'ogtzpc3v';
   const UPLOAD_PRESET = 'buzios_unsigned';       // Create unsigned preset in Cloudinary
   const CATALOG_FOLDER = 'buzios';

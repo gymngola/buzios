@@ -37,8 +37,8 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
    npx wrangler secret put CLOUDINARY_API_KEY
    npx wrangler secret put CLOUDINARY_API_SECRET
    ```
-   Then set `PUBLISH_URL` in `js/admin.js` to e.g.  
-   `https://buzios-publish.<account>.workers.dev/publish`
+   `PUBLISH_URL` in `js/admin.js` is set to:  
+   `https://buzios-publish.gymngola.workers.dev/publish`
 
 3. **Admin password**  
    Default in `js/admin.js`: `buzios2026` — **change after handoff**.

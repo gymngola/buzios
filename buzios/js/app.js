@@ -10,6 +10,7 @@
   const CLOUD_NAME = 'ogtzpc3v';
   const CATALOG_FOLDER = 'buzios';
   const CATALOG_JSON_URL = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CATALOG_FOLDER}/catalog.json`;
+  const SUBMIT_URL = 'https://buzios-publish.gymngola.workers.dev/submit';
   const WHATSAPP = '244923423142';
   const LS_CART = 'buzios_cart';
   const LS_PRODUCTS = 'buzios_products_override';
@@ -39,6 +40,18 @@
 
     let lastY = 0;
     let ticking = false;
+    const ANNOUNCE_H = 36;
+
+    function setAnnounceVisible(visible) {
+      if (!announce) return;
+      if (visible) {
+        announce.classList.remove('hide');
+        header.style.top = ANNOUNCE_H + 'px';
+      } else {
+        announce.classList.add('hide');
+        header.style.top = '0';
+      }
+    }
 
     function onScroll() {
       const y = window.scrollY || window.pageYOffset;
@@ -50,14 +63,14 @@
           } else {
             header.classList.remove('scrolled');
           }
-          // Announce hides on scroll down
+          // Announce: hide on scroll down, show near top or on scroll up
           if (announce) {
-            if (y > lastY && y > 80) {
-              announce.classList.add('hide');
-              header.style.top = '0';
-            } else if (y < lastY || y < 40) {
-              announce.classList.remove('hide');
-              header.style.top = '';
+            if (y < 40) {
+              setAnnounceVisible(true);
+            } else if (y > lastY && y > 80) {
+              setAnnounceVisible(false);
+            } else if (y < lastY) {
+              setAnnounceVisible(true);
             }
           }
           lastY = y;
@@ -227,7 +240,7 @@
             <ul class="plan-features">
               ${feats.slice(0, 4).map(f => `<li>${f}</li>`).join('')}
             </ul>
-            <a href="https://wa.me/${WHATSAPP}?text=${encodeURIComponent('Olá, tenho interesse no ' + name + ' (' + formatPrice(p.price) + ').')}" class="btn btn-primary btn-block" target="_blank" rel="noopener">Quero este plano</a>
+            <a href="inscricao.html?plano=${encodeURIComponent(p.id)}" class="btn btn-primary btn-block">Quero este plano</a>
           </div>
         </article>`;
     }).join('');
@@ -252,23 +265,39 @@
             <p class="card-text">${desc}</p>
             <p class="card-price">${formatPrice(p.price)} <span>${p.period ? '/ ' + p.period : ''}</span></p>
             ${feats.length ? `<ul class="plan-features">${feats.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
-            <a href="https://wa.me/${WHATSAPP}?text=${encodeURIComponent('Olá, tenho interesse no ' + name + ' (' + formatPrice(p.price) + ').')}" class="btn btn-primary btn-block" target="_blank" rel="noopener">Contactar no WhatsApp</a>
+            <a href="inscricao.html?plano=${encodeURIComponent(p.id)}" class="btn btn-primary btn-block">Inscrever-me</a>
           </div>
         </article>`;
     }).join('');
   }
 
-  // —— Newsletter (simple) ——
+  // —— Newsletter (WhatsApp number) ——
   function initNewsletter() {
     const form = $('#newsletterForm');
     if (!form) return;
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = $('#newsletterEmail')?.value?.trim();
-      if (!email) return;
-      // Open WhatsApp with the email interest
-      const msg = encodeURIComponent('Olá, quero receber novidades do Búzios. O meu email: ' + email);
-      window.location.href = `https://wa.me/${WHATSAPP}?text=${msg}`;
+      const phone = $('#newsletterPhone')?.value?.trim();
+      if (!phone) return;
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'A enviar…'; }
+      try {
+        const res = await fetch(SUBMIT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'newsletter',
+            phone,
+            createdAt: new Date().toISOString()
+          })
+        });
+        if (!res.ok) throw new Error('fail');
+        form.reset();
+        alert('Obrigado! Vamos enviar novidades para o seu WhatsApp.');
+      } catch (err) {
+        alert('Não foi possível registar agora. Tente novamente ou use o formulário de contacto.');
+      }
+      if (btn) { btn.disabled = false; btn.textContent = 'Subscrever'; }
     });
   }
 

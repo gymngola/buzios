@@ -165,33 +165,33 @@ button { cursor: pointer; }
   }
 }
 
-/* Brand (text only) */
+/* Brand (text only) — BÚZIOS clearly larger than tagline */
 .brand {
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.12;
 }
 .brand-name {
   display: block;
-  font-size: 0.98rem;
+  font-size: 1.2rem;
   font-weight: var(--fw-semibold);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-hero-text);
   transition: color var(--t-med);
 }
 .brand-tag {
   display: block;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: var(--fw-light);
-  letter-spacing: 0.28em;
+  letter-spacing: 0.26em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.75);
-  margin-top: 0.15rem;
+  color: rgba(255,255,255,0.72);
+  margin-top: 0.12rem;
   transition: color var(--t-med);
 }
 @media (min-width: 900px) {
-  .brand-name { font-size: 1.15rem; letter-spacing: 0.14em; }
-  .brand-tag { font-size: 0.68rem; letter-spacing: 0.3em; }
+  .brand-name { font-size: 1.4rem; letter-spacing: 0.16em; }
+  .brand-tag { font-size: 0.64rem; letter-spacing: 0.3em; }
 }
 
 /* Desktop nav */

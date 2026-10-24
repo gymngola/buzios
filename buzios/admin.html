@@ -7,12 +7,35 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/admin.css">
+  <style>
+    .pass-wrap { position: relative; }
+    .pass-wrap input { padding-right: 3rem; }
+    .pass-toggle {
+      position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; font-size: 0.75rem; color: #666; cursor: pointer;
+      padding: 0.25rem 0.4rem;
+    }
+    .status-badge {
+      display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.45rem;
+      border-radius: 4px; background: #eee; margin-left: 0.35rem;
+    }
+    .status-novo { background: #fde8d8; color: #a34a1c; }
+    .status-contactado { background: #e3f0ff; color: #1a5a9c; }
+    .status-inscrito { background: #e3f5e8; color: #1a6b3a; }
+    .status-arquivado { background: #eee; color: #666; }
+    .status-activo { background: #e3f5e8; color: #1a6b3a; }
+    .status-pendente { background: #fde8d8; color: #a34a1c; }
+    .status-expirado { background: #f5e3e3; color: #8b2a2a; }
+  </style>
 </head>
 <body>
   <div id="loginScreen" class="login-box">
     <h1>Búzios Admin</h1>
     <p>Área reservada à equipa</p>
-    <input type="password" id="adminPass" placeholder="Palavra-passe" autocomplete="current-password">
+    <div class="pass-wrap">
+      <input type="password" id="adminPass" placeholder="Palavra-passe" autocomplete="current-password">
+      <button type="button" class="pass-toggle" id="passToggle" aria-label="Mostrar palavra-passe">Mostrar</button>
+    </div>
     <button type="button" id="loginBtn">Entrar</button>
     <p id="loginError" style="color:#b33;font-size:0.8rem;margin-top:0.75rem;display:none">Palavra-passe incorrecta</p>
   </div>
@@ -22,25 +45,42 @@
       <div class="admin-bar">
         <h1>Búzios Admin</h1>
         <div class="admin-tabs">
-          <button type="button" data-panel="products" class="active">Planos</button>
+          <button type="button" data-panel="inbox" class="active">Inscrições</button>
+          <button type="button" data-panel="clients">Clientes</button>
+          <button type="button" data-panel="products">Planos</button>
           <button type="button" data-panel="images">Imagens</button>
           <button type="button" data-panel="texts">Textos</button>
           <button type="button" data-panel="guide">Guia</button>
         </div>
       </div>
 
-      <!-- Products / Plans -->
-      <div id="panel-products" class="panel active">
+      <!-- Inbox / Submissions -->
+      <div id="panel-inbox" class="panel active">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Inscrições e mensagens de contacto. Marque o estado após contactar o cliente.</p>
+        <div class="prod-list" id="inboxList"></div>
+      </div>
+
+      <!-- Clients database -->
+      <div id="panel-clients" class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+          <p style="font-size:0.85rem;color:#666">Base de clientes — membership e faturação (estado).</p>
+          <button type="button" id="addClientBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Cliente</button>
+        </div>
+        <div class="prod-list" id="clientsList"></div>
+      </div>
+
+      <!-- Products -->
+      <div id="panel-products" class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-          <p style="font-size:0.85rem;color:#666">Edite preços e descrições. Guarde rascunho para pré-visualizar no site neste browser.</p>
+          <p style="font-size:0.85rem;color:#666">Edite preços e descrições. Guarde rascunho para pré-visualizar.</p>
           <button type="button" id="addProductBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Novo</button>
         </div>
         <div class="prod-list" id="prodList"></div>
       </div>
 
-      <!-- Site images -->
+      <!-- Images -->
       <div id="panel-images" class="panel">
-        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Imagens do site (hero, secções). Carregue ou escolha da biblioteca.</p>
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Imagens do site (hero, secções).</p>
         <div class="img-slots" id="imgSlots"></div>
         <div style="margin-top:1.5rem">
           <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Biblioteca de média</h3>
@@ -51,7 +91,7 @@
 
       <!-- Texts -->
       <div id="panel-texts" class="panel">
-        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Textos principais (português). Alterações aplicam-se após publicar.</p>
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Textos principais (português).</p>
         <div id="textsForm"></div>
       </div>
 
@@ -59,22 +99,11 @@
       <div id="panel-guide" class="panel">
         <div class="guide">
           <h3>Como funciona</h3>
-          <p><strong>Rascunho</strong> — guarda alterações só neste telemóvel/computador. O site público continua igual. Use para pré-visualizar.</p>
-          <p><strong>Publicar na loja</strong> — envia o catálogo para a cloud. Todos os visitantes passam a ver os novos preços, textos e imagens.</p>
-          <h3>Fluxo recomendado</h3>
-          <ul>
-            <li>Editar planos / imagens / textos</li>
-            <li>Guardar rascunho e abrir o site no mesmo browser para verificar</li>
-            <li>Quando estiver certo → Publicar na loja</li>
-          </ul>
-          <h3>Imagens</h3>
-          <ul>
-            <li>Carregar envia para a Cloudinary (não precisa de URL)</li>
-            <li>“Escolher da média” usa imagens já carregadas</li>
-            <li>Apagar na biblioteca só remove da lista local; o ficheiro na cloud fica (pode apagar no dashboard Cloudinary se quiser)</li>
-          </ul>
-          <h3>Se algo falhar</h3>
-          <p>Contacte o programador. Não partilhe a palavra-passe do admin.</p>
+          <p><strong>Inscrições</strong> — chegam aqui quando alguém preenche o formulário no site. Marque: Novo → Contactado → Inscrito.</p>
+          <p><strong>Clientes</strong> — base criada automaticamente a partir de inscrições. Actualize membership e faturação.</p>
+          <p><strong>Rascunho / Publicar</strong> — planos, imagens e textos: rascunho só neste browser; Publicar actualiza o site para todos.</p>
+          <h3>Redeploy do Worker</h3>
+          <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>
         </div>
       </div>
     </div>
@@ -90,49 +119,54 @@
     <div class="modal">
       <button type="button" class="modal-close" id="closeProdModal">×</button>
       <h2 id="prodModalTitle">Editar plano</h2>
-      <div class="form-row">
-        <label>Nome (PT)</label>
-        <input type="text" id="fName">
+      <div class="form-row"><label>Nome (PT)</label><input type="text" id="fName"></div>
+      <div class="form-row"><label>Nome (EN)</label><input type="text" id="fNameEn"></div>
+      <div class="form-row"><label>Categoria</label>
+        <select id="fCategory"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option></select>
       </div>
-      <div class="form-row">
-        <label>Nome (EN)</label>
-        <input type="text" id="fNameEn">
-      </div>
-      <div class="form-row">
-        <label>Categoria</label>
-        <select id="fCategory">
-          <option value="ginasio">Ginásio</option>
-          <option value="natacao">Natação</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label>Preço (Kz)</label>
-        <input type="number" id="fPrice" inputmode="decimal" min="0" step="100">
-      </div>
-      <div class="form-row">
-        <label>Período</label>
-        <input type="text" id="fPeriod" placeholder="mensal, única, pacote…">
-      </div>
-      <div class="form-row">
-        <label>Descrição (PT)</label>
-        <textarea id="fDesc"></textarea>
-      </div>
-      <div class="form-row">
-        <label>Descrição (EN)</label>
-        <textarea id="fDescEn"></textarea>
-      </div>
-      <div class="form-row">
-        <label>Características (uma por linha)</label>
-        <textarea id="fFeatures" rows="4"></textarea>
-      </div>
-      <div class="form-row">
-        <label><input type="checkbox" id="fFeatured"> Destacar (Popular)</label>
-      </div>
-      <div class="form-row">
-        <label><input type="checkbox" id="fActive" checked> Activo</label>
-      </div>
+      <div class="form-row"><label>Preço (Kz)</label><input type="number" id="fPrice" inputmode="decimal" min="0" step="100"></div>
+      <div class="form-row"><label>Período</label><input type="text" id="fPeriod" placeholder="mensal, única, pacote…"></div>
+      <div class="form-row"><label>Descrição (PT)</label><textarea id="fDesc"></textarea></div>
+      <div class="form-row"><label>Descrição (EN)</label><textarea id="fDescEn"></textarea></div>
+      <div class="form-row"><label>Características (uma por linha)</label><textarea id="fFeatures" rows="4"></textarea></div>
+      <div class="form-row"><label><input type="checkbox" id="fFeatured"> Destacar</label></div>
+      <div class="form-row"><label><input type="checkbox" id="fActive" checked> Activo</label></div>
       <div class="form-actions">
         <button type="button" id="saveProdBtn" style="flex:1;height:44px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client modal -->
+  <div class="modal-backdrop" id="clientModal">
+    <div class="modal">
+      <button type="button" class="modal-close" id="closeClientModal">×</button>
+      <h2>Cliente</h2>
+      <div class="form-row"><label>Nome</label><input type="text" id="cName"></div>
+      <div class="form-row"><label>Telefone</label><input type="tel" id="cPhone" inputmode="tel"></div>
+      <div class="form-row"><label>Email</label><input type="email" id="cEmail"></div>
+      <div class="form-row"><label>Área</label>
+        <select id="cArea"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option><option value="ambos">Ambos</option></select>
+      </div>
+      <div class="form-row"><label>Plano</label><input type="text" id="cPlan"></div>
+      <div class="form-row"><label>Membership</label>
+        <select id="cMembership">
+          <option value="pendente">Pendente</option>
+          <option value="activo">Activo</option>
+          <option value="expirado">Expirado</option>
+          <option value="suspenso">Suspenso</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Faturação</label>
+        <select id="cBilling">
+          <option value="em_dia">Em dia</option>
+          <option value="atrasado">Atrasado</option>
+          <option value="isento">Isento</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Notas</label><textarea id="cNotes" rows="3"></textarea></div>
+      <div class="form-actions">
+        <button type="button" id="saveClientBtn" style="flex:1;height:44px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">Guardar cliente</button>
       </div>
     </div>
   </div>

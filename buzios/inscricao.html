@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Inscrição no Búzios Health Club e Escola de Natação — ginásio e natação em Luanda.">
+  <title>Inscrição — Búzios Health Club</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .enroll-form { max-width: 560px; margin: 0 auto; }
+    .enroll-form .form-group { margin-bottom: 1.15rem; }
+    .enroll-form label { display: block; font-size: 0.8rem; font-weight: 500; letter-spacing: 0.03em; margin-bottom: 0.35rem; }
+    .enroll-form label .req { color: var(--color-accent); }
+    .enroll-form input, .enroll-form select, .enroll-form textarea {
+      width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--color-border);
+      border-radius: var(--radius-input); background: var(--color-surface); font-size: 16px;
+    }
+    .enroll-form input:focus, .enroll-form select:focus, .enroll-form textarea:focus {
+      outline: none; border-color: var(--color-border-strong);
+    }
+    .enroll-form textarea { min-height: 100px; resize: vertical; }
+    .check-row { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; margin-top: 0.35rem; }
+    .check-row label { display: flex; align-items: center; gap: 0.4rem; font-weight: 400; font-size: 0.88rem; cursor: pointer; }
+    .check-row input { width: auto; }
+    .file-list { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.4rem; }
+    .form-section { margin-bottom: 1.75rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--color-border); }
+    .form-section:last-of-type { border-bottom: none; }
+    .form-section h3 { font-size: 0.85rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1rem; color: var(--color-text-muted); }
+    .success-box { text-align: center; padding: 2.5rem 1rem; display: none; }
+    .success-box.show { display: block; }
+    .success-box h2 { font-weight: 300; margin-bottom: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="announce-bar" id="announceBar">
+    <span>Inscrição anual <span class="accent">6.500 Kz</span> · Documentos: BI, atestado médico, 2 fotos</span>
+  </div>
+
+  <header class="site-header scrolled" id="siteHeader">
+    <div class="header-inner">
+      <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <a href="index.html" class="brand">
+        <span class="brand-name">Búzios</span>
+        <span class="brand-tag">Health Club</span>
+      </a>
+      <div style="width:44px"></div>
+      <nav class="desktop-nav" aria-label="Principal">
+        <a href="index.html" class="nav-link">Início</a>
+        <a href="ginasio.html" class="nav-link">Ginásio</a>
+        <a href="natacao.html" class="nav-link">Natação</a>
+        <a href="planos.html" class="nav-link">Planos</a>
+        <a href="inscricao.html" class="nav-link">Inscrição</a>
+        <a href="contacto.html" class="nav-link">Contacto</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-brand brand">
+        <span class="brand-name">Búzios</span>
+        <span class="brand-tag">Health Club</span>
+      </div>
+      <button class="drawer-close" id="drawerClose" aria-label="Fechar">×</button>
+    </div>
+    <nav class="drawer-nav">
+      <a href="index.html">Início</a>
+      <a href="ginasio.html">Ginásio</a>
+      <a href="natacao.html">Natação</a>
+      <a href="planos.html">Planos & Preços</a>
+      <a href="inscricao.html">Inscrição</a>
+      <a href="contacto.html">Contacto</a>
+    </nav>
+    <div class="drawer-footer">
+      <p>Rua 21-c, Benfica, Kifica<br>Luanda · Angola</p>
+    </div>
+  </aside>
+
+  <main>
+    <section class="page-hero">
+      <div class="container">
+        <p class="section-eyebrow">Inscrição</p>
+        <h1 class="section-title">Junte-se ao Búzios</h1>
+        <p class="section-desc">Preencha o formulário. A equipa confirma a disponibilidade e os próximos passos.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="success-box" id="successBox">
+          <h2>Inscrição enviada</h2>
+          <p class="section-desc">Recebemos os seus dados. Vamos contactá-lo em breve para confirmar.</p>
+          <a href="index.html" class="btn btn-outline mt-2">Voltar ao início</a>
+        </div>
+
+        <form class="enroll-form" id="enrollForm">
+          <div class="form-section">
+            <h3>1. O que pretende</h3>
+            <div class="form-group">
+              <label>Área <span class="req">*</span></label>
+              <select id="eArea" required>
+                <option value="">Seleccione…</option>
+                <option value="ginasio">Ginásio</option>
+                <option value="natacao">Natação</option>
+                <option value="ambos">Ginásio e Natação</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Plano de interesse</label>
+              <select id="ePlan">
+                <option value="">Ainda não sei / a definir</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>2. Dados pessoais</h3>
+            <div class="form-group">
+              <label>Nome completo <span class="req">*</span></label>
+              <input type="text" id="eName" required autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label>Telefone / WhatsApp <span class="req">*</span></label>
+              <input type="tel" id="ePhone" required inputmode="tel" autocomplete="tel" placeholder="9XX XXX XXX">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="eEmail" autocomplete="email" placeholder="opcional">
+            </div>
+            <div class="form-group" id="ageGroup" style="display:none">
+              <label>Idade (natação)</label>
+              <input type="number" id="eAge" min="0" max="120" inputmode="numeric">
+            </div>
+            <div class="form-group">
+              <label>Contacto de emergência (nome e telefone)</label>
+              <input type="text" id="eEmergency" placeholder="Nome — telefone">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>3. Horário e notas</h3>
+            <div class="form-group">
+              <label>Horário preferido</label>
+              <div class="check-row">
+                <label><input type="checkbox" name="sched" value="Manhã (06h–12h)"> Manhã (06h–12h)</label>
+                <label><input type="checkbox" name="sched" value="Tarde (14h–21h)"> Tarde (14h–21h)</label>
+                <label><input type="checkbox" name="sched" value="Fins de semana"> Fins de semana</label>
+                <label><input type="checkbox" name="sched" value="Flexível"> Flexível</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Notas ou questões</label>
+              <textarea id="eNotes" placeholder="Ex.: objectivos de treino, restrições médicas, dúvidas…"></textarea>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>4. Documentos</h3>
+            <p class="muted" style="font-size:0.85rem;margin-bottom:0.85rem">Para a inscrição no ginásio são necessários: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar agora ou entregar no local.</p>
+            <div class="form-group">
+              <label>Anexar documentos (opcional)</label>
+              <input type="file" id="eFiles" accept="image/*,.pdf" multiple>
+              <div class="file-list" id="fileList"></div>
+            </div>
+            <div class="check-row">
+              <label><input type="checkbox" id="eDocsLater"> Prefiro entregar os documentos no ginásio</label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="enrollSubmit">Enviar inscrição</button>
+          <p class="muted text-center mt-2" style="font-size:0.8rem">Ao enviar, a equipa Búzios recebe os seus dados e entra em contacto.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <nav class="footer-links">
+        <a href="index.html">Início</a>
+        <a href="ginasio.html">Ginásio</a>
+        <a href="natacao.html">Natação</a>
+        <a href="planos.html">Planos</a>
+        <a href="inscricao.html">Inscrição</a>
+        <a href="contacto.html">Contacto</a>
+      </nav>
+      <p class="footer-copy">© <span id="year"></span> Búzios Health Club · La Casa de Ferro</p>
+    </div>
+  </footer>
+
+  <script src="js/products.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    const SUBMIT_URL = 'https://buzios-publish.gymngola.workers.dev/submit';
+    const CLOUD_NAME = 'ogtzpc3v';
+    const UPLOAD_PRESET = 'buzios_unsigned';
+    const FOLDER = 'buzios';
+
+    // Populate plans
+    const planSelect = document.getElementById('ePlan');
+    const products = (window.DEFAULT_PRODUCTS || []).filter(p => p.active !== false);
+    products.sort((a,b) => (a.order||0)-(b.order||0)).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + ' — ' + Number(p.price).toLocaleString('pt') + ' Kz';
+      opt.dataset.category = p.category;
+      planSelect.appendChild(opt);
+    });
+
+    // Pre-select from URL
+    const params = new URLSearchParams(location.search);
+    const prePlan = params.get('plano');
+    if (prePlan) {
+      planSelect.value = prePlan;
+      const p = products.find(x => x.id === prePlan);
+      if (p) document.getElementById('eArea').value = p.category === 'natacao' ? 'natacao' : 'ginasio';
+    }
+
+    document.getElementById('eArea').addEventListener('change', function() {
+      document.getElementById('ageGroup').style.display =
+        (this.value === 'natacao' || this.value === 'ambos') ? 'block' : 'none';
+    });
+
+    document.getElementById('eFiles').addEventListener('change', function() {
+      const list = document.getElementById('fileList');
+      const files = Array.from(this.files || []);
+      list.textContent = files.length ? files.map(f => f.name).join(', ') : '';
+    });
+
+    async function uploadFile(file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', UPLOAD_PRESET);
+      fd.append('folder', FOLDER + '/docs');
+      const res = await fetch('https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/auto/upload', {
+        method: 'POST', body: fd
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      return data.secure_url;
+    }
+
+    document.getElementById('enrollForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('enrollSubmit');
+      btn.disabled = true;
+      btn.textContent = 'A enviar…';
+
+      const schedule = Array.from(document.querySelectorAll('input[name="sched"]:checked')).map(c => c.value);
+      const files = Array.from(document.getElementById('eFiles').files || []);
+      let attachments = [];
+      try {
+        for (const f of files) {
+          attachments.push(await uploadFile(f));
+        }
+      } catch (err) {
+        alert('Erro ao enviar documentos. Tente novamente ou entregue no local.');
+        btn.disabled = false;
+        btn.textContent = 'Enviar inscrição';
+        return;
+      }
+
+      const payload = {
+        type: 'enrollment',
+        area: document.getElementById('eArea').value,
+        planId: document.getElementById('ePlan').value || null,
+        planName: planSelect.options[planSelect.selectedIndex]?.text || '',
+        name: document.getElementById('eName').value.trim(),
+        phone: document.getElementById('ePhone').value.trim(),
+        email: document.getElementById('eEmail').value.trim(),
+        age: document.getElementById('eAge').value || null,
+        emergency: document.getElementById('eEmergency').value.trim(),
+        schedule,
+        notes: document.getElementById('eNotes').value.trim(),
+        docsLater: document.getElementById('eDocsLater').checked,
+        attachments,
+        status: 'novo',
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        const res = await fetch(SUBMIT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(await res.text());
+        document.getElementById('enrollForm').style.display = 'none';
+        document.getElementById('successBox').classList.add('show');
+      } catch (err) {
+        alert('Não foi possível enviar. Verifique a ligação e tente de novo.');
+        btn.disabled = false;
+        btn.textContent = 'Enviar inscrição';
+      }
+    });
+  </script>
+</body>
+</html>

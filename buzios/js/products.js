@@ -208,7 +208,7 @@ const DEFAULT_TEXTS = {
     "hero.title": "Actividade física no presente.\nSaúde no futuro.",
     "hero.sub": "O seu espaço de sempre em Luanda. Musculação, cardio, spinning, TRX e natação em piscina aquecida.",
     "hero.cta1": "Ver planos",
-    "hero.cta2": "WhatsApp",
+    "hero.cta2": "Inscrever-me",
     "intro.eyebrow": "Sobre nós",
     "intro.title": "Búzios — o seu espaço de sempre",
     "intro.desc": "Localizado no Bairro do Benfica, Kifica, o Búzios Health Club oferece um ambiente completo para a sua saúde: ginásio equipado e escola de natação com piscina aquecida.",
@@ -232,8 +232,8 @@ const DEFAULT_TEXTS = {
     "plans.desc": "Inscrição anual obrigatória na primeira visita. Todos os planos incluem acesso ao equipamento e avaliação profissional.",
     "plans.cta": "Todos os planos e preços",
     "cta.title": "Pronto para começar?",
-    "cta.desc": "Fale connosco no WhatsApp. Tiramos todas as dúvidas e ajudamos a escolher o plano ideal.",
-    "cta.btn": "Falar no WhatsApp",
+    "cta.desc": "Preencha o formulário de inscrição ou de contacto. A nossa equipa responde com todas as informações.",
+    "cta.btn": "Fazer inscrição",
     "loc.eyebrow": "Onde estamos",
     "loc.title": "Benfica · Kifica · Luanda",
     "loc.addressTitle": "Morada",
@@ -241,14 +241,14 @@ const DEFAULT_TEXTS = {
     "loc.contactTitle": "Contacto",
     "footer.newsletter": "Receba novidades e promoções",
     "footer.subscribe": "Subscrever",
-    "footer.note": "Ao subscrever, aceita a nossa política de privacidade."
+    "footer.note": "Ao subscrever, aceita receber novidades e actualizações directamente no seu telemóvel."
   },
   en: {
     "hero.eyebrow": "Gym & Swimming School",
     "hero.title": "Physical activity today.\nHealth for tomorrow.",
     "hero.sub": "Your space in Luanda. Weights, cardio, spinning, TRX and swimming in a heated pool.",
     "hero.cta1": "View plans",
-    "hero.cta2": "WhatsApp",
+    "hero.cta2": "Enroll",
     "intro.eyebrow": "About us",
     "intro.title": "Búzios — your space, always",
     "intro.desc": "Located in Benfica, Kifica, Búzios Health Club offers a complete environment for your health: fully equipped gym and swimming school with heated pool.",
@@ -272,8 +272,8 @@ const DEFAULT_TEXTS = {
     "plans.desc": "Annual registration required on first visit. All plans include equipment access and professional evaluation.",
     "plans.cta": "All plans and prices",
     "cta.title": "Ready to start?",
-    "cta.desc": "Message us on WhatsApp. We’ll answer every question and help you choose the right plan.",
-    "cta.btn": "Chat on WhatsApp",
+    "cta.desc": "Fill in the enrollment or contact form. Our team will reply with all the information.",
+    "cta.btn": "Enroll now",
     "loc.eyebrow": "Find us",
     "loc.title": "Benfica · Kifica · Luanda",
     "loc.addressTitle": "Address",
@@ -281,7 +281,7 @@ const DEFAULT_TEXTS = {
     "loc.contactTitle": "Contact",
     "footer.newsletter": "Get news and offers",
     "footer.subscribe": "Subscribe",
-    "footer.note": "By subscribing you accept our privacy policy."
+    "footer.note": "By subscribing you agree to receive news and updates on your phone."
   }
 };
 

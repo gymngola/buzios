@@ -1,20 +1,20 @@
 /**
- * Búzios Admin — CRUD for plans, site images, texts, publish via Worker
+ * Búzios Admin — plans, images, texts, submissions, clients
  */
 (function () {
   'use strict';
 
-  // —— Config (edit for new clients) ——
-  const ADMIN_PASSWORD = 'buzios2026';           // Change after handoff
+  const ADMIN_PASSWORD = 'buzios2026';
   const PUBLISH_URL = 'https://buzios-publish.gymngola.workers.dev/publish';
+  const ADMIN_DATA_URL = 'https://buzios-publish.gymngola.workers.dev/admin/data';
   const CLOUD_NAME = 'ogtzpc3v';
-  const UPLOAD_PRESET = 'buzios_unsigned';       // Create unsigned preset in Cloudinary
+  const UPLOAD_PRESET = 'buzios_unsigned';
   const CATALOG_FOLDER = 'buzios';
   const SITE_IMAGE_SLOTS = [
     { key: 'hero', label: 'Hero (página inicial)' },
     { key: 'intro', label: 'Secção Sobre / Intro' },
-    { key: 'ginasio', label: 'Página Ginásio' },
-    { key: 'natacao', label: 'Página Natação' },
+    { key: 'ginasio', label: 'Página Ginásio (hero)' },
+    { key: 'natacao', label: 'Página Natação (hero)' },
     { key: 'promo', label: 'Promo / banner extra' }
   ];
 
@@ -26,14 +26,14 @@
     media: 'buzios_media_library'
   };
 
-  // —— State ——
   let products = [];
   let texts = { pt: {}, en: {} };
   let images = {};
   let mediaLibrary = [];
+  let store = { submissions: [], clients: [], newsletters: [] };
   let editingId = null;
+  let editingClientId = null;
 
-  // —— DOM ——
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
 
@@ -44,7 +44,21 @@
     setTimeout(() => el.classList.remove('show'), 2800);
   }
 
-  // —— Auth ——
+  // Password show/hide
+  const passToggle = $('#passToggle');
+  if (passToggle) {
+    passToggle.addEventListener('click', () => {
+      const input = $('#adminPass');
+      if (input.type === 'password') {
+        input.type = 'text';
+        passToggle.textContent = 'Ocultar';
+      } else {
+        input.type = 'password';
+        passToggle.textContent = 'Mostrar';
+      }
+    });
+  }
+
   function checkAuth() {
     if (sessionStorage.getItem(LS.auth) === '1' || localStorage.getItem(LS.auth) === '1') {
       showApp();
@@ -54,11 +68,11 @@
     $('#loginScreen').classList.add('hidden');
     $('#adminApp').classList.remove('hidden');
     loadState();
+    loadStore();
     renderAll();
   }
   $('#loginBtn').addEventListener('click', () => {
-    const pass = $('#adminPass').value;
-    if (pass === ADMIN_PASSWORD) {
+    if ($('#adminPass').value === ADMIN_PASSWORD) {
       sessionStorage.setItem(LS.auth, '1');
       showApp();
     } else {
@@ -69,7 +83,6 @@
     if (e.key === 'Enter') $('#loginBtn').click();
   });
 
-  // —— Tabs ——
   $$('.admin-tabs button').forEach(btn => {
     btn.addEventListener('click', () => {
       $$('.admin-tabs button').forEach(b => b.classList.remove('active'));
@@ -80,7 +93,6 @@
     });
   });
 
-  // —— Load / save local state ——
   function loadState() {
     try {
       const p = localStorage.getItem(LS.products);
@@ -107,6 +119,24 @@
     }
   }
 
+  async function loadStore() {
+    try {
+      const res = await fetch(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'get' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.store) store = data.store;
+      }
+    } catch (e) {
+      console.warn('Store load failed', e);
+    }
+    renderInbox();
+    renderClients();
+  }
+
   function saveDraft() {
     localStorage.setItem(LS.products, JSON.stringify(products));
     localStorage.setItem(LS.texts, JSON.stringify(texts));
@@ -115,9 +145,136 @@
     toast('Rascunho guardado neste browser');
   }
 
-  // —— Render products ——
+  // —— Inbox ——
+  function renderInbox() {
+    const list = $('#inboxList');
+    if (!list) return;
+    const items = store.submissions || [];
+    if (!items.length) {
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma inscrição ou mensagem ainda.</p>';
+      return;
+    }
+    list.innerHTML = items.map(s => {
+      const status = s.status || 'novo';
+      const when = s.createdAt ? new Date(s.createdAt).toLocaleString('pt') : '';
+      const typeLabel = s.type === 'enrollment' ? 'Inscrição' : (s.type === 'contact' ? 'Contacto' : s.type);
+      return `
+        <div class="prod-card">
+          <h3>${s.name || '—'} <span class="status-badge status-${status}">${status}</span></h3>
+          <div class="meta">${typeLabel} · ${s.phone || ''} · ${when}</div>
+          <div class="meta" style="margin-top:0.35rem">
+            ${s.area ? 'Área: ' + s.area + ' · ' : ''}
+            ${s.planName || s.planId || ''}
+            ${s.subject ? 'Assunto: ' + s.subject : ''}
+          </div>
+          ${s.notes || s.message ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + (s.notes || s.message) + '</p>' : ''}
+          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos: ' + s.attachments.map((u,i) => '<a href="'+u+'" target="_blank">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
+          <div class="actions" style="margin-top:0.65rem">
+            <button type="button" data-st="${s.id}" data-v="contactado">Contactado</button>
+            <button type="button" data-st="${s.id}" data-v="inscrito">Inscrito</button>
+            <button type="button" data-st="${s.id}" data-v="arquivado">Arquivar</button>
+            <button type="button" class="danger" data-del-sub="${s.id}">Apagar</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-st]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await adminAction('update_submission', { id: btn.dataset.st, status: btn.dataset.v });
+        toast('Estado actualizado');
+      });
+    });
+    list.querySelectorAll('[data-del-sub]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Apagar esta entrada?')) return;
+        await adminAction('delete_submission', { id: btn.dataset.delSub });
+        toast('Apagado');
+      });
+    });
+  }
+
+  async function adminAction(action, data) {
+    try {
+      const res = await fetch(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: ADMIN_PASSWORD, action, data })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.store) store = json.store;
+        renderInbox();
+        renderClients();
+      } else {
+        toast('Erro ao actualizar');
+      }
+    } catch (e) {
+      toast('Erro de rede');
+    }
+  }
+
+  // —— Clients ——
+  function renderClients() {
+    const list = $('#clientsList');
+    if (!list) return;
+    const items = store.clients || [];
+    if (!items.length) {
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente ainda. Surgem automaticamente das inscrições.</p>';
+      return;
+    }
+    list.innerHTML = items.map(c => `
+      <div class="prod-card">
+        <h3>${c.name || '—'} <span class="status-badge status-${c.membershipStatus || 'pendente'}">${c.membershipStatus || 'pendente'}</span></h3>
+        <div class="meta">${c.phone || ''} · ${c.email || ''} · ${c.area || ''}</div>
+        <div class="meta">${c.planName || c.planId || ''} · Faturação: ${c.billingStatus || 'em_dia'}</div>
+        ${c.notes ? '<p style="font-size:0.85rem;margin:0.4rem 0;color:#444">' + c.notes + '</p>' : ''}
+        <div class="actions">
+          <button type="button" data-edit-cli="${c.id}">Editar</button>
+        </div>
+      </div>
+    `).join('');
+    list.querySelectorAll('[data-edit-cli]').forEach(btn => {
+      btn.addEventListener('click', () => openClientModal(btn.dataset.editCli));
+    });
+  }
+
+  function openClientModal(id) {
+    editingClientId = id || null;
+    const c = id ? (store.clients || []).find(x => x.id === id) : null;
+    $('#cName').value = c?.name || '';
+    $('#cPhone').value = c?.phone || '';
+    $('#cEmail').value = c?.email || '';
+    $('#cArea').value = c?.area || 'ginasio';
+    $('#cPlan').value = c?.planName || c?.planId || '';
+    $('#cMembership').value = c?.membershipStatus || 'pendente';
+    $('#cBilling').value = c?.billingStatus || 'em_dia';
+    $('#cNotes').value = c?.notes || '';
+    $('#clientModal').classList.add('open');
+  }
+  $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
+  $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
+  $('#saveClientBtn')?.addEventListener('click', async () => {
+    const data = {
+      id: editingClientId || ('cli-' + Date.now()),
+      name: $('#cName').value.trim(),
+      phone: $('#cPhone').value.trim(),
+      email: $('#cEmail').value.trim(),
+      area: $('#cArea').value,
+      planName: $('#cPlan').value.trim(),
+      membershipStatus: $('#cMembership').value,
+      billingStatus: $('#cBilling').value,
+      notes: $('#cNotes').value.trim(),
+      createdAt: editingClientId ? undefined : new Date().toISOString()
+    };
+    await adminAction('update_client', data);
+    $('#clientModal').classList.remove('open');
+    toast('Cliente guardado');
+  });
+
+  // —— Products (same as before) ——
   function renderProducts() {
     const list = $('#prodList');
+    if (!list) return;
     const sorted = products.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
     list.innerHTML = sorted.map(p => `
       <div class="prod-card">
@@ -129,7 +286,6 @@
         </div>
       </div>
     `).join('');
-
     list.querySelectorAll('[data-edit]').forEach(btn => {
       btn.addEventListener('click', () => openProductModal(btn.dataset.edit));
     });
@@ -159,10 +315,9 @@
     $('#fActive').checked = p ? p.active !== false : true;
     $('#prodModal').classList.add('open');
   }
-
-  $('#closeProdModal').addEventListener('click', () => $('#prodModal').classList.remove('open'));
-  $('#addProductBtn').addEventListener('click', () => openProductModal(null));
-  $('#saveProdBtn').addEventListener('click', () => {
+  $('#closeProdModal')?.addEventListener('click', () => $('#prodModal').classList.remove('open'));
+  $('#addProductBtn')?.addEventListener('click', () => openProductModal(null));
+  $('#saveProdBtn')?.addEventListener('click', () => {
     const name = $('#fName').value.trim();
     if (!name) return toast('Nome obrigatório');
     const data = {
@@ -196,6 +351,7 @@
   // —— Images ——
   function renderImageSlots() {
     const el = $('#imgSlots');
+    if (!el) return;
     el.innerHTML = SITE_IMAGE_SLOTS.map(slot => {
       const url = images[slot.key] || '';
       return `
@@ -204,12 +360,10 @@
           ${url ? `<img src="${url}" alt="">` : '<div style="height:80px;background:#eee;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.8rem">Sem imagem</div>'}
           <div class="slot-actions">
             <button type="button" data-upload="${slot.key}">Carregar</button>
-            <button type="button" data-pick="${slot.key}">Escolher da média</button>
             <button type="button" data-clear="${slot.key}">Original</button>
           </div>
         </div>`;
     }).join('');
-
     el.querySelectorAll('[data-upload]').forEach(btn => {
       btn.addEventListener('click', () => {
         const input = document.createElement('input');
@@ -227,24 +381,10 @@
             renderMediaLibrary();
             toast('Imagem carregada');
           } catch (err) {
-            toast('Erro no upload: ' + (err.message || err));
+            toast('Erro no upload');
           }
         };
         input.click();
-      });
-    });
-    el.querySelectorAll('[data-pick]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (!mediaLibrary.length) return toast('Biblioteca vazia — carregue primeiro');
-        const url = prompt('Cole a URL da imagem da biblioteca ou escolha pelo índice 0-' + (mediaLibrary.length - 1));
-        if (url == null) return;
-        if (/^\d+$/.test(url)) {
-          const item = mediaLibrary[Number(url)];
-          if (item) images[btn.dataset.pick] = item.url;
-        } else if (url.startsWith('http')) {
-          images[btn.dataset.pick] = url;
-        }
-        renderImageSlots();
       });
     });
     el.querySelectorAll('[data-clear]').forEach(btn => {
@@ -257,18 +397,13 @@
 
   function renderMediaLibrary() {
     const el = $('#mediaLibrary');
+    if (!el) return;
     el.innerHTML = mediaLibrary.map((m, i) => `
       <div style="position:relative">
-        <img src="${m.url}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" title="Clique para copiar URL" data-url="${m.url}">
+        <img src="${m.url}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px">
         <button type="button" data-rm="${i}" style="position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;cursor:pointer">×</button>
       </div>
     `).join('');
-    el.querySelectorAll('[data-url]').forEach(img => {
-      img.addEventListener('click', () => {
-        navigator.clipboard?.writeText(img.dataset.url);
-        toast('URL copiada');
-      });
-    });
     el.querySelectorAll('[data-rm]').forEach(btn => {
       btn.addEventListener('click', () => {
         mediaLibrary.splice(Number(btn.dataset.rm), 1);
@@ -287,7 +422,7 @@
       renderMediaLibrary();
       toast('Adicionado à biblioteca');
     } catch (err) {
-      toast('Erro: ' + (err.message || err));
+      toast('Erro no upload');
     }
     e.target.value = '';
   });
@@ -298,13 +433,9 @@
     fd.append('upload_preset', UPLOAD_PRESET);
     fd.append('folder', CATALOG_FOLDER);
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-      method: 'POST',
-      body: fd
+      method: 'POST', body: fd
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || res.statusText);
-    }
+    if (!res.ok) throw new Error('upload failed');
     const data = await res.json();
     return data.secure_url;
   }
@@ -321,6 +452,7 @@
 
   function renderTexts() {
     const el = $('#textsForm');
+    if (!el) return;
     const pt = texts.pt || {};
     el.innerHTML = TEXT_KEYS.map(t => `
       <div class="form-row">
@@ -338,30 +470,15 @@
 
   // —— Publish ——
   async function publish() {
-    if (!confirm('Publicar na loja?\n\nIsto actualiza planos, textos e imagens para todos os visitantes.')) return;
-
-    // Collect current text values
+    if (!confirm('Publicar na loja?\n\nActualiza planos, textos e imagens para todos os visitantes.')) return;
     $$('[data-text-key]').forEach(ta => {
       if (!texts.pt) texts.pt = {};
       texts.pt[ta.dataset.textKey] = ta.value;
     });
-
     const catalog = {
       updatedAt: new Date().toISOString(),
-      products,
-      zones: [],
-      texts,
-      images
+      products, zones: [], texts, images
     };
-
-    if (!PUBLISH_URL) {
-      // Fallback: save as draft only + instruct
-      saveDraft();
-      toast('PUBLISH_URL não configurado. Rascunho guardado. Configure o Worker.');
-      console.log('Catalog to publish:', catalog);
-      return;
-    }
-
     try {
       toast('A publicar…');
       const res = await fetch(PUBLISH_URL, {
@@ -369,11 +486,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: ADMIN_PASSWORD, catalog })
       });
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || res.statusText);
-      }
-      // Also keep local draft in sync
+      if (!res.ok) throw new Error(await res.text());
       saveDraft();
       toast('Publicado com sucesso');
     } catch (err) {
@@ -381,17 +494,17 @@
     }
   }
 
-  // —— Buttons ——
-  $('#saveDraftBtn').addEventListener('click', saveDraft);
-  $('#publishBtn').addEventListener('click', publish);
+  $('#saveDraftBtn')?.addEventListener('click', saveDraft);
+  $('#publishBtn')?.addEventListener('click', publish);
 
   function renderAll() {
     renderProducts();
     renderImageSlots();
     renderMediaLibrary();
     renderTexts();
+    renderInbox();
+    renderClients();
   }
 
-  // Init
   checkAuth();
 })();

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Búzios Health Club — Ginásio e Escola de Natação em Luanda. Actividade física, musculação, cardio e natação em piscina aquecida. O seu espaço de sempre.">
+  <title>Búzios Health Club — Ginásio & Natação em Luanda</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>B</text></svg>">
+</head>
+<body>
+  <!-- Announcement bar -->
+  <div class="announce-bar" id="announceBar" role="banner">
+    <span>Inscrição anual <span class="accent">6.500 Kz</span> · Planos a partir de 27.000 Kz/mês</span>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header" id="siteHeader">
+    <div class="header-inner">
+      <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <a href="index.html" class="brand">
+        <span class="brand-name">Búzios</span>
+        <span class="brand-tag">Health Club</span>
+      </a>
+
+      <div class="header-right" style="width:44px"></div>
+
+      <nav class="desktop-nav" aria-label="Principal">
+        <a href="index.html" class="nav-link">Início</a>
+        <a href="ginasio.html" class="nav-link">Ginásio</a>
+        <a href="natacao.html" class="nav-link">Natação</a>
+        <a href="planos.html" class="nav-link">Planos</a>
+        <a href="contacto.html" class="nav-link">Contacto</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Mobile drawer -->
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-brand brand">
+        <span class="brand-name">Búzios</span>
+        <span class="brand-tag">Health Club</span>
+      </div>
+      <button class="drawer-close" id="drawerClose" aria-label="Fechar">×</button>
+    </div>
+    <nav class="drawer-nav">
+      <a href="index.html">Início</a>
+      <a href="ginasio.html">Ginásio</a>
+      <a href="natacao.html">Natação</a>
+      <a href="planos.html">Planos & Preços</a>
+      <a href="contacto.html">Contacto</a>
+    </nav>
+    <div class="drawer-footer">
+      <p>Rua 21-c, Benfica, Kifica<br>Luanda · Angola</p>
+      <p style="margin-top:0.75rem">
+        <a href="tel:+244923423142">923 423 142</a><br>
+        <a href="mailto:lacasadeferro521@gmail.com">lacasadeferro521@gmail.com</a>
+      </p>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero" id="hero">
+      <div class="hero-media">
+        <img data-site-img="hero" src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600&q=80" alt="Ginásio Búzios — treino de força">
+      </div>
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <p class="hero-eyebrow" data-i18n="hero.eyebrow">Ginásio & Escola de Natação</p>
+        <h1 class="hero-title" data-i18n="hero.title">Actividade física no presente.<br>Saúde no futuro.</h1>
+        <p class="hero-sub" data-i18n="hero.sub">O seu espaço de sempre em Luanda. Musculação, cardio, spinning, TRX e natação em piscina aquecida.</p>
+        <div class="hero-actions">
+          <a href="planos.html" class="btn btn-accent" data-i18n="hero.cta1">Ver planos</a>
+          <a href="https://wa.me/244923423142?text=Olá%2C%20gostaria%20de%20saber%20mais%20sobre%20o%20Búzios%20Health%20Club." class="btn btn-light" data-i18n="hero.cta2" target="_blank" rel="noopener">WhatsApp</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Intro -->
+    <section class="section">
+      <div class="container">
+        <div class="intro-grid">
+          <div class="intro-media">
+            <img data-site-img="intro" src="https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=900&q=80" alt="Área de treino">
+          </div>
+          <div class="intro-content">
+            <p class="section-eyebrow" data-i18n="intro.eyebrow">Sobre nós</p>
+            <h2 class="section-title" data-i18n="intro.title">Búzios — o seu espaço de sempre</h2>
+            <p class="section-desc" data-i18n="intro.desc">Localizado no Bairro do Benfica, Kifica, o Búzios Health Club oferece um ambiente completo para a sua saúde: ginásio equipado e escola de natação com piscina aquecida.</p>
+            <ul class="feature-list">
+              <li data-i18n="intro.f1">Musculação, cardio, spinning e TRX</li>
+              <li data-i18n="intro.f2">Escola de natação para todas as idades</li>
+              <li data-i18n="intro.f3">Piscina aquecida e hidroginástica</li>
+              <li data-i18n="intro.f4">Acompanhamento de personal trainer</li>
+              <li data-i18n="intro.f5">Horários alargados de manhã e tarde</li>
+            </ul>
+            <a href="ginasio.html" class="btn btn-outline" data-i18n="intro.cta">Conhecer o ginásio</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Services preview -->
+    <section class="section" style="background: var(--color-surface-soft);">
+      <div class="container">
+        <div class="section-header">
+          <p class="section-eyebrow" data-i18n="services.eyebrow">O que oferecemos</p>
+          <h2 class="section-title" data-i18n="services.title">Duas áreas. Uma missão.</h2>
+          <p class="section-desc" data-i18n="services.desc">Ginásio completo e escola de natação com professores formados, em ambiente acolhedor e profissional.</p>
+        </div>
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-body">
+              <p class="plan-badge">Ginásio</p>
+              <h3 class="card-title" data-i18n="services.gymTitle">Búzios Health Club</h3>
+              <p class="card-text" data-i18n="services.gymText">5 tapetes profissionais, bicicletas elípticas, step, spinning, barras, halteres e máquinas para todos os grupos musculares. Planos Bronze, Prata e Platina.</p>
+              <a href="ginasio.html" class="btn btn-outline btn-sm mt-2" data-i18n="services.gymCta">Ver ginásio</a>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-body">
+              <p class="plan-badge">Natação</p>
+              <h3 class="card-title" data-i18n="services.swimTitle">Escola de Natação Búzios</h3>
+              <p class="card-text" data-i18n="services.swimText">Piscina aquecida. Aulas para bebés, crianças, adolescentes e adultos. Hidroginástica, hidroterapia e planos de férias. Turmas reduzidas (máx. 7 alunos).</p>
+              <a href="natacao.html" class="btn btn-outline btn-sm mt-2" data-i18n="services.swimCta">Ver natação</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Plans teaser -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <p class="section-eyebrow" data-i18n="plans.eyebrow">Planos de ginásio</p>
+          <h2 class="section-title" data-i18n="plans.title">Escolha o seu ritmo</h2>
+          <p class="section-desc" data-i18n="plans.desc">Inscrição anual obrigatória na primeira visita. Todos os planos incluem acesso ao equipamento e avaliação profissional.</p>
+        </div>
+        <div class="grid-3" id="plansPreview">
+          <!-- Filled by JS from catalog / defaults -->
+        </div>
+        <div class="text-center mt-3">
+          <a href="planos.html" class="btn btn-primary" data-i18n="plans.cta">Todos os planos e preços</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-band">
+      <div class="container">
+        <h2 class="section-title" data-i18n="cta.title">Pronto para começar?</h2>
+        <p class="section-desc" data-i18n="cta.desc">Fale connosco no WhatsApp. Tiramos todas as dúvidas e ajudamos a escolher o plano ideal.</p>
+        <a href="https://wa.me/244923423142?text=Olá%2C%20quero%20inscrever-me%20no%20Búzios%20Health%20Club." class="btn btn-accent" target="_blank" rel="noopener" data-i18n="cta.btn">Falar no WhatsApp</a>
+      </div>
+    </section>
+
+    <!-- Location / hours -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <p class="section-eyebrow" data-i18n="loc.eyebrow">Onde estamos</p>
+          <h2 class="section-title" data-i18n="loc.title">Benfica · Kifica · Luanda</h2>
+        </div>
+        <div class="info-grid">
+          <div class="info-item">
+            <h3 data-i18n="loc.addressTitle">Morada</h3>
+            <p>Rua 21-c, Bairro do Benfica<br>Kifica nº 57-59<br>Próximo ao Mercado do Kifica</p>
+          </div>
+          <div class="info-item">
+            <h3 data-i18n="loc.hoursTitle">Horário</h3>
+            <p>Manhã: 06h – 12h<br>Tarde: 14h – 21h<br>Domingos & feriados (Plano Platina)</p>
+          </div>
+          <div class="info-item">
+            <h3 data-i18n="loc.contactTitle">Contacto</h3>
+            <p>
+              <a href="tel:+244923423142">923 423 142</a><br>
+              <a href="mailto:lacasadeferro521@gmail.com">lacasadeferro521@gmail.com</a><br>
+              @escolaeginasiobuzios
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-newsletter">
+        <label for="newsletterEmail" data-i18n="footer.newsletter">Receba novidades e promoções</label>
+        <form class="newsletter-form" id="newsletterForm" onsubmit="return false;">
+          <input type="email" id="newsletterEmail" placeholder="O seu email" required autocomplete="email">
+          <button type="submit" class="btn btn-primary" data-i18n="footer.subscribe">Subscrever</button>
+        </form>
+        <p class="newsletter-note" data-i18n="footer.note">Ao subscrever, aceita a nossa política de privacidade.</p>
+      </div>
+
+      <div class="footer-social">
+        <a href="https://instagram.com/escolaeginasiobuzios" target="_blank" rel="noopener" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+        </a>
+        <a href="https://facebook.com" target="_blank" rel="noopener" aria-label="Facebook">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        </a>
+        <a href="https://wa.me/244923423142" target="_blank" rel="noopener" aria-label="WhatsApp">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15 conf-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </a>
+      </div>
+
+      <nav class="footer-links">
+        <a href="index.html">Início</a>
+        <a href="ginasio.html">Ginásio</a>
+        <a href="natacao.html">Natação</a>
+        <a href="planos.html">Planos</a>
+        <a href="contacto.html">Contacto</a>
+      </nav>
+
+      <div class="footer-legal">
+        <a href="#">Privacidade</a>
+        <a href="#">Termos</a>
+      </div>
+
+      <p class="footer-copy">© <span id="year"></span> Búzios Health Club · La Casa de Ferro</p>
+    </div>
+  </footer>
+
+  <!-- WhatsApp float -->
+  <a href="https://wa.me/244923423142?text=Olá%2C%20gostaria%20de%20saber%20mais%20sobre%20o%20Búzios." class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  </a>
+
+  <script src="js/products.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Admin — Búzios Health Club</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <div id="loginScreen" class="login-box">
+    <h1>Búzios Admin</h1>
+    <p>Área reservada à equipa</p>
+    <input type="password" id="adminPass" placeholder="Palavra-passe" autocomplete="current-password">
+    <button type="button" id="loginBtn">Entrar</button>
+    <p id="loginError" style="color:#b33;font-size:0.8rem;margin-top:0.75rem;display:none">Palavra-passe incorrecta</p>
+  </div>
+
+  <div id="adminApp" class="hidden">
+    <div class="admin-wrap">
+      <div class="admin-bar">
+        <h1>Búzios Admin</h1>
+        <div class="admin-tabs">
+          <button type="button" data-panel="products" class="active">Planos</button>
+          <button type="button" data-panel="images">Imagens</button>
+          <button type="button" data-panel="texts">Textos</button>
+          <button type="button" data-panel="guide">Guia</button>
+        </div>
+      </div>
+
+      <!-- Products / Plans -->
+      <div id="panel-products" class="panel active">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <p style="font-size:0.85rem;color:#666">Edite preços e descrições. Guarde rascunho para pré-visualizar no site neste browser.</p>
+          <button type="button" id="addProductBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Novo</button>
+        </div>
+        <div class="prod-list" id="prodList"></div>
+      </div>
+
+      <!-- Site images -->
+      <div id="panel-images" class="panel">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Imagens do site (hero, secções). Carregue ou escolha da biblioteca.</p>
+        <div class="img-slots" id="imgSlots"></div>
+        <div style="margin-top:1.5rem">
+          <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Biblioteca de média</h3>
+          <input type="file" id="mediaUpload" accept="image/*" style="margin-bottom:0.75rem">
+          <div id="mediaLibrary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.5rem"></div>
+        </div>
+      </div>
+
+      <!-- Texts -->
+      <div id="panel-texts" class="panel">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Textos principais (português). Alterações aplicam-se após publicar.</p>
+        <div id="textsForm"></div>
+      </div>
+
+      <!-- Guide -->
+      <div id="panel-guide" class="panel">
+        <div class="guide">
+          <h3>Como funciona</h3>
+          <p><strong>Rascunho</strong> — guarda alterações só neste telemóvel/computador. O site público continua igual. Use para pré-visualizar.</p>
+          <p><strong>Publicar na loja</strong> — envia o catálogo para a cloud. Todos os visitantes passam a ver os novos preços, textos e imagens.</p>
+          <h3>Fluxo recomendado</h3>
+          <ul>
+            <li>Editar planos / imagens / textos</li>
+            <li>Guardar rascunho e abrir o site no mesmo browser para verificar</li>
+            <li>Quando estiver certo → Publicar na loja</li>
+          </ul>
+          <h3>Imagens</h3>
+          <ul>
+            <li>Carregar envia para a Cloudinary (não precisa de URL)</li>
+            <li>“Escolher da média” usa imagens já carregadas</li>
+            <li>Apagar na biblioteca só remove da lista local; o ficheiro na cloud fica (pode apagar no dashboard Cloudinary se quiser)</li>
+          </ul>
+          <h3>Se algo falhar</h3>
+          <p>Contacte o programador. Não partilhe a palavra-passe do admin.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sticky-actions">
+      <button type="button" class="btn-save" id="saveDraftBtn">Guardar rascunho</button>
+      <button type="button" class="btn-publish" id="publishBtn">Publicar na loja</button>
+    </div>
+  </div>
+
+  <!-- Product modal -->
+  <div class="modal-backdrop" id="prodModal">
+    <div class="modal">
+      <button type="button" class="modal-close" id="closeProdModal">×</button>
+      <h2 id="prodModalTitle">Editar plano</h2>
+      <div class="form-row">
+        <label>Nome (PT)</label>
+        <input type="text" id="fName">
+      </div>
+      <div class="form-row">
+        <label>Nome (EN)</label>
+        <input type="text" id="fNameEn">
+      </div>
+      <div class="form-row">
+        <label>Categoria</label>
+        <select id="fCategory">
+          <option value="ginasio">Ginásio</option>
+          <option value="natacao">Natação</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Preço (Kz)</label>
+        <input type="number" id="fPrice" inputmode="decimal" min="0" step="100">
+      </div>
+      <div class="form-row">
+        <label>Período</label>
+        <input type="text" id="fPeriod" placeholder="mensal, única, pacote…">
+      </div>
+      <div class="form-row">
+        <label>Descrição (PT)</label>
+        <textarea id="fDesc"></textarea>
+      </div>
+      <div class="form-row">
+        <label>Descrição (EN)</label>
+        <textarea id="fDescEn"></textarea>
+      </div>
+      <div class="form-row">
+        <label>Características (uma por linha)</label>
+        <textarea id="fFeatures" rows="4"></textarea>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" id="fFeatured"> Destacar (Popular)</label>
+      </div>
+      <div class="form-row">
+        <label><input type="checkbox" id="fActive" checked> Activo</label>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="saveProdBtn" style="flex:1;height:44px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/products.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

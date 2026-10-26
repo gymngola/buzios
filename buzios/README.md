@@ -28,7 +28,7 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
    - Create an **unsigned** upload preset named `buzios_unsigned` (folder optional: `buzios`)
    - API key / secret only go into the Worker (never in the browser)
 
-2. **Worker**
+2. **Worker** (required for forms, publish, and admin store)
    ```bash
    cd worker
    npx wrangler deploy
@@ -39,6 +39,10 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
    ```
    `PUBLISH_URL` in `js/admin.js` is set to:  
    `https://buzios-publish.gymngola.workers.dev/publish`
+
+   After any change to `worker/src/index.js`, run `npx wrangler deploy` again.
+   Forms and publish write `buzios/store.json` / `buzios/catalog.json` via signed
+   Cloudinary raw upload (signature must include `overwrite=true`, alphabetical).
 
 3. **Admin password**  
    Default in `js/admin.js`: `buzios2026` — **change after handoff**.

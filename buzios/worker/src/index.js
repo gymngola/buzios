@@ -219,7 +219,10 @@ async function uploadRaw(env, publicId, content) {
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const toSign = 'public_id=' + publicId + '&timestamp=' + timestamp + apiSecret;
+  // Cloudinary: sign only included params, alphabetical, then append api_secret.
+  // overwrite must be in the signature because we send it on the form.
+  const toSign =
+    'overwrite=true&public_id=' + publicId + '&timestamp=' + timestamp + apiSecret;
   const signature = await sha1(toSign);
 
   const form = new FormData();
@@ -228,8 +231,8 @@ async function uploadRaw(env, publicId, content) {
   form.append('timestamp', String(timestamp));
   form.append('public_id', publicId);
   form.append('signature', signature);
-  form.append('resource_type', 'raw');
   form.append('overwrite', 'true');
+  // resource_type is in the URL path (/raw/upload), not a signed form field
 
   const uploadRes = await fetch(
     'https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload',

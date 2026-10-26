@@ -63,9 +63,13 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 
 ## Visual system
 
-- Thin 1px borders, generous whitespace, light type (300–500)
-- Cards radius 14px, buttons 10px
-- Transparent header over hero → solid on scroll
+- **Quiet luxury** — warmer paper background, terracotta accent, soft elevation
+- Type pairing: **Cormorant Garamond** (display / titles) + **Inter** (body / UI)
+- Thin borders, generous whitespace, light type (300–500)
+- Cards radius 16px, soft shadow + lift on hover
+- Transparent header over hero → solid + blur on scroll
+- Accent underline under section titles
+- Scroll-reveal on key blocks (respects `prefers-reduced-motion`)
 - Left slide-in mobile drawer
 - Portuguese first; English texts prepared in catalog
 

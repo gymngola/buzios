@@ -52,20 +52,11 @@
   </div>
 
   <div id="adminApp" class="hidden">
-    <div class="admin-wrap">
-      <div class="admin-bar">
-        <h1>Búzios Admin</h1>
-        <div class="admin-tabs">
-          <button type="button" data-panel="inbox" class="active">Inscrições</button>
-          <button type="button" data-panel="contacts">Contactos</button>
-          <button type="button" data-panel="newsletters">Newsletter</button>
-          <button type="button" data-panel="clients">Clientes</button>
-          <button type="button" data-panel="products">Planos</button>
-          <button type="button" data-panel="images">Imagens</button>
-          <button type="button" data-panel="texts">Textos</button>
-          <button type="button" data-panel="guide">Guia</button>
+    <div class="admin-layout">
+      <div class="admin-main">
+        <div class="admin-bar">
+          <h1>Búzios Admin</h1>
         </div>
-      </div>
 
       <!-- Inbox / Enrollments -->
       <div id="panel-inbox" class="panel active">
@@ -149,7 +140,43 @@
           <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>
         </div>
       </div>
-    </div>
+      </div><!-- /.admin-main -->
+
+      <nav class="admin-nav admin-tabs" aria-label="Secções">
+        <button type="button" data-panel="inbox" class="active" title="Inscrições">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 4h16v12H4z"/><path d="M8 8h8M8 12h5"/><path d="M4 16l4 4h8l4-4"/></svg>
+          <span class="nav-label">Inscrições</span>
+        </button>
+        <button type="button" data-panel="contacts" title="Contactos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="nav-label">Contactos</span>
+        </button>
+        <button type="button" data-panel="newsletters" title="Newsletter">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 8l8 5 8-5"/></svg>
+          <span class="nav-label">Newsletter</span>
+        </button>
+        <button type="button" data-panel="clients" title="Clientes">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4 1.5 4 4"/></svg>
+          <span class="nav-label">Clientes</span>
+        </button>
+        <button type="button" data-panel="products" title="Planos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+          <span class="nav-label">Planos</span>
+        </button>
+        <button type="button" data-panel="images" title="Imagens">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          <span class="nav-label">Imagens</span>
+        </button>
+        <button type="button" data-panel="texts" title="Textos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
+          <span class="nav-label">Textos</span>
+        </button>
+        <button type="button" data-panel="guide" title="Guia">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span class="nav-label">Guia</span>
+        </button>
+      </nav>
+    </div><!-- /.admin-layout -->
 
     <div class="sticky-actions">
       <button type="button" class="btn-save" id="saveDraftBtn">Guardar rascunho</button>

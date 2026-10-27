@@ -431,44 +431,29 @@ body.drawer-open { overflow: hidden; }
   position: absolute;
   inset: 0;
   z-index: 0;
-  display: flex;
 }
 .hero-media img,
 .hero-media video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.2s ease, transform 12s var(--ease-out);
   transform: scale(1.02);
-  transition: transform 12s var(--ease-out);
 }
-/* Dual hero: side-by-side when second image is present */
-.hero-media:has(img[data-site-img="hero2"]:not([hidden])) img {
-  width: 50%;
-  flex: 1 1 50%;
+.hero-media img.is-active,
+.hero-media video.is-active {
+  opacity: 1;
+  z-index: 1;
 }
-.hero-media:has(img[data-site-img="hero2"]:not([hidden])) img[data-site-img="hero"] {
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-}
-.hero-media img[data-site-img="hero2"][hidden],
-.hero-media img[data-site-img="hero2"][src=""] {
+.hero-media img[hidden],
+.hero-media img[src=""] {
   display: none;
 }
-@media (max-width: 640px) {
-  .hero-media:has(img[data-site-img="hero2"]:not([hidden])) {
-    flex-direction: column;
-  }
-  .hero-media:has(img[data-site-img="hero2"]:not([hidden])) img {
-    width: 100%;
-    flex: 1 1 50%;
-    height: 50%;
-  }
-  .hero-media:has(img[data-site-img="hero2"]:not([hidden])) img[data-site-img="hero"] {
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  }
-}
-.hero:hover .hero-media img,
-.hero:hover .hero-media video {
+.hero:hover .hero-media img.is-active,
+.hero:hover .hero-media video.is-active {
   transform: scale(1.06);
 }
 .hero-overlay {

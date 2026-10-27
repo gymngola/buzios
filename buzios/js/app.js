@@ -175,6 +175,34 @@
         el.style.backgroundImage = `url('${images[key]}')`;
       }
     });
+    initHeroSlideshow();
+  }
+
+  // —— Hero slideshow (one image after the other) ——
+  let heroSlideTimer = null;
+  function initHeroSlideshow() {
+    const media = document.querySelector('.hero-media');
+    if (!media) return;
+    const slides = Array.from(media.querySelectorAll('img')).filter(img => img.src && !img.hidden);
+    if (slides.length === 0) return;
+
+    // Reset
+    if (heroSlideTimer) {
+      clearInterval(heroSlideTimer);
+      heroSlideTimer = null;
+    }
+    slides.forEach((img, i) => {
+      img.classList.toggle('is-active', i === 0);
+    });
+
+    if (slides.length < 2) return;
+
+    let idx = 0;
+    heroSlideTimer = setInterval(() => {
+      slides[idx].classList.remove('is-active');
+      idx = (idx + 1) % slides.length;
+      slides[idx].classList.add('is-active');
+    }, 5500);
   }
 
   // —— Catalog load ——

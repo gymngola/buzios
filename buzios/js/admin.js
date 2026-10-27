@@ -10,7 +10,8 @@
   const CLOUD_NAME = 'ogtzpc3v';
   const UPLOAD_PRESET = 'buzios_unsigned';
   const CATALOG_FOLDER = 'buzios';
-  const CATALOG_JSON_URL = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CATALOG_FOLDER}/catalog.json`;
+  // Worker proxy = always fresh (avoids Cloudinary CDN 30-day cache)
+  const CATALOG_JSON_URL = 'https://buzios-publish.gymngola.workers.dev/catalog';
   const SITE_IMAGE_SLOTS = [
     { key: 'hero', label: 'Hero 1 (página inicial)' },
     { key: 'hero2', label: 'Hero 2 (página inicial)' },

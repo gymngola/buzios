@@ -9,7 +9,8 @@
   // —— Config ——
   const CLOUD_NAME = 'ogtzpc3v';
   const CATALOG_FOLDER = 'buzios';
-  const CATALOG_JSON_URL = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CATALOG_FOLDER}/catalog.json`;
+  // Worker proxy = always fresh (Cloudinary CDN caches catalog.json for ~30 days)
+  const CATALOG_JSON_URL = 'https://buzios-publish.gymngola.workers.dev/catalog';
   const SUBMIT_URL = 'https://buzios-publish.gymngola.workers.dev/submit';
   const WHATSAPP = '244923423142';
   const LS_CART = 'buzios_cart';

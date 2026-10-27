@@ -31,6 +31,10 @@ export default {
     const path = url.pathname.replace(/\/$/, '') || '/';
 
     try {
+      // Fresh catalog (bypasses Cloudinary CDN 30-day cache)
+      if (request.method === 'GET' && path === '/catalog') {
+        return await handleGetCatalog(env);
+      }
       if (request.method === 'POST' && (path === '/publish' || path === '/')) {
         return await handlePublish(request, env);
       }
@@ -47,6 +51,46 @@ export default {
   }
 };
 
+/** Always-fresh catalog for public site + admin (no CDN lag). */
+async function handleGetCatalog(env) {
+  const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
+  const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
+  const apiSecret = String(env.CLOUDINARY_API_SECRET || '').trim();
+  if (!cloudName || !apiKey || !apiSecret) {
+    return json({ error: 'Server misconfigured' }, 500);
+  }
+
+  const publicId = FOLDER + '/catalog.json';
+  const auth = btoa(apiKey + ':' + apiSecret);
+
+  // Admin API → current version (not CDN-cached)
+  const metaRes = await fetch(
+    'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + encodeURIComponent(publicId),
+    { headers: { Authorization: 'Basic ' + auth } }
+  );
+  if (!metaRes.ok) {
+    // Fallback: delivery URL (may be cached)
+    const fallback = await fetch(
+      'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId + '?_=' + Date.now()
+    );
+    if (!fallback.ok) return json({ error: 'Catalog not found' }, 404);
+    return new Response(await fallback.text(), {
+      status: 200,
+      headers: Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, CORS)
+    });
+  }
+  const meta = await metaRes.json();
+  const version = meta.version;
+  const versioned =
+    'https://res.cloudinary.com/' + cloudName + '/raw/upload/v' + version + '/' + publicId;
+  const fileRes = await fetch(versioned);
+  if (!fileRes.ok) return json({ error: 'Catalog download failed' }, 502);
+  return new Response(await fileRes.text(), {
+    status: 200,
+    headers: Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, CORS)
+  });
+}
+
 async function handlePublish(request, env) {
   const body = await request.json();
   const { password, catalog } = body || {};
@@ -57,7 +101,12 @@ async function handlePublish(request, env) {
     return json({ error: 'Missing catalog' }, 400);
   }
   const result = await uploadRaw(env, FOLDER + '/catalog.json', JSON.stringify(catalog, null, 2));
-  return json({ ok: true, url: result.secure_url, updatedAt: catalog.updatedAt });
+  return json({
+    ok: true,
+    url: result.secure_url,
+    version: result.version,
+    updatedAt: catalog.updatedAt
+  });
 }
 
 async function handleSubmit(request, env) {
@@ -242,7 +291,9 @@ async function uploadRaw(env, publicId, content) {
 
   // Params included in the signature (alphabetical). Never include file, api_key,
   // cloud_name, or resource_type. Then append api_secret with no separator.
+  // invalidate=true asks Cloudinary to purge CDN cache for this public_id.
   const signParams = {
+    invalidate: 'true',
     overwrite: 'true',
     public_id: publicId,
     timestamp: String(timestamp)
@@ -265,6 +316,7 @@ async function uploadRaw(env, publicId, content) {
   form.append('public_id', publicId);
   form.append('signature', signature);
   form.append('overwrite', 'true');
+  form.append('invalidate', 'true');
 
   const uploadRes = await fetch(
     'https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload',

@@ -527,7 +527,7 @@ body.drawer-open { overflow: hidden; }
   z-index: 0;
 }
 .section-services[style*="background-image"] .section-services-overlay {
-  background: rgba(240, 235, 227, 0.78);
+  background: rgba(240, 235, 227, 0.42);
 }
 .section-services > .container {
   position: relative;
@@ -762,8 +762,8 @@ body.drawer-open { overflow: hidden; }
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(160deg, rgba(28, 25, 23, 0.88) 0%, rgba(42, 37, 32, 0.82) 100%),
-    radial-gradient(ellipse at 70% 20%, rgba(196, 92, 38, 0.14), transparent 55%);
+    linear-gradient(160deg, rgba(28, 25, 23, 0.55) 0%, rgba(42, 37, 32, 0.48) 100%),
+    radial-gradient(ellipse at 70% 20%, rgba(196, 92, 38, 0.1), transparent 55%);
   pointer-events: none;
   z-index: 0;
 }

@@ -257,11 +257,17 @@
             ${s.area ? 'Área: ' + escapeHtml(s.area) + ' · ' : ''}
             ${escapeHtml(s.planName || s.planId || '')}
           </div>
+          ${s.planIdGym || s.planIdSwim ? '<div class="meta">Ginásio: ' + escapeHtml(s.planIdGym || '—') + ' · Natação: ' + escapeHtml(s.planIdSwim || '—') + '</div>' : ''}
+          ${s.annualFee ? '<div class="meta">Inscrição anual: sim</div>' : ''}
+          ${s.extras && s.extras.length ? '<div class="meta">Extras: ' + escapeHtml(s.extras.join(', ')) + '</div>' : ''}
+          ${s.estimatedTotal != null ? '<div class="meta">Total estimado: ' + Number(s.estimatedTotal).toLocaleString('pt') + ' Kz</div>' : ''}
           ${s.age ? '<div class="meta">Idade: ' + escapeHtml(String(s.age)) + '</div>' : ''}
-          ${s.emergency ? '<div class="meta">Emergência: ' + escapeHtml(s.emergency) + '</div>' : ''}
+          ${s.emergencyName || s.emergencyPhone
+            ? '<div class="meta">Emergência: ' + escapeHtml([s.emergencyName, s.emergencyPhone].filter(Boolean).join(' — ')) + '</div>'
+            : (s.emergency ? '<div class="meta">Emergência: ' + escapeHtml(s.emergency) + '</div>' : '')}
           ${schedule}
           ${s.notes ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + escapeHtml(s.notes) + '</p>' : ''}
-          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos: ' + s.attachments.map((u,i) => '<a href="'+u+'" target="_blank" rel="noopener">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
+          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos (' + s.attachments.length + '): ' + s.attachments.map((u,i) => '<a href="'+u+'" target="_blank" rel="noopener">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
           <div class="actions" style="margin-top:0.65rem">
             <button type="button" data-st="${s.id}" data-v="contactado">Contactado</button>
             <button type="button" data-st="${s.id}" data-v="inscrito">Inscrito</button>

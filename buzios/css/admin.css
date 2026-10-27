@@ -22,9 +22,10 @@ body {
 button, input, select, textarea { font: inherit; }
 a { color: var(--admin-accent); }
 
-/* Layout: content left, sections panel right */
+/* Layout: sections panel on the left (mobile + desktop) */
 .admin-layout {
   display: flex;
+  flex-direction: row;
   align-items: stretch;
   min-height: 100dvh;
   max-width: 1100px;
@@ -34,24 +35,25 @@ a { color: var(--admin-accent); }
 .admin-main {
   flex: 1;
   min-width: 0;
-  padding: 1rem 1rem 1.5rem;
-  padding-right: 0.75rem;
+  padding: 1rem 1rem 1.5rem 0.75rem;
+  order: 2;
 }
 .admin-bar {
   margin-bottom: 1.25rem;
 }
 .admin-bar h1 { font-size: 1.15rem; font-weight: 500; }
 
-/* Right sections panel */
+/* Sections panel — left */
 .admin-nav {
   flex-shrink: 0;
   width: 56px;
+  order: 1;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.75rem 0.4rem;
   padding-bottom: calc(0.75rem + var(--safe-bottom));
-  border-left: 1px solid var(--admin-border);
+  border-right: 1px solid var(--admin-border);
   background: var(--admin-surface);
   position: sticky;
   top: 0;
@@ -100,6 +102,7 @@ a { color: var(--admin-accent); }
   text-overflow: ellipsis;
 }
 
+/* Desktop: wider left panel with labels */
 @media (min-width: 720px) {
   .admin-nav {
     width: 132px;
@@ -122,7 +125,7 @@ a { color: var(--admin-accent); }
     display: inline;
   }
   .admin-main {
-    padding: 1.25rem 1.25rem 1.5rem 1.5rem;
+    padding: 1.25rem 1.5rem 1.5rem 1.25rem;
   }
 }
 
@@ -218,12 +221,12 @@ a { color: var(--admin-accent); }
 .form-row textarea { min-height: 80px; resize: vertical; }
 .form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
 
-/* Sticky bottom actions */
+/* Sticky bottom actions — clear left nav */
 .sticky-actions {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 56px; /* leave room for right nav on mobile */
+  left: 56px;
+  right: 0;
   background: rgba(255,255,255,0.95);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--admin-border);
@@ -247,7 +250,7 @@ a { color: var(--admin-accent); }
 
 @media (min-width: 720px) {
   .sticky-actions {
-    right: 132px;
+    left: 132px;
   }
 }
 
@@ -289,8 +292,8 @@ a { color: var(--admin-accent); }
 .toast {
   position: fixed;
   bottom: calc(70px + var(--safe-bottom));
-  left: 0;
-  right: 56px;
+  left: 56px;
+  right: 0;
   margin: 0 auto;
   width: fit-content;
   max-width: calc(100% - 72px);
@@ -307,7 +310,10 @@ a { color: var(--admin-accent); }
 }
 .toast.show { opacity: 1; }
 @media (min-width: 720px) {
-  .toast { right: 132px; max-width: calc(100% - 160px); }
+  .toast {
+    left: 132px;
+    max-width: calc(100% - 160px);
+  }
 }
 
 /* Image slots */

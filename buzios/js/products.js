@@ -304,6 +304,7 @@ const DEFAULT_SITE_IMAGES = {
   planos: "",
   inscricao: "",
   contacto: "",
+  contacto_form: "",
   promo: ""
 };
 

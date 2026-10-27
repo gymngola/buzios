@@ -19,6 +19,24 @@
     .status-activo { background: #e3f5e8; color: #1a6b3a; }
     .status-pendente { background: #fde8d8; color: #a34a1c; }
     .status-expirado { background: #f5e3e3; color: #8b2a2a; }
+    .upload-zone {
+      border: 2px dashed #ccc;
+      border-radius: 12px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      background: #fafafa;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .upload-zone:hover, .upload-zone:focus {
+      border-color: #c45c26;
+      background: #fff8f4;
+      outline: none;
+    }
+    .upload-zone.dragover {
+      border-color: #c45c26;
+      background: #fde8d8;
+    }
   </style>
 </head>
 <body>
@@ -90,11 +108,24 @@
 
       <!-- Images -->
       <div id="panel-images" class="panel">
-        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Imagens do site (hero, secções).</p>
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">
+          Carregue fotos para o site (hero, ginásio, natação, contacto…). Depois clique <strong>Publicar na loja</strong> para todos verem.
+        </p>
+
+        <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Zona de carregamento de imagens">
+          <input type="file" id="mediaUpload" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+          <p style="margin:0 0 0.35rem;font-weight:500">Arraste imagens para aqui ou clique para seleccionar</p>
+          <p style="margin:0;font-size:0.8rem;color:#666">JPG, PNG ou WebP · várias de uma vez · máx. ~10&nbsp;MB cada</p>
+          <button type="button" id="mediaUploadBtn" style="margin-top:0.85rem;padding:0.5rem 1rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.85rem;cursor:pointer">Escolher ficheiros</button>
+        </div>
+        <p id="uploadStatus" style="font-size:0.8rem;color:#666;margin:0.5rem 0 1rem;min-height:1.2em"></p>
+
+        <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Slots do site</h3>
         <div class="img-slots" id="imgSlots"></div>
+
         <div style="margin-top:1.5rem">
           <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Biblioteca de média</h3>
-          <input type="file" id="mediaUpload" accept="image/*" style="margin-bottom:0.75rem">
+          <p style="font-size:0.8rem;color:#666;margin-bottom:0.65rem">Fotos carregadas. Use “Da biblioteca” num slot e toque numa foto para a atribuir.</p>
           <div id="mediaLibrary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.5rem"></div>
         </div>
       </div>
@@ -112,6 +143,7 @@
           <p><strong>Inscrições</strong> — pedidos do formulário de inscrição. Marque: Novo → Contactado → Inscrito.</p>
           <p><strong>Contactos</strong> — mensagens da página Contacto (nome, telefone, assunto, mensagem). Marque: Novo → Respondido → Arquivar.</p>
           <p><strong>Clientes</strong> — base criada automaticamente a partir de inscrições. Actualize membership e faturação.</p>
+          <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar na loja</strong>.</p>
           <p><strong>Rascunho / Publicar</strong> — planos, imagens e textos: rascunho só neste browser; Publicar actualiza o site para todos.</p>
           <h3>Redeploy do Worker</h3>
           <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>

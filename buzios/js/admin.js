@@ -31,6 +31,7 @@
     { key: 'planos', label: 'Planos & Preços (hero)' },
     { key: 'inscricao', label: 'Inscrição (hero)' },
     { key: 'contacto', label: 'Contacto (hero)' },
+    { key: 'contacto_form', label: 'Contacto — fundo do formulário' },
     { key: 'promo', label: 'Promo / banner extra' }
   ];
 
@@ -644,31 +645,117 @@
     });
   }
 
-  $('#mediaUpload')?.addEventListener('change', async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    toast('A carregar…');
-    try {
-      const url = await uploadToCloudinary(file);
-      mediaLibrary.unshift({ url, name: file.name, at: Date.now() });
-      localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
-      renderMediaLibrary();
-      toast('Adicionado à biblioteca');
-    } catch (err) {
-      toast('Erro no upload: ' + (err.message || err));
+  const MAX_IMAGE_BYTES = 12 * 1024 * 1024; // ~12 MB soft limit
+
+  function setUploadStatus(msg) {
+    const el = $('#uploadStatus');
+    if (el) el.textContent = msg || '';
+  }
+
+  async function ingestFiles(fileList) {
+    const files = Array.from(fileList || []).filter(f => f && f.type && f.type.startsWith('image/'));
+    if (!files.length) {
+      toast('Seleccione ficheiros de imagem (JPG, PNG, WebP…)');
+      return;
     }
+    let ok = 0;
+    let fail = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > MAX_IMAGE_BYTES) {
+        toast(file.name + ' é demasiado grande (máx. ~12 MB)');
+        fail++;
+        continue;
+      }
+      setUploadStatus(`A carregar ${i + 1}/${files.length}: ${file.name}…`);
+      toast(`A carregar ${i + 1}/${files.length}…`);
+      try {
+        const url = await uploadToCloudinary(file);
+        mediaLibrary.unshift({ url, name: file.name, at: Date.now() });
+        localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
+        ok++;
+        renderMediaLibrary();
+      } catch (err) {
+        fail++;
+        console.error('Upload failed', file.name, err);
+        toast('Erro: ' + file.name + ' — ' + (err.message || err));
+      }
+    }
+    setUploadStatus(
+      ok
+        ? `${ok} imagem(ns) na biblioteca${fail ? ` · ${fail} falhou(aram)` : ''}. Atribua aos slots e publique.`
+        : (fail ? 'Nenhuma imagem carregada. Verifique o preset Cloudinary ou tente de novo.' : '')
+    );
+    if (ok) toast(ok === 1 ? 'Imagem adicionada à biblioteca' : ok + ' imagens adicionadas à biblioteca');
+  }
+
+  const mediaInput = $('#mediaUpload');
+  const uploadZone = $('#uploadZone');
+  const mediaUploadBtn = $('#mediaUploadBtn');
+
+  mediaInput?.addEventListener('change', async (e) => {
+    await ingestFiles(e.target.files);
     e.target.value = '';
   });
 
-  async function uploadToCloudinary(file) {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('upload_preset', UPLOAD_PRESET);
-    fd.append('folder', CATALOG_FOLDER);
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-      method: 'POST', body: fd
+  mediaUploadBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    mediaInput?.click();
+  });
+
+  uploadZone?.addEventListener('click', (e) => {
+    if (e.target === mediaUploadBtn || mediaUploadBtn?.contains(e.target)) return;
+    mediaInput?.click();
+  });
+
+  uploadZone?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      mediaInput?.click();
+    }
+  });
+
+  ;['dragenter', 'dragover'].forEach(ev => {
+    uploadZone?.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadZone.classList.add('dragover');
     });
-    const data = await res.json().catch(() => ({}));
+  });
+  ;['dragleave', 'drop'].forEach(ev => {
+    uploadZone?.addEventListener(ev, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadZone.classList.remove('dragover');
+    });
+  });
+  uploadZone?.addEventListener('drop', async (e) => {
+    const dt = e.dataTransfer;
+    if (dt?.files?.length) await ingestFiles(dt.files);
+  });
+
+  async function uploadToCloudinary(file) {
+    async function post(withFolder) {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', UPLOAD_PRESET);
+      if (withFolder) fd.append('folder', CATALOG_FOLDER);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: 'POST', body: fd
+      });
+      const data = await res.json().catch(() => ({}));
+      return { res, data };
+    }
+
+    // Try with folder first; some unsigned presets reject folder overrides
+    let { res, data } = await post(true);
+    if (!res.ok) {
+      const msg = (data.error && data.error.message) || data.message || '';
+      if (/folder|preset|not allowed|invalid/i.test(String(msg))) {
+        ({ res, data } = await post(false));
+      }
+    }
     if (!res.ok) {
       const msg = data.error?.message || data.message || res.statusText || 'upload failed';
       throw new Error(msg);

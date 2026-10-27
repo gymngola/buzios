@@ -292,6 +292,9 @@ const DEFAULT_SITE_IMAGES = {
   services: "",
   cta: "",
   ginasio: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80",
+  ginasio_equip1: "",
+  ginasio_equip2: "",
+  ginasio_equip3: "",
   natacao: "https://images.unsplash.com/photo-1530549387789-4c1017266635?w=1200&q=80",
   promo: ""
 };

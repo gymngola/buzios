@@ -17,6 +17,9 @@
     { key: 'services', label: 'Secção “O que oferecemos” (fundo)' },
     { key: 'cta', label: 'CTA “Pronto para começar?”' },
     { key: 'ginasio', label: 'Página Ginásio (hero)' },
+    { key: 'ginasio_equip1', label: 'Ginásio — Equipamento (foto 1)' },
+    { key: 'ginasio_equip2', label: 'Ginásio — Equipamento (foto 2)' },
+    { key: 'ginasio_equip3', label: 'Ginásio — Equipamento (foto 3)' },
     { key: 'natacao', label: 'Página Natação (hero)' },
     { key: 'promo', label: 'Promo / banner extra' }
   ];

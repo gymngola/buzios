@@ -165,7 +165,7 @@
         } else if (el.tagName === 'VIDEO') {
           el.poster = images[key];
         }
-      } else if (key === 'hero2' && el.tagName === 'IMG') {
+      } else if ((key === 'hero2' || key.startsWith('ginasio_equip')) && el.tagName === 'IMG') {
         el.src = '';
         el.hidden = true;
       }
@@ -177,6 +177,7 @@
       }
     });
     initHeroSlideshow();
+    initEquipCarousel();
   }
 
   // —— Hero slideshow (one image after the other) ——
@@ -204,6 +205,70 @@
       idx = (idx + 1) % slides.length;
       slides[idx].classList.add('is-active');
     }, 4000);
+  }
+
+  // —— Ginásio equipamento carousel ——
+  let equipTimer = null;
+  function initEquipCarousel() {
+    const root = document.getElementById('equipCarousel');
+    if (!root) return;
+
+    if (equipTimer) {
+      clearInterval(equipTimer);
+      equipTimer = null;
+    }
+
+    const allSlides = Array.from(root.querySelectorAll('.equip-slide'));
+    const activeSlides = allSlides.filter(slide => {
+      const img = slide.querySelector('img');
+      return img && img.getAttribute('src') && !img.hidden;
+    });
+    const dots = Array.from(root.querySelectorAll('.equip-dot'));
+    const prev = root.querySelector('.equip-prev');
+    const next = root.querySelector('.equip-next');
+
+    if (!activeSlides.length) {
+      root.hidden = true;
+      return;
+    }
+
+    root.hidden = false;
+    allSlides.forEach(s => {
+      s.style.display = activeSlides.includes(s) ? '' : 'none';
+      s.classList.remove('is-active');
+    });
+    dots.forEach((d, i) => {
+      d.style.display = i < activeSlides.length ? '' : 'none';
+      d.classList.remove('is-active');
+    });
+
+    let idx = 0;
+    function goTo(n) {
+      activeSlides[idx]?.classList.remove('is-active');
+      dots[idx]?.classList.remove('is-active');
+      idx = (n + activeSlides.length) % activeSlides.length;
+      activeSlides[idx]?.classList.add('is-active');
+      dots[idx]?.classList.add('is-active');
+    }
+    goTo(0);
+
+    if (prev) prev.onclick = () => goTo(idx - 1);
+    if (next) next.onclick = () => goTo(idx + 1);
+    dots.forEach((d, i) => {
+      d.onclick = () => { if (i < activeSlides.length) goTo(i); };
+    });
+
+    function startAuto() {
+      if (equipTimer) clearInterval(equipTimer);
+      if (activeSlides.length < 2) return;
+      equipTimer = setInterval(() => goTo(idx + 1), 4500);
+    }
+    function stopAuto() {
+      if (equipTimer) { clearInterval(equipTimer); equipTimer = null; }
+    }
+    root.onmouseenter = stopAuto;
+    root.onmouseleave = startAuto;
+    startAuto();
   }
 
   // —— Catalog load ——

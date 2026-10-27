@@ -14,6 +14,8 @@
     { key: 'hero', label: 'Hero 1 (página inicial)' },
     { key: 'hero2', label: 'Hero 2 (página inicial)' },
     { key: 'intro', label: 'Secção Sobre / Intro' },
+    { key: 'services', label: 'Secção “O que oferecemos” (fundo)' },
+    { key: 'cta', label: 'CTA “Pronto para começar?”' },
     { key: 'ginasio', label: 'Página Ginásio (hero)' },
     { key: 'natacao', label: 'Página Natação (hero)' },
     { key: 'promo', label: 'Promo / banner extra' }
@@ -135,6 +137,7 @@
       console.warn('Store load failed', e);
     }
     renderInbox();
+    renderNewsletters();
     renderClients();
   }
 
@@ -205,6 +208,7 @@
         const json = await res.json();
         if (json.store) store = json.store;
         renderInbox();
+        renderNewsletters();
         renderClients();
       } else {
         toast('Erro ao actualizar');
@@ -213,6 +217,54 @@
       toast('Erro de rede');
     }
   }
+
+  // —— Newsletter phones ——
+  function renderNewsletters() {
+    const list = $('#newslettersList');
+    if (!list) return;
+    const items = store.newsletters || [];
+    if (!items.length) {
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum número ainda. Aparecem quando alguém preenche o formulário no rodapé do site.</p>';
+      return;
+    }
+    list.innerHTML = items.map(n => {
+      const when = n.createdAt ? new Date(n.createdAt).toLocaleString('pt') : '';
+      const phone = n.phone || '—';
+      const wa = String(phone).replace(/\D/g, '');
+      const waLink = wa ? `https://wa.me/${wa.startsWith('244') ? wa : '244' + wa}` : '#';
+      return `
+        <div class="prod-card">
+          <h3>${phone}</h3>
+          <div class="meta">${when}</div>
+          <div class="actions" style="margin-top:0.65rem">
+            <a href="${waLink}" target="_blank" rel="noopener" style="padding:0.4rem 0.75rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;text-decoration:none;color:inherit">WhatsApp</a>
+            <button type="button" class="danger" data-del-nl="${n.id}">Apagar</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('[data-del-nl]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Apagar este número da newsletter?')) return;
+        await adminAction('delete_newsletter', { id: btn.dataset.delNl });
+        toast('Número apagado');
+      });
+    });
+  }
+
+  $('#copyNewslettersBtn')?.addEventListener('click', async () => {
+    const phones = (store.newsletters || []).map(n => n.phone).filter(Boolean);
+    if (!phones.length) {
+      toast('Nenhum número para copiar');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(phones.join('\n'));
+      toast(phones.length + ' número(s) copiado(s)');
+    } catch (e) {
+      toast('Não foi possível copiar');
+    }
+  });
 
   // —— Clients ——
   function renderClients() {
@@ -504,6 +556,7 @@
     renderMediaLibrary();
     renderTexts();
     renderInbox();
+    renderNewsletters();
     renderClients();
   }
 

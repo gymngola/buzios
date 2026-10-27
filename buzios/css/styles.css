@@ -512,6 +512,27 @@ body.drawer-open { overflow: hidden; }
 @media (min-width: 768px) {
   .section { padding: var(--space-2xl) 0; }
 }
+.section-services {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-soft);
+  background-size: cover;
+  background-position: center;
+}
+.section-services-overlay {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  pointer-events: none;
+  z-index: 0;
+}
+.section-services[style*="background-image"] .section-services-overlay {
+  background: rgba(240, 235, 227, 0.78);
+}
+.section-services > .container {
+  position: relative;
+  z-index: 1;
+}
 .section-header {
   text-align: center;
   max-width: 640px;
@@ -729,18 +750,26 @@ body.drawer-open { overflow: hidden; }
 /* ========== CTA BAND ========== */
 .cta-band {
   background: linear-gradient(160deg, #1c1917 0%, #2a2520 100%);
+  background-size: cover;
+  background-position: center;
   color: #fff;
   text-align: center;
   padding: 4rem 1.25rem;
   position: relative;
   overflow: hidden;
 }
-.cta-band::before {
-  content: "";
+.cta-band-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 70% 20%, rgba(196, 92, 38, 0.12), transparent 55%);
+  background:
+    linear-gradient(160deg, rgba(28, 25, 23, 0.88) 0%, rgba(42, 37, 32, 0.82) 100%),
+    radial-gradient(ellipse at 70% 20%, rgba(196, 92, 38, 0.14), transparent 55%);
   pointer-events: none;
+  z-index: 0;
+}
+.cta-band .container {
+  position: relative;
+  z-index: 1;
 }
 .cta-band .section-title {
   color: #fff;

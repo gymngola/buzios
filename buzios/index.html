@@ -76,6 +76,27 @@
         <img data-site-img="hero" class="is-active" src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600&q=80" alt="Ginásio Búzios — treino de força">
         <img data-site-img="hero2" src="" alt="Ginásio Búzios — natação" hidden>
       </div>
+      <script>
+        (function () {
+          try {
+            var cache = {};
+            try { cache = JSON.parse(localStorage.getItem('buzios_images_cache') || '{}'); } catch (e) {}
+            var override = {};
+            try { override = JSON.parse(localStorage.getItem('buzios_images_override') || '{}'); } catch (e) {}
+            var images = Object.assign({}, cache, override);
+            var media = document.currentScript.previousElementSibling;
+            if (!media) return;
+            media.querySelectorAll('[data-site-img]').forEach(function (el) {
+              var key = el.getAttribute('data-site-img');
+              if (images[key]) {
+                el.src = images[key];
+                el.hidden = false;
+                el.removeAttribute('hidden');
+              }
+            });
+          } catch (e) {}
+        })();
+      </script>
       <div class="hero-overlay"></div>
       <div class="hero-content">
         <p class="hero-eyebrow" data-i18n="hero.eyebrow">Ginásio & Escola de Natação</p>
@@ -113,7 +134,8 @@
     </section>
 
     <!-- Services preview -->
-    <section class="section" style="background: var(--color-surface-soft);">
+    <section class="section section-services" data-site-img-bg="services">
+      <div class="section-services-overlay"></div>
       <div class="container">
         <div class="section-header reveal">
           <p class="section-eyebrow" data-i18n="services.eyebrow">O que oferecemos</p>
@@ -159,7 +181,8 @@
     </section>
 
     <!-- CTA -->
-    <section class="cta-band">
+    <section class="cta-band" data-site-img-bg="cta">
+      <div class="cta-band-overlay"></div>
       <div class="container reveal">
         <h2 class="section-title" data-i18n="cta.title">Pronto para começar?</h2>
         <p class="section-desc" data-i18n="cta.desc">Preencha o formulário de inscrição ou de contacto. A nossa equipa responde com todas as informações.</p>

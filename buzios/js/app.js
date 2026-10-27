@@ -16,6 +16,7 @@
   const LS_PRODUCTS = 'buzios_products_override';
   const LS_TEXTS = 'buzios_texts_override';
   const LS_IMAGES = 'buzios_images_override';
+  const LS_IMAGES_CACHE = 'buzios_images_cache';
   const LS_LANG = 'buzios_lang';
 
   // —— State ——
@@ -212,7 +213,13 @@
     texts = JSON.parse(JSON.stringify(window.DEFAULT_TEXTS || { pt: {}, en: {} }));
     siteImages = Object.assign({}, window.DEFAULT_SITE_IMAGES || {});
 
-    // 2. localStorage drafts (same-browser admin preview)
+    // 2. Last published images (avoids flash of default on reload)
+    try {
+      const cached = localStorage.getItem(LS_IMAGES_CACHE);
+      if (cached) siteImages = Object.assign(siteImages, JSON.parse(cached));
+    } catch (e) {}
+
+    // 3. localStorage drafts (same-browser admin preview)
     try {
       const p = localStorage.getItem(LS_PRODUCTS);
       if (p) products = JSON.parse(p);
@@ -226,7 +233,10 @@
       if (i) siteImages = Object.assign(siteImages, JSON.parse(i));
     } catch (e) {}
 
-    // 3. Remote catalog
+    // Apply immediately from cache/overrides so hero doesn't flash the HTML default
+    applySiteImages();
+
+    // 4. Remote catalog
     try {
       const res = await fetch(CATALOG_JSON_URL + '?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
@@ -239,6 +249,9 @@
         }
         if (data.images) {
           siteImages = Object.assign({}, siteImages, data.images);
+          try {
+            localStorage.setItem(LS_IMAGES_CACHE, JSON.stringify(data.images));
+          } catch (e) {}
         }
       }
     } catch (err) {

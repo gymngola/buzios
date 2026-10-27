@@ -62,8 +62,29 @@
   <main>
     <section class="hero" style="min-height:70vh">
       <div class="hero-media">
-        <img data-site-img="ginasio" src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1600&q=80" alt="Ginásio Búzios">
+        <img data-site-img="ginasio" class="is-active" src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1600&q=80" alt="Ginásio Búzios">
       </div>
+      <script>
+        (function () {
+          try {
+            var cache = {};
+            try { cache = JSON.parse(localStorage.getItem('buzios_images_cache') || '{}'); } catch (e) {}
+            var override = {};
+            try { override = JSON.parse(localStorage.getItem('buzios_images_override') || '{}'); } catch (e) {}
+            var images = Object.assign({}, cache, override);
+            var media = document.currentScript.previousElementSibling;
+            if (!media) return;
+            media.querySelectorAll('[data-site-img]').forEach(function (el) {
+              var key = el.getAttribute('data-site-img');
+              if (images[key]) {
+                el.src = images[key];
+                el.hidden = false;
+                el.removeAttribute('hidden');
+              }
+            });
+          } catch (e) {}
+        })();
+      </script>
       <div class="hero-overlay"></div>
       <div class="hero-content">
         <p class="hero-eyebrow">Ginásio</p>

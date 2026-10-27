@@ -188,6 +188,13 @@ async function handleAdminData(request, env) {
     return json({ ok: true, store });
   }
 
+  if (action === 'delete_newsletter' && data && data.id) {
+    store.newsletters = (store.newsletters || []).filter(n => n.id !== data.id);
+    store.updatedAt = new Date().toISOString();
+    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
+    return json({ ok: true, store });
+  }
+
   if (action === 'replace_store' && data) {
     store = data;
     store.updatedAt = new Date().toISOString();

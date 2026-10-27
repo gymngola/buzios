@@ -46,6 +46,7 @@
         <h1>Búzios Admin</h1>
         <div class="admin-tabs">
           <button type="button" data-panel="inbox" class="active">Inscrições</button>
+          <button type="button" data-panel="newsletters">Newsletter</button>
           <button type="button" data-panel="clients">Clientes</button>
           <button type="button" data-panel="products">Planos</button>
           <button type="button" data-panel="images">Imagens</button>
@@ -58,6 +59,15 @@
       <div id="panel-inbox" class="panel active">
         <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Inscrições e mensagens de contacto. Marque o estado após contactar o cliente.</p>
         <div class="prod-list" id="inboxList"></div>
+      </div>
+
+      <!-- Newsletter phones -->
+      <div id="panel-newsletters" class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+          <p style="font-size:0.85rem;color:#666;margin:0">Números subscritos em “Receba novidades e promoções”.</p>
+          <button type="button" id="copyNewslettersBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">Copiar todos</button>
+        </div>
+        <div class="prod-list" id="newslettersList"></div>
       </div>
 
       <!-- Clients database -->

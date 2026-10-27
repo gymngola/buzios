@@ -295,6 +295,7 @@ const DEFAULT_SITE_IMAGES = {
   ginasio_equip1: "",
   ginasio_equip2: "",
   ginasio_equip3: "",
+  ginasio_cta: "",
   natacao: "https://images.unsplash.com/photo-1530549387789-4c1017266635?w=1200&q=80",
   promo: ""
 };

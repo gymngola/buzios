@@ -395,30 +395,63 @@
     }).join('');
   }
 
+  function planCardHtml(p, opts) {
+    opts = opts || {};
+    const name = lang === 'en' && p.name_en ? p.name_en : p.name;
+    const desc = lang === 'en' && p.description_en ? p.description_en : p.description;
+    const feats = (lang === 'en' && p.features_en ? p.features_en : p.features) || [];
+    const badge = opts.badge || p.period || '';
+    const cta = opts.cta || (lang === 'en' ? 'Enroll' : 'Inscrever-me');
+    return `
+      <article class="card plan-card ${p.featured ? 'featured' : ''} ${opts.extraClass || ''}">
+        <div class="card-body">
+          ${planCardIcon(p)}
+          <p class="plan-badge">${badge}</p>
+          <h3 class="card-title">${name}</h3>
+          <p class="card-text">${desc}</p>
+          <p class="card-price">${formatPrice(p.price)} <span>${p.period ? '/ ' + p.period : ''}</span></p>
+          ${feats.length ? `<ul class="plan-features">${feats.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+          <a href="inscricao.html?plano=${encodeURIComponent(p.id)}" class="btn btn-primary btn-block">${cta}</a>
+        </div>
+      </article>`;
+  }
+
   function renderPlansPage() {
-    const el = $('#plansGrid');
-    if (!el) return;
-    const all = products
+    const gymEl = $('#plansGridGym');
+    const swimEl = $('#plansGridSwim');
+    // Legacy single grid fallback
+    const legacy = $('#plansGrid');
+    if (!gymEl && !swimEl && !legacy) return;
+
+    const active = products
       .filter(p => p.active !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
-    el.innerHTML = all.map(p => {
-      const name = lang === 'en' && p.name_en ? p.name_en : p.name;
-      const desc = lang === 'en' && p.description_en ? p.description_en : p.description;
-      const feats = (lang === 'en' && p.features_en ? p.features_en : p.features) || [];
-      const catLabel = p.category === 'natacao' ? 'Natação' : 'Ginásio';
-      return `
-        <article class="card plan-card ${p.featured ? 'featured' : ''}">
-          <div class="card-body">
-            ${planCardIcon(p)}
-            <p class="plan-badge">${catLabel} · ${p.period || ''}</p>
-            <h3 class="card-title">${name}</h3>
-            <p class="card-text">${desc}</p>
-            <p class="card-price">${formatPrice(p.price)} <span>${p.period ? '/ ' + p.period : ''}</span></p>
-            ${feats.length ? `<ul class="plan-features">${feats.map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
-            <a href="inscricao.html?plano=${encodeURIComponent(p.id)}" class="btn btn-primary btn-block">Inscrever-me</a>
-          </div>
-        </article>`;
-    }).join('');
+
+    const gym = active.filter(p => p.category === 'ginasio');
+    const swim = active.filter(p => p.category === 'natacao');
+
+    if (gymEl) {
+      gymEl.innerHTML = gym.length
+        ? gym.map(p => planCardHtml(p, {
+            badge: (lang === 'en' ? 'Gym' : 'Ginásio') + (p.period ? ' · ' + p.period : '')
+          })).join('')
+        : '<p class="muted text-center">Sem planos de ginásio activos.</p>';
+    }
+    if (swimEl) {
+      swimEl.innerHTML = swim.length
+        ? swim.map(p => planCardHtml(p, {
+            badge: (lang === 'en' ? 'Swimming' : 'Natação') + (p.period ? ' · ' + p.period : ''),
+            extraClass: 'plan-card--swim'
+          })).join('')
+        : '<p class="muted text-center">Sem pacotes de natação activos.</p>';
+    }
+    if (legacy && !gymEl && !swimEl) {
+      legacy.innerHTML = active.map(p => planCardHtml(p, {
+        badge: (p.category === 'natacao'
+          ? (lang === 'en' ? 'Swimming' : 'Natação')
+          : (lang === 'en' ? 'Gym' : 'Ginásio')) + (p.period ? ' · ' + p.period : '')
+      })).join('');
+    }
   }
 
   // —— Newsletter (WhatsApp number) ——

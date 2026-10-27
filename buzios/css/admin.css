@@ -22,32 +22,42 @@ body {
 button, input, select, textarea { font: inherit; }
 a { color: var(--admin-accent); }
 
-/* Layout: sections panel on the left (mobile + desktop) */
+/* Layout: full-height left rail + content */
 .admin-layout {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
   min-height: 100dvh;
-  max-width: 1100px;
-  margin: 0 auto;
   padding: 0 0 5.5rem;
+  /* leave space for fixed left nav */
+  padding-left: 56px;
 }
 .admin-main {
-  flex: 1;
-  min-width: 0;
-  padding: 1rem 1rem 1.5rem 0.75rem;
-  order: 2;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 1rem 1.5rem;
 }
 .admin-bar {
   margin-bottom: 1.25rem;
 }
-.admin-bar h1 { font-size: 1.15rem; font-weight: 500; }
+.admin-brand {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--admin-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.15rem;
+}
+.admin-bar h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
 
-/* Sections panel — left */
+/* Sections panel — full left edge of viewport */
 .admin-nav {
-  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
   width: 56px;
-  order: 1;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -55,10 +65,6 @@ a { color: var(--admin-accent); }
   padding-bottom: calc(0.75rem + var(--safe-bottom));
   border-right: 1px solid var(--admin-border);
   background: var(--admin-surface);
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  max-height: 100dvh;
   overflow-y: auto;
   z-index: 50;
 }
@@ -102,8 +108,11 @@ a { color: var(--admin-accent); }
   text-overflow: ellipsis;
 }
 
-/* Desktop: wider left panel with labels */
+/* Desktop: wider left rail with labels */
 @media (min-width: 720px) {
+  .admin-layout {
+    padding-left: 132px;
+  }
   .admin-nav {
     width: 132px;
     padding: 1rem 0.6rem;
@@ -125,7 +134,7 @@ a { color: var(--admin-accent); }
     display: inline;
   }
   .admin-main {
-    padding: 1.25rem 1.5rem 1.5rem 1.25rem;
+    padding: 1.25rem 1.5rem 1.5rem;
   }
 }
 

@@ -104,6 +104,17 @@
     if (e.key === 'Enter') $('#loginBtn').click();
   });
 
+  const PANEL_TITLES = {
+    inbox: 'Inscrições',
+    contacts: 'Contactos',
+    newsletters: 'Newsletter',
+    clients: 'Clientes',
+    products: 'Planos',
+    images: 'Imagens',
+    texts: 'Textos',
+    guide: 'Guia'
+  };
+
   function activatePanel(name) {
     if (!name) return;
     $$('.admin-tabs button').forEach(b => {
@@ -112,6 +123,8 @@
     $$('.panel').forEach(p => p.classList.remove('active'));
     const panel = $('#panel-' + name);
     if (panel) panel.classList.add('active');
+    const titleEl = $('#sectionTitle');
+    if (titleEl) titleEl.textContent = PANEL_TITLES[name] || name;
     try {
       sessionStorage.setItem('buzios_admin_panel', name);
     } catch (e) {}
@@ -409,47 +422,240 @@
     }
   });
 
-  // —— Clients ——
+  // —— Clients (membership dates, debt, alerts) ——
+  let clientsFilter = 'all';
+
+  const CYCLE_MONTHS = { mensal: 1, trimestral: 3, anual: 12, pacote: 1 };
+
+  function todayISO() {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  }
+
+  function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const end = new Date(dateStr + 'T23:59:59');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((end - today) / 86400000);
+  }
+
+  function addMonthsISO(isoDate, months) {
+    const base = isoDate ? new Date(isoDate + 'T12:00:00') : new Date();
+    base.setMonth(base.getMonth() + months);
+    return base.toISOString().slice(0, 10);
+  }
+
+  function formatDatePT(iso) {
+    if (!iso) return '—';
+    try {
+      const [y, m, d] = iso.split('-');
+      return d + '/' + m + '/' + y;
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  /** Derive membership/billing from planEnd (respect suspenso/cancelado/isento). */
+  function enrichClient(c) {
+    const out = Object.assign({}, c);
+    const days = daysUntil(out.planEnd);
+    out._daysLeft = days;
+    out._expiringSoon = days !== null && days >= 0 && days <= 7;
+    out._expired = days !== null && days < 0;
+
+    if (out.membershipStatus === 'suspenso' || out.membershipStatus === 'cancelado') {
+      return out;
+    }
+    if (out.billingStatus === 'isento') {
+      if (out._expired) out.membershipStatus = out.membershipStatus || 'activo';
+      return out;
+    }
+    if (out._expired) {
+      out.membershipStatus = 'expirado';
+      if (out.billingStatus !== 'isento') out.billingStatus = 'em_divida';
+    } else if (out.membershipStatus === 'expirado' && days !== null && days >= 0) {
+      out.membershipStatus = 'activo';
+    }
+    if (out.billingStatus === 'atrasado') out.billingStatus = 'em_divida';
+    return out;
+  }
+
+  function clientMatchesFilter(c, filter) {
+    if (filter === 'all') return true;
+    if (filter === 'activo') return c.membershipStatus === 'activo' && !c._expired;
+    if (filter === 'a_expirar') return c._expiringSoon && c.membershipStatus === 'activo';
+    if (filter === 'expirado') return c.membershipStatus === 'expirado' || c._expired;
+    if (filter === 'em_divida') return c.billingStatus === 'em_divida' || c.billingStatus === 'atrasado';
+    if (filter === 'pendente') return c.membershipStatus === 'pendente';
+    return true;
+  }
+
+  function clientsStats(items) {
+    let activo = 0, aExpirar = 0, expirado = 0, divida = 0, pendente = 0;
+    items.forEach(c => {
+      if (c.membershipStatus === 'pendente') pendente++;
+      if (c.membershipStatus === 'activo' && !c._expired) activo++;
+      if (c._expiringSoon && c.membershipStatus === 'activo') aExpirar++;
+      if (c.membershipStatus === 'expirado' || c._expired) expirado++;
+      if (c.billingStatus === 'em_divida' || c.billingStatus === 'atrasado') divida++;
+    });
+    return { activo, aExpirar, expirado, divida, pendente, total: items.length };
+  }
+
+  function updateClientsNavBadge(stats) {
+    const btn = document.querySelector('.admin-tabs button[data-panel="clients"]');
+    if (!btn) return;
+    let badge = btn.querySelector('.nav-badge');
+    const n = (stats.divida || 0) + (stats.expirado || 0);
+    if (n > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'nav-badge';
+        btn.appendChild(badge);
+      }
+      badge.textContent = n > 99 ? '99+' : String(n);
+      badge.style.display = '';
+    } else if (badge) {
+      badge.style.display = 'none';
+    }
+  }
+
   function renderClients() {
     const list = $('#clientsList');
     if (!list) return;
-    const items = store.clients || [];
-    if (!items.length) {
-      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente ainda. Surgem automaticamente das inscrições.</p>';
+    const raw = store.clients || [];
+    const items = raw.map(enrichClient);
+
+    // Sort: debt first, then expiring, then by planEnd ascending
+    items.sort((a, b) => {
+      const score = (c) => {
+        if (c.billingStatus === 'em_divida' || c._expired) return 0;
+        if (c._expiringSoon) return 1;
+        if (c.membershipStatus === 'pendente') return 2;
+        return 3;
+      };
+      const d = score(a) - score(b);
+      if (d !== 0) return d;
+      const ae = a.planEnd || '9999';
+      const be = b.planEnd || '9999';
+      return ae < be ? -1 : ae > be ? 1 : 0;
+    });
+
+    const stats = clientsStats(items);
+    updateClientsNavBadge(stats);
+
+    const summary = $('#clientsSummary');
+    if (summary) {
+      summary.innerHTML = `
+        <div class="stat ok"><strong>${stats.activo}</strong><span>Activos</span></div>
+        <div class="stat warn"><strong>${stats.aExpirar}</strong><span>A expirar (7d)</span></div>
+        <div class="stat danger"><strong>${stats.expirado}</strong><span>Expirados</span></div>
+        <div class="stat danger"><strong>${stats.divida}</strong><span>Em dívida</span></div>
+        <div class="stat"><strong>${stats.pendente}</strong><span>Pendentes</span></div>
+      `;
+    }
+
+    const filtered = items.filter(c => clientMatchesFilter(c, clientsFilter));
+    if (!raw.length) {
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione manualmente.</p>';
       return;
     }
-    list.innerHTML = items.map(c => `
-      <div class="prod-card">
-        <h3>${c.name || '—'} <span class="status-badge status-${c.membershipStatus || 'pendente'}">${c.membershipStatus || 'pendente'}</span></h3>
-        <div class="meta">${c.phone || ''} · ${c.email || ''} · ${c.area || ''}</div>
-        <div class="meta">${c.planName || c.planId || ''} · Faturação: ${c.billingStatus || 'em_dia'}</div>
-        ${c.notes ? '<p style="font-size:0.85rem;margin:0.4rem 0;color:#444">' + c.notes + '</p>' : ''}
-        <div class="actions">
-          <button type="button" data-edit-cli="${c.id}">Editar</button>
-        </div>
-      </div>
-    `).join('');
+    if (!filtered.length) {
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente neste filtro.</p>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(c => {
+      const days = c._daysLeft;
+      let dateLine = '';
+      if (c.planStart || c.planEnd) {
+        dateLine = formatDatePT(c.planStart) + ' → ' + formatDatePT(c.planEnd);
+        if (days !== null) {
+          if (days < 0) dateLine += ' · há ' + Math.abs(days) + ' dia(s)';
+          else if (days === 0) dateLine += ' · vence hoje';
+          else dateLine += ' · ' + days + ' dia(s)';
+        }
+      }
+      const bill = c.billingStatus || 'em_dia';
+      const mem = c.membershipStatus || 'pendente';
+      const cardClass = (bill === 'em_divida' || c._expired)
+        ? 'prod-card card-debt'
+        : (c._expiringSoon ? 'prod-card card-expiring' : 'prod-card');
+      const price = c.price != null && c.price !== ''
+        ? Number(c.price).toLocaleString('pt') + ' Kz'
+        : '';
+      return `
+        <div class="${cardClass}">
+          <h3>${escapeHtml(c.name || '—')}
+            <span class="status-badge status-${mem}">${mem}</span>
+            <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
+            ${c._expiringSoon && !c._expired ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
+          </h3>
+          <div class="meta">${escapeHtml(c.phone || '')} · ${escapeHtml(c.email || '')} · ${escapeHtml(c.area || '')}</div>
+          <div class="meta">${escapeHtml(c.planName || c.planId || 'Sem plano')}${price ? ' · ' + price : ''}${c.billingCycle ? ' · ' + c.billingCycle : ''}</div>
+          ${dateLine ? '<div class="meta">' + dateLine + '</div>' : ''}
+          ${c.notes ? '<p style="font-size:0.85rem;margin:0.4rem 0;color:#444">' + escapeHtml(c.notes) + '</p>' : ''}
+          <div class="actions">
+            <button type="button" data-edit-cli="${c.id}">Editar</button>
+            <button type="button" data-renew-cli="${c.id}">Renovar período</button>
+          </div>
+        </div>`;
+    }).join('');
+
     list.querySelectorAll('[data-edit-cli]').forEach(btn => {
       btn.addEventListener('click', () => openClientModal(btn.dataset.editCli));
     });
+    list.querySelectorAll('[data-renew-cli]').forEach(btn => {
+      btn.addEventListener('click', () => quickRenewClient(btn.dataset.renewCli));
+    });
+  }
+
+  function renderPayHistory(payments) {
+    const el = $('#cPayHistory');
+    if (!el) return;
+    const list = payments || [];
+    if (!list.length) {
+      el.innerHTML = '<li style="color:#999">Ainda sem pagamentos registados.</li>';
+      return;
+    }
+    el.innerHTML = list.slice(0, 20).map(p => {
+      const when = p.paidAt ? new Date(p.paidAt).toLocaleString('pt') : '';
+      const amt = p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '';
+      const method = p.method || '';
+      const note = p.note ? ' — ' + escapeHtml(p.note) : '';
+      return `<li><strong>${amt}</strong> · ${escapeHtml(method)} · ${when}${note}</li>`;
+    }).join('');
   }
 
   function openClientModal(id) {
     editingClientId = id || null;
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
+    const title = $('#clientModalTitle');
+    if (title) title.textContent = c ? 'Editar cliente' : 'Novo cliente';
     $('#cName').value = c?.name || '';
     $('#cPhone').value = c?.phone || '';
     $('#cEmail').value = c?.email || '';
     $('#cArea').value = c?.area || 'ginasio';
     $('#cPlan').value = c?.planName || c?.planId || '';
+    $('#cPrice').value = c?.price != null ? c.price : '';
+    $('#cCycle').value = c?.billingCycle || 'mensal';
+    $('#cPlanStart').value = c?.planStart || '';
+    $('#cPlanEnd').value = c?.planEnd || '';
     $('#cMembership').value = c?.membershipStatus || 'pendente';
-    $('#cBilling').value = c?.billingStatus || 'em_dia';
+    $('#cBilling').value = (c?.billingStatus === 'atrasado' ? 'em_divida' : (c?.billingStatus || 'em_dia'));
     $('#cNotes').value = c?.notes || '';
+    $('#cPayAmount').value = c?.price != null ? c.price : '';
+    $('#cPayMethod').value = 'cash';
+    $('#cPayNote').value = '';
+    renderPayHistory(c?.payments);
+    const payBlock = $('#paymentBlock');
+    if (payBlock) payBlock.style.display = id ? '' : 'none';
     $('#clientModal').classList.add('open');
   }
-  $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
-  $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
-  $('#saveClientBtn')?.addEventListener('click', async () => {
+
+  function readClientForm(existing) {
+    const priceVal = $('#cPrice').value;
     const data = {
       id: editingClientId || ('cli-' + Date.now()),
       name: $('#cName').value.trim(),
@@ -457,14 +663,122 @@
       email: $('#cEmail').value.trim(),
       area: $('#cArea').value,
       planName: $('#cPlan').value.trim(),
+      planId: existing?.planId || '',
+      price: priceVal === '' ? null : Number(priceVal),
+      billingCycle: $('#cCycle').value,
+      planStart: $('#cPlanStart').value || null,
+      planEnd: $('#cPlanEnd').value || null,
       membershipStatus: $('#cMembership').value,
       billingStatus: $('#cBilling').value,
       notes: $('#cNotes').value.trim(),
-      createdAt: editingClientId ? undefined : new Date().toISOString()
+      payments: existing?.payments || [],
+      lastPaymentAt: existing?.lastPaymentAt || null,
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      fromSubmission: existing?.fromSubmission || null
     };
+    return enrichClient(data);
+  }
+
+  async function quickRenewClient(id) {
+    const existing = (store.clients || []).find(x => x.id === id);
+    if (!existing) return;
+    const cycle = existing.billingCycle || 'mensal';
+    const months = CYCLE_MONTHS[cycle] || 1;
+    const start = existing.planEnd && daysUntil(existing.planEnd) >= 0
+      ? existing.planEnd
+      : todayISO();
+    const end = addMonthsISO(start, months);
+    const amount = existing.price != null ? Number(existing.price) : 0;
+    if (!confirm('Renovar ' + (existing.name || 'cliente') + ' até ' + formatDatePT(end) + (amount ? ' (' + amount.toLocaleString('pt') + ' Kz)?' : '?'))) {
+      return;
+    }
+    const payment = {
+      id: 'pay-' + Date.now(),
+      amount: amount,
+      paidAt: new Date().toISOString(),
+      method: 'cash',
+      note: 'Renovação rápida',
+      periodStart: start,
+      periodEnd: end
+    };
+    const payments = (existing.payments || []).slice();
+    payments.unshift(payment);
+    const data = enrichClient(Object.assign({}, existing, {
+      planStart: existing.planStart || start,
+      planEnd: end,
+      membershipStatus: 'activo',
+      billingStatus: 'em_dia',
+      lastPaymentAt: payment.paidAt,
+      payments: payments.slice(0, 50)
+    }));
+    await adminAction('update_client', data);
+    toast('Período renovado até ' + formatDatePT(end));
+  }
+
+  $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
+  $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
+
+  $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      clientsFilter = btn.dataset.filter;
+      $('#clientFilters').querySelectorAll('[data-filter]').forEach(b => {
+        b.classList.toggle('active', b.dataset.filter === clientsFilter);
+      });
+      renderClients();
+    });
+  });
+
+  $('#saveClientBtn')?.addEventListener('click', async () => {
+    const existing = editingClientId
+      ? (store.clients || []).find(x => x.id === editingClientId)
+      : null;
+    const data = readClientForm(existing);
+    if (!data.name) return toast('Nome obrigatório');
     await adminAction('update_client', data);
     $('#clientModal').classList.remove('open');
     toast('Cliente guardado');
+  });
+
+  $('#payRenewBtn')?.addEventListener('click', async () => {
+    if (!editingClientId) return toast('Guarde o cliente primeiro');
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    const amountStr = $('#cPayAmount').value;
+    const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
+    const cycle = $('#cCycle').value || existing.billingCycle || 'mensal';
+    const months = CYCLE_MONTHS[cycle] || 1;
+    const currentEnd = $('#cPlanEnd').value || existing.planEnd;
+    const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
+    const end = addMonthsISO(start, months);
+    const payment = {
+      id: 'pay-' + Date.now(),
+      amount: amount,
+      paidAt: new Date().toISOString(),
+      method: $('#cPayMethod').value,
+      note: $('#cPayNote').value.trim(),
+      periodStart: start,
+      periodEnd: end
+    };
+    const payments = (existing.payments || []).slice();
+    payments.unshift(payment);
+    // Sync form dates before save
+    $('#cPlanStart').value = $('#cPlanStart').value || start;
+    $('#cPlanEnd').value = end;
+    $('#cMembership').value = 'activo';
+    $('#cBilling').value = 'em_dia';
+    if (amount && !$('#cPrice').value) $('#cPrice').value = amount;
+    const data = readClientForm(Object.assign({}, existing, { payments: payments.slice(0, 50), lastPaymentAt: payment.paidAt }));
+    data.planStart = data.planStart || start;
+    data.planEnd = end;
+    data.membershipStatus = 'activo';
+    data.billingStatus = 'em_dia';
+    data.lastPaymentAt = payment.paidAt;
+    data.payments = payments.slice(0, 50);
+    data.billingCycle = cycle;
+    if (amount) data.price = amount;
+    await adminAction('update_client', data);
+    toast('Pagamento registado · válido até ' + formatDatePT(end));
+    openClientModal(editingClientId);
   });
 
   // —— Products (same as before) ——

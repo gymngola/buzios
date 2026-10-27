@@ -271,6 +271,27 @@
       .sort((a, b) => (a.order || 0) - (b.order || 0));
   }
 
+  function cardIconSvg(kind) {
+    const icons = {
+      gym: '<path d="M6.5 6.5v11M17.5 6.5v11M6.5 12h11M4 8.5v7M20 8.5v7M3 10.5h2M3 13.5h2M19 10.5h2M19 13.5h2"/>',
+      swim: '<path d="M3 15c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M3 19c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M12 5c1.5 0 3 1.2 3 3.2 0 2.3-3 5.3-3 5.3S9 10.5 9 8.2C9 6.2 10.5 5 12 5z"/>',
+      medal: '<circle cx="12" cy="8" r="4"/><path d="M8.5 11.5L6 21l6-3 6 3-2.5-9.5"/><path d="M10 8h4"/>',
+      star: '<path d="M12 3l2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4L7.5 16.7l.9-5L4.8 8.2l5-.7L12 3z"/>',
+      calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'
+    };
+    const path = icons[kind] || icons.gym;
+    return `<span class="card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+  }
+
+  function planCardIcon(p) {
+    const id = (p.id || '').toLowerCase();
+    if (id.includes('platina') || id.includes('platinum')) return cardIconSvg('star');
+    if (id.includes('prata') || id.includes('silver')) return cardIconSvg('medal');
+    if (p.category === 'natacao') return cardIconSvg('swim');
+    if (id.includes('ferias') || id.includes('aulas') || id.includes('pacote')) return cardIconSvg('calendar');
+    return cardIconSvg('gym');
+  }
+
   function renderPlansPreview() {
     const el = $('#plansPreview');
     if (!el) return;
@@ -282,6 +303,7 @@
       return `
         <article class="card plan-card ${p.featured ? 'featured' : ''}">
           <div class="card-body">
+            ${planCardIcon(p)}
             <p class="plan-badge">${p.period || 'mensal'}</p>
             <h3 class="card-title">${name}</h3>
             <p class="card-text">${desc}</p>
@@ -309,6 +331,7 @@
       return `
         <article class="card plan-card ${p.featured ? 'featured' : ''}">
           <div class="card-body">
+            ${planCardIcon(p)}
             <p class="plan-badge">${catLabel} · ${p.period || ''}</p>
             <h3 class="card-title">${name}</h3>
             <p class="card-text">${desc}</p>

@@ -10,6 +10,7 @@
   const CLOUD_NAME = 'ogtzpc3v';
   const UPLOAD_PRESET = 'buzios_unsigned';
   const CATALOG_FOLDER = 'buzios';
+  const CATALOG_JSON_URL = `https://res.cloudinary.com/${CLOUD_NAME}/raw/upload/${CATALOG_FOLDER}/catalog.json`;
   const SITE_IMAGE_SLOTS = [
     { key: 'hero', label: 'Hero 1 (página inicial)' },
     { key: 'hero2', label: 'Hero 2 (página inicial)' },
@@ -70,10 +71,11 @@
       showApp();
     }
   }
-  function showApp() {
+  async function showApp() {
     $('#loginScreen').classList.add('hidden');
     $('#adminApp').classList.remove('hidden');
-    loadState();
+    toast('A carregar catálogo…');
+    await loadState();
     loadStore();
     renderAll();
   }
@@ -99,29 +101,67 @@
     });
   });
 
-  function loadState() {
-    try {
-      const p = localStorage.getItem(LS.products);
-      products = p ? JSON.parse(p) : (window.DEFAULT_PRODUCTS || []).map(x => ({ ...x }));
-    } catch (e) {
-      products = (window.DEFAULT_PRODUCTS || []).map(x => ({ ...x }));
-    }
-    try {
-      const t = localStorage.getItem(LS.texts);
-      texts = t ? JSON.parse(t) : JSON.parse(JSON.stringify(window.DEFAULT_TEXTS || { pt: {}, en: {} }));
-    } catch (e) {
-      texts = JSON.parse(JSON.stringify(window.DEFAULT_TEXTS || { pt: {}, en: {} }));
-    }
-    try {
-      const i = localStorage.getItem(LS.images);
-      images = i ? JSON.parse(i) : Object.assign({}, window.DEFAULT_SITE_IMAGES || {});
-    } catch (e) {
-      images = Object.assign({}, window.DEFAULT_SITE_IMAGES || {});
-    }
+  /**
+   * Source of truth:
+   * 1. Defaults (products.js)
+   * 2. Live catalog.json from Cloudinary — shared by every browser
+   * After a successful remote load we overwrite localStorage so stale drafts
+   * from other sessions cannot hide the published version.
+   * "Guardar rascunho" still writes local only for mid-session work.
+   */
+  async function loadState() {
+    // 1. Defaults
+    products = (window.DEFAULT_PRODUCTS || []).map(x => ({ ...x }));
+    texts = JSON.parse(JSON.stringify(window.DEFAULT_TEXTS || { pt: {}, en: {} }));
+    images = Object.assign({}, window.DEFAULT_SITE_IMAGES || {});
+
+    // Media library stays local (not in catalog)
     try {
       mediaLibrary = JSON.parse(localStorage.getItem(LS.media) || '[]');
     } catch (e) {
       mediaLibrary = [];
+    }
+
+    // 2. Live published catalog (same for every browser)
+    let loadedRemote = false;
+    try {
+      const res = await fetch(CATALOG_JSON_URL + '?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.products) && data.products.length) {
+          products = data.products.map(x => ({ ...x }));
+        }
+        if (data.texts) {
+          texts = JSON.parse(JSON.stringify(data.texts));
+        }
+        if (data.images && typeof data.images === 'object') {
+          images = Object.assign({}, images, data.images);
+        }
+        loadedRemote = true;
+      }
+    } catch (e) {
+      console.warn('Catalog fetch failed, falling back to local draft', e);
+    }
+
+    if (loadedRemote) {
+      // Align this browser with the live store so all admins see the same data
+      localStorage.setItem(LS.products, JSON.stringify(products));
+      localStorage.setItem(LS.texts, JSON.stringify(texts));
+      localStorage.setItem(LS.images, JSON.stringify(images));
+    } else {
+      // Offline / catalog missing → use local draft if any
+      try {
+        const p = localStorage.getItem(LS.products);
+        if (p) products = JSON.parse(p);
+      } catch (e) {}
+      try {
+        const t = localStorage.getItem(LS.texts);
+        if (t) texts = JSON.parse(t);
+      } catch (e) {}
+      try {
+        const i = localStorage.getItem(LS.images);
+        if (i) images = Object.assign({}, images, JSON.parse(i));
+      } catch (e) {}
     }
   }
 
@@ -149,7 +189,15 @@
     localStorage.setItem(LS.texts, JSON.stringify(texts));
     localStorage.setItem(LS.images, JSON.stringify(images));
     localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
-    toast('Rascunho guardado neste browser');
+    toast('Rascunho guardado neste browser (só este)');
+  }
+
+  /** After a successful publish, sync localStorage so this browser matches the live catalog. */
+  function syncLocalFromState() {
+    localStorage.setItem(LS.products, JSON.stringify(products));
+    localStorage.setItem(LS.texts, JSON.stringify(texts));
+    localStorage.setItem(LS.images, JSON.stringify(images));
+    localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
   }
 
   // —— Inbox ——
@@ -543,8 +591,9 @@
         body: JSON.stringify({ password: ADMIN_PASSWORD, catalog })
       });
       if (!res.ok) throw new Error(await res.text());
-      saveDraft();
-      toast('Publicado com sucesso');
+      // Keep this browser in sync with what was just published
+      syncLocalFromState();
+      toast('Publicado com sucesso — todos os browsers verão isto após refresh');
     } catch (err) {
       toast('Erro ao publicar: ' + (err.message || err));
     }

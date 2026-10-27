@@ -254,28 +254,61 @@ async function handleAdminData(request, env) {
   return json({ error: 'Unknown action' }, 400);
 }
 
+/**
+ * Load store.json without Cloudinary CDN lag.
+ * Uses Admin API to resolve the current version, then fetches the versioned URL.
+ */
 async function loadStore(env) {
   const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
+  const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
+  const apiSecret = String(env.CLOUDINARY_API_SECRET || '').trim();
+  const empty = { submissions: [], clients: [], newsletters: [], classes: [], updatedAt: null };
+
+  const publicIds = [FOLDER + '/store.json', FOLDER + '/store'];
+
+  // 1. Admin API → versioned delivery (always current)
+  if (cloudName && apiKey && apiSecret) {
+    const auth = btoa(apiKey + ':' + apiSecret);
+    for (const publicId of publicIds) {
+      try {
+        const metaRes = await fetch(
+          'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + encodeURIComponent(publicId),
+          { headers: { Authorization: 'Basic ' + auth } }
+        );
+        if (!metaRes.ok) continue;
+        const meta = await metaRes.json();
+        const version = meta.version;
+        if (!version) continue;
+        const versioned =
+          'https://res.cloudinary.com/' + cloudName + '/raw/upload/v' + version + '/' + publicId;
+        const fileRes = await fetch(versioned, { cache: 'no-store' });
+        if (!fileRes.ok) continue;
+        const data = await fileRes.json();
+        if (data && typeof data === 'object') return data;
+      } catch (_) {}
+    }
+  }
+
+  // 2. Fallback: delivery URL (may be stale if CDN hasn't invalidated)
   const bust = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-  // Prefer store.json; also try legacy path without extension (old writes)
-  const candidates = [
-    'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + FOLDER + '/store.json?_=' + bust,
-    'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + FOLDER + '/store?_=' + bust
-  ];
-  for (const url of candidates) {
+  for (const publicId of publicIds) {
     try {
-      const res = await fetch(url, {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-        cf: { cacheTtl: 0, cacheEverything: false }
-      });
+      const res = await fetch(
+        'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId + '?_=' + bust,
+        {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+          cf: { cacheTtl: 0, cacheEverything: false }
+        }
+      );
       if (res.ok) {
         const data = await res.json();
         if (data && typeof data === 'object') return data;
       }
     } catch (_) {}
   }
-  return { submissions: [], clients: [], newsletters: [], classes: [], updatedAt: null };
+
+  return empty;
 }
 
 async function uploadRaw(env, publicId, content) {

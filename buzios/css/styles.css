@@ -519,16 +519,6 @@ body.drawer-open { overflow: hidden; }
   background-size: cover;
   background-position: center;
 }
-.section-services-overlay {
-  position: absolute;
-  inset: 0;
-  background: transparent;
-  pointer-events: none;
-  z-index: 0;
-}
-.section-services[style*="background-image"] .section-services-overlay {
-  background: rgba(240, 235, 227, 0.22);
-}
 .section-services > .container {
   position: relative;
   z-index: 1;
@@ -752,6 +742,40 @@ body.drawer-open { overflow: hidden; }
   margin-top: 0.48rem;
   flex-shrink: 0;
   box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+.feature-list--icons {
+  gap: 1.05rem;
+}
+.feature-list--icons li {
+  align-items: center;
+  gap: 1rem;
+}
+.feature-list--icons li::before {
+  display: none;
+}
+.feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.55rem;
+  height: 2.55rem;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(196, 92, 38, 0.14) 0%, rgba(196, 92, 38, 0.06) 100%);
+  border: 1px solid rgba(196, 92, 38, 0.14);
+  color: var(--color-accent);
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(196, 92, 38, 0.06);
+  transition: transform var(--t-med), background var(--t-med), box-shadow var(--t-med);
+}
+.feature-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: block;
+}
+.feature-list--icons li:hover .feature-icon {
+  background: rgba(196, 92, 38, 0.16);
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px rgba(196, 92, 38, 0.16);
 }
 
 /* ========== PLANS ========== */

@@ -299,6 +299,7 @@
           <div class="meta">Contacto · ${escapeHtml(s.phone || '')} · ${when}</div>
           <div class="meta" style="margin-top:0.35rem">
             ${s.subject ? 'Assunto: ' + escapeHtml(s.subject) : ''}
+            ${s.preferContact ? ' · Preferência: ' + escapeHtml(s.preferContact) : ''}
             ${s.email ? ' · ' + escapeHtml(s.email) : ''}
           </div>
           ${msg ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444;white-space:pre-wrap">' + escapeHtml(msg) + '</p>' : ''}

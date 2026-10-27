@@ -187,6 +187,7 @@ async function handleSubmit(request, env) {
       phone: payload.phone || '',
       email: payload.email || '',
       subject: payload.subject || '',
+      preferContact: payload.preferContact || '',
       message: payload.message || payload.notes || '',
       createdAt: payload.createdAt || new Date().toISOString()
     });

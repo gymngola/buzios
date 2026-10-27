@@ -632,9 +632,15 @@
       if (!texts.pt) texts.pt = {};
       texts.pt[ta.dataset.textKey] = ta.value;
     });
+    // Drop empty slots so we don't publish "" over a good image
+    const imagesClean = {};
+    Object.keys(images || {}).forEach(k => {
+      if (images[k]) imagesClean[k] = images[k];
+    });
+    images = imagesClean;
     const catalog = {
       updatedAt: new Date().toISOString(),
-      products, zones: [], texts, images
+      products, zones: [], texts, images: imagesClean
     };
     try {
       toast('A publicar…');

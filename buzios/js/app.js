@@ -147,13 +147,10 @@
   }
 
   // —— Site images ——
+  // Uses only in-memory siteImages (set by loadCatalog). Do NOT re-merge
+  // localStorage here — that used to put stale drafts on top of the live catalog.
   function applySiteImages() {
-    // Merge overrides
-    let overrides = {};
-    try {
-      overrides = JSON.parse(localStorage.getItem(LS_IMAGES) || '{}');
-    } catch (e) {}
-    const images = Object.assign({}, siteImages, overrides);
+    const images = siteImages || {};
 
     $$('[data-site-img]').forEach(el => {
       const key = el.getAttribute('data-site-img');
@@ -272,19 +269,23 @@
   }
 
   // —— Catalog load ——
+  // Order: defaults → image cache (no flash) → optional same-browser draft → remote catalog wins.
   async function loadCatalog() {
-    // 1. Start with defaults
+    // 1. Defaults
     products = (window.DEFAULT_PRODUCTS || []).slice();
     texts = JSON.parse(JSON.stringify(window.DEFAULT_TEXTS || { pt: {}, en: {} }));
     siteImages = Object.assign({}, window.DEFAULT_SITE_IMAGES || {});
 
-    // 2. Last published images (avoids flash of default on reload)
+    // 2. Last published image cache (avoids flash of Unsplash on reload)
     try {
       const cached = localStorage.getItem(LS_IMAGES_CACHE);
-      if (cached) siteImages = Object.assign(siteImages, JSON.parse(cached));
+      if (cached) {
+        const c = JSON.parse(cached);
+        Object.keys(c).forEach(k => { if (c[k]) siteImages[k] = c[k]; });
+      }
     } catch (e) {}
 
-    // 3. localStorage drafts (same-browser admin preview)
+    // 3. Same-browser admin draft (preview only — remote will overwrite)
     try {
       const p = localStorage.getItem(LS_PRODUCTS);
       if (p) products = JSON.parse(p);
@@ -295,13 +296,15 @@
     } catch (e) {}
     try {
       const i = localStorage.getItem(LS_IMAGES);
-      if (i) siteImages = Object.assign(siteImages, JSON.parse(i));
+      if (i) {
+        const draft = JSON.parse(i);
+        Object.keys(draft).forEach(k => { if (draft[k]) siteImages[k] = draft[k]; });
+      }
     } catch (e) {}
 
-    // Apply immediately from cache/overrides so hero doesn't flash the HTML default
     applySiteImages();
 
-    // 4. Remote catalog
+    // 4. Live catalog — always wins over drafts/cache
     try {
       const res = await fetch(CATALOG_JSON_URL + '?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
@@ -312,10 +315,15 @@
         if (data.texts) {
           texts = Object.assign({}, texts, data.texts);
         }
-        if (data.images) {
-          siteImages = Object.assign({}, siteImages, data.images);
+        if (data.images && typeof data.images === 'object') {
+          // Only non-empty remote URLs overwrite (empty string = keep previous)
+          Object.keys(data.images).forEach(k => {
+            if (data.images[k]) siteImages[k] = data.images[k];
+          });
           try {
-            localStorage.setItem(LS_IMAGES_CACHE, JSON.stringify(data.images));
+            localStorage.setItem(LS_IMAGES_CACHE, JSON.stringify(siteImages));
+            // Align draft with published so stale Unsplash drafts can't fight the catalog
+            localStorage.setItem(LS_IMAGES, JSON.stringify(siteImages));
           } catch (e) {}
         }
       }

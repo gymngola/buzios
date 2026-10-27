@@ -117,6 +117,14 @@
               <select id="ePlan">
                 <option value="">Ainda não sei / a definir</option>
               </select>
+              <p class="muted" style="font-size:0.8rem;margin-top:0.4rem">
+                <a href="planos.html" style="color:inherit;text-decoration:underline">Ver todos os planos e preços</a>
+              </p>
+            </div>
+            <div class="form-group" id="inscricaoNote" style="display:none">
+              <p class="muted" style="font-size:0.85rem;line-height:1.45;margin:0;padding:0.75rem 1rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-input)">
+                Inscrição anual: <strong class="accent">6.500 Kz</strong> (obrigatória na 1ª visita ao ginásio). Não é um plano mensal — paga-se uma vez na primeira inscrição.
+              </p>
             </div>
           </div>
 
@@ -161,16 +169,16 @@
             </div>
           </div>
 
-          <div class="form-section">
+          <div class="form-section" id="docsSection">
             <h3>4. Documentos</h3>
-            <p class="muted" style="font-size:0.85rem;margin-bottom:0.85rem">Para a inscrição no ginásio são necessários: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar agora ou entregar no local.</p>
+            <p class="muted" id="docsCopy" style="font-size:0.85rem;margin-bottom:0.85rem">Para a inscrição no ginásio são necessários: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar agora ou entregar no local.</p>
             <div class="form-group">
               <label>Anexar documentos (opcional)</label>
               <input type="file" id="eFiles" accept="image/*,.pdf" multiple>
               <div class="file-list" id="fileList"></div>
             </div>
             <div class="check-row">
-              <label><input type="checkbox" id="eDocsLater"> Prefiro entregar os documentos no ginásio</label>
+              <label><input type="checkbox" id="eDocsLater"> Prefiro entregar os documentos no local</label>
             </div>
           </div>
 
@@ -205,30 +213,149 @@
     const UPLOAD_PRESET = 'buzios_unsigned';
     const FOLDER = 'buzios';
 
-    // Populate plans
-    const planSelect = document.getElementById('ePlan');
-    const products = (window.DEFAULT_PRODUCTS || []).filter(p => p.active !== false);
-    products.sort((a,b) => (a.order||0)-(b.order||0)).forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name + ' — ' + Number(p.price).toLocaleString('pt') + ' Kz';
-      opt.dataset.category = p.category;
-      planSelect.appendChild(opt);
-    });
+    // Plan IDs sold as main enrollment options (not one-time fees / avulsas)
+    const GYM_PLAN_IDS = ['plano-bronze', 'plano-prata', 'plano-platina'];
+    const SWIM_PLAN_IDS = ['natacao-10', 'natacao-15', 'natacao-25'];
 
-    // Pre-select from URL
+    const planSelect = document.getElementById('ePlan');
+    const areaSelect = document.getElementById('eArea');
+    const ageGroup = document.getElementById('ageGroup');
+    const inscricaoNote = document.getElementById('inscricaoNote');
+    const docsCopy = document.getElementById('docsCopy');
+
+    const allProducts = (window.DEFAULT_PRODUCTS || []).filter(p => p.active !== false);
+    allProducts.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    function formatPrice(value) {
+      return Number(value).toLocaleString('pt-AO', { maximumFractionDigits: 0 }) + ' Kz';
+    }
+
+    /** Short human label: name + price + type hint */
+    function planLabel(p) {
+      const price = formatPrice(p.price);
+      if (p.category === 'ginasio') {
+        const hint = p.id === 'plano-bronze' ? 'musculação e cardio'
+          : p.id === 'plano-prata' ? 'com personal trainer'
+          : p.id === 'plano-platina' ? 'acesso total'
+          : '';
+        return hint
+          ? `${p.name.replace(/^Plano\s+/i, '')} — ${price}/mês · ${hint}`
+          : `${p.name} — ${price}/mês`;
+      }
+      // Natação packages
+      const aulas = (p.name.match(/(\d+)\s*Aulas/i) || [])[1];
+      return aulas
+        ? `${aulas} aulas seguidas — ${price} · natação`
+        : `${p.name} — ${price}`;
+    }
+
+    function productsForArea(area) {
+      if (area === 'ginasio') {
+        return allProducts.filter(p => GYM_PLAN_IDS.includes(p.id));
+      }
+      if (area === 'natacao') {
+        return allProducts.filter(p => SWIM_PLAN_IDS.includes(p.id));
+      }
+      if (area === 'ambos') {
+        return {
+          gym: allProducts.filter(p => GYM_PLAN_IDS.includes(p.id)),
+          swim: allProducts.filter(p => SWIM_PLAN_IDS.includes(p.id))
+        };
+      }
+      return [];
+    }
+
+    function rebuildPlanOptions(area, preferredId) {
+      const prev = preferredId != null ? preferredId : planSelect.value;
+      planSelect.innerHTML = '';
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'Ainda não sei / a definir';
+      planSelect.appendChild(empty);
+
+      if (!area) return;
+
+      if (area === 'ambos') {
+        const groups = productsForArea('ambos');
+        const gGym = document.createElement('optgroup');
+        gGym.label = 'Ginásio (mensal)';
+        groups.gym.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = planLabel(p);
+          gGym.appendChild(opt);
+        });
+        planSelect.appendChild(gGym);
+
+        const gSwim = document.createElement('optgroup');
+        gSwim.label = 'Natação (pacotes)';
+        groups.swim.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = planLabel(p);
+          gSwim.appendChild(opt);
+        });
+        planSelect.appendChild(gSwim);
+      } else {
+        productsForArea(area).forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = planLabel(p);
+          planSelect.appendChild(opt);
+        });
+      }
+
+      if (prev && Array.from(planSelect.options).some(o => o.value === prev)) {
+        planSelect.value = prev;
+      } else {
+        planSelect.value = '';
+      }
+    }
+
+    function syncAreaUI() {
+      const area = areaSelect.value;
+      ageGroup.style.display = (area === 'natacao' || area === 'ambos') ? 'block' : 'none';
+      inscricaoNote.style.display = (area === 'ginasio' || area === 'ambos') ? 'block' : 'none';
+
+      if (area === 'natacao') {
+        docsCopy.textContent = 'Para natação pode anexar identificação se preferir. Documentos completos (BI, atestado, fotos) são sobretudo necessários no ginásio — pode entregar no local quando fizer sentido.';
+      } else if (area === 'ambos') {
+        docsCopy.textContent = 'Para o ginásio: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar agora ou entregar no local. Na natação a equipa indica o que for necessário.';
+      } else {
+        docsCopy.textContent = 'Para a inscrição no ginásio são necessários: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar agora ou entregar no local.';
+      }
+
+      rebuildPlanOptions(area);
+    }
+
+    areaSelect.addEventListener('change', syncAreaUI);
+
+    // Pre-select from URL ?plano=
     const params = new URLSearchParams(location.search);
     const prePlan = params.get('plano');
     if (prePlan) {
-      planSelect.value = prePlan;
-      const p = products.find(x => x.id === prePlan);
-      if (p) document.getElementById('eArea').value = p.category === 'natacao' ? 'natacao' : 'ginasio';
+      const p = allProducts.find(x => x.id === prePlan);
+      if (p) {
+        if (GYM_PLAN_IDS.includes(p.id)) {
+          areaSelect.value = 'ginasio';
+        } else if (SWIM_PLAN_IDS.includes(p.id)) {
+          areaSelect.value = 'natacao';
+        } else if (p.category === 'natacao') {
+          areaSelect.value = 'natacao';
+        } else {
+          areaSelect.value = 'ginasio';
+        }
+        syncAreaUI();
+        // Only select if it appears in the filtered list
+        if (Array.from(planSelect.options).some(o => o.value === prePlan)) {
+          planSelect.value = prePlan;
+        }
+      } else {
+        rebuildPlanOptions('');
+      }
+    } else {
+      rebuildPlanOptions('');
     }
-
-    document.getElementById('eArea').addEventListener('change', function() {
-      document.getElementById('ageGroup').style.display =
-        (this.value === 'natacao' || this.value === 'ambos') ? 'block' : 'none';
-    });
 
     document.getElementById('eFiles').addEventListener('change', function() {
       const list = document.getElementById('fileList');
@@ -271,8 +398,8 @@
 
       const payload = {
         type: 'enrollment',
-        area: document.getElementById('eArea').value,
-        planId: document.getElementById('ePlan').value || null,
+        area: areaSelect.value,
+        planId: planSelect.value || null,
         planName: planSelect.options[planSelect.selectedIndex]?.text || '',
         name: document.getElementById('eName').value.trim(),
         phone: document.getElementById('ePhone').value.trim(),

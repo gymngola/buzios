@@ -202,7 +202,7 @@
       slides[idx].classList.remove('is-active');
       idx = (idx + 1) % slides.length;
       slides[idx].classList.add('is-active');
-    }, 5500);
+    }, 4000);
   }
 
   // —— Catalog load ——

@@ -39,6 +39,7 @@
         <h1>Búzios Admin</h1>
         <div class="admin-tabs">
           <button type="button" data-panel="inbox" class="active">Inscrições</button>
+          <button type="button" data-panel="contacts">Contactos</button>
           <button type="button" data-panel="newsletters">Newsletter</button>
           <button type="button" data-panel="clients">Clientes</button>
           <button type="button" data-panel="products">Planos</button>
@@ -48,10 +49,16 @@
         </div>
       </div>
 
-      <!-- Inbox / Submissions -->
+      <!-- Inbox / Enrollments -->
       <div id="panel-inbox" class="panel active">
-        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Inscrições e mensagens de contacto. Marque o estado após contactar o cliente.</p>
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Pedidos de inscrição (formulário de inscrição). Marque o estado após contactar o cliente.</p>
         <div class="prod-list" id="inboxList"></div>
+      </div>
+
+      <!-- Contact form messages -->
+      <div id="panel-contacts" class="panel">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Mensagens enviadas pela página Contacto. Marque o estado após responder.</p>
+        <div class="prod-list" id="contactsList"></div>
       </div>
 
       <!-- Newsletter phones -->
@@ -102,7 +109,8 @@
       <div id="panel-guide" class="panel">
         <div class="guide">
           <h3>Como funciona</h3>
-          <p><strong>Inscrições</strong> — chegam aqui quando alguém preenche o formulário no site. Marque: Novo → Contactado → Inscrito.</p>
+          <p><strong>Inscrições</strong> — pedidos do formulário de inscrição. Marque: Novo → Contactado → Inscrito.</p>
+          <p><strong>Contactos</strong> — mensagens da página Contacto (nome, telefone, assunto, mensagem). Marque: Novo → Respondido → Arquivar.</p>
           <p><strong>Clientes</strong> — base criada automaticamente a partir de inscrições. Actualize membership e faturação.</p>
           <p><strong>Rascunho / Publicar</strong> — planos, imagens e textos: rascunho só neste browser; Publicar actualiza o site para todos.</p>
           <h3>Redeploy do Worker</h3>

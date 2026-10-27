@@ -207,6 +207,7 @@
       console.warn('Store load failed', e);
     }
     renderInbox();
+    renderContacts();
     renderNewsletters();
     renderClients();
   }
@@ -233,30 +234,34 @@
     localStorage.removeItem(LS.dirty);
   }
 
-  // —— Inbox ——
+  // —— Inbox (enrollments only) ——
   function renderInbox() {
     const list = $('#inboxList');
     if (!list) return;
-    const items = store.submissions || [];
+    const items = (store.submissions || []).filter(s => s.type === 'enrollment');
     if (!items.length) {
-      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma inscrição ou mensagem ainda.</p>';
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma inscrição ainda. Aparecem quando alguém preenche o formulário de inscrição.</p>';
       return;
     }
     list.innerHTML = items.map(s => {
       const status = s.status || 'novo';
       const when = s.createdAt ? new Date(s.createdAt).toLocaleString('pt') : '';
-      const typeLabel = s.type === 'enrollment' ? 'Inscrição' : (s.type === 'contact' ? 'Contacto' : s.type);
+      const schedule = Array.isArray(s.schedule) && s.schedule.length
+        ? '<div class="meta">Horário: ' + s.schedule.join(', ') + '</div>'
+        : '';
       return `
         <div class="prod-card">
-          <h3>${s.name || '—'} <span class="status-badge status-${status}">${status}</span></h3>
-          <div class="meta">${typeLabel} · ${s.phone || ''} · ${when}</div>
+          <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${status}</span></h3>
+          <div class="meta">Inscrição · ${escapeHtml(s.phone || '')} · ${when}</div>
           <div class="meta" style="margin-top:0.35rem">
-            ${s.area ? 'Área: ' + s.area + ' · ' : ''}
-            ${s.planName || s.planId || ''}
-            ${s.subject ? 'Assunto: ' + s.subject : ''}
+            ${s.area ? 'Área: ' + escapeHtml(s.area) + ' · ' : ''}
+            ${escapeHtml(s.planName || s.planId || '')}
           </div>
-          ${s.notes || s.message ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + (s.notes || s.message) + '</p>' : ''}
-          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos: ' + s.attachments.map((u,i) => '<a href="'+u+'" target="_blank">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
+          ${s.age ? '<div class="meta">Idade: ' + escapeHtml(String(s.age)) + '</div>' : ''}
+          ${s.emergency ? '<div class="meta">Emergência: ' + escapeHtml(s.emergency) + '</div>' : ''}
+          ${schedule}
+          ${s.notes ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + escapeHtml(s.notes) + '</p>' : ''}
+          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos: ' + s.attachments.map((u,i) => '<a href="'+u+'" target="_blank" rel="noopener">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
           <div class="actions" style="margin-top:0.65rem">
             <button type="button" data-st="${s.id}" data-v="contactado">Contactado</button>
             <button type="button" data-st="${s.id}" data-v="inscrito">Inscrito</button>
@@ -266,6 +271,51 @@
         </div>`;
     }).join('');
 
+    bindSubmissionActions(list);
+  }
+
+  // —— Contact form messages ——
+  function renderContacts() {
+    const list = $('#contactsList');
+    if (!list) return;
+    const items = (store.submissions || []).filter(s => s.type === 'contact' || (!s.type && s.message));
+    if (!items.length) {
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma mensagem de contacto ainda. Aparecem quando alguém envia o formulário na página Contacto.</p>';
+      return;
+    }
+    list.innerHTML = items.map(s => {
+      const status = s.status || 'novo';
+      const when = s.createdAt ? new Date(s.createdAt).toLocaleString('pt') : '';
+      const msg = s.message || s.notes || '';
+      return `
+        <div class="prod-card">
+          <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${status}</span></h3>
+          <div class="meta">Contacto · ${escapeHtml(s.phone || '')} · ${when}</div>
+          <div class="meta" style="margin-top:0.35rem">
+            ${s.subject ? 'Assunto: ' + escapeHtml(s.subject) : ''}
+            ${s.email ? ' · ' + escapeHtml(s.email) : ''}
+          </div>
+          ${msg ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444;white-space:pre-wrap">' + escapeHtml(msg) + '</p>' : ''}
+          <div class="actions" style="margin-top:0.65rem">
+            <button type="button" data-st="${s.id}" data-v="contactado">Respondido</button>
+            <button type="button" data-st="${s.id}" data-v="arquivado">Arquivar</button>
+            <button type="button" class="danger" data-del-sub="${s.id}">Apagar</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    bindSubmissionActions(list);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function bindSubmissionActions(list) {
     list.querySelectorAll('[data-st]').forEach(btn => {
       btn.addEventListener('click', async () => {
         await adminAction('update_submission', { id: btn.dataset.st, status: btn.dataset.v });
@@ -292,6 +342,7 @@
         const json = await res.json();
         if (json.store) store = json.store;
         renderInbox();
+        renderContacts();
         renderNewsletters();
         renderClients();
       } else {
@@ -688,6 +739,7 @@
     renderMediaLibrary();
     renderTexts();
     renderInbox();
+    renderContacts();
     renderNewsletters();
     renderClients();
   }

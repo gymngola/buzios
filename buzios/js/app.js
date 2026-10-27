@@ -157,8 +157,16 @@
     $$('[data-site-img]').forEach(el => {
       const key = el.getAttribute('data-site-img');
       if (images[key]) {
-        if (el.tagName === 'IMG') el.src = images[key];
-        else if (el.tagName === 'VIDEO') el.poster = images[key];
+        if (el.tagName === 'IMG') {
+          el.src = images[key];
+          el.hidden = false;
+          el.removeAttribute('hidden');
+        } else if (el.tagName === 'VIDEO') {
+          el.poster = images[key];
+        }
+      } else if (key === 'hero2' && el.tagName === 'IMG') {
+        el.src = '';
+        el.hidden = true;
       }
     });
     $$('[data-site-img-bg]').forEach(el => {

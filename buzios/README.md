@@ -6,8 +6,10 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 
 - Pure HTML / CSS / JS (no build step)
 - Cloudflare Pages (static)
-- Cloudflare Worker (publish API — holds Cloudinary secrets)
-- Cloudinary (unsigned media uploads + signed catalog.json)
+- Cloudflare Worker (publish + form submissions + admin store)
+- Cloudinary
+  - **Unsigned** preset for browser image/doc uploads
+  - **Signed** raw upload (Worker) for `catalog.json` and `store.json`
 - localStorage (admin drafts / same-browser preview)
 
 ## Pages
@@ -18,43 +20,68 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 | `ginasio.html` | Gym equipment & plans |
 | `natacao.html` | Swimming school |
 | `planos.html` | All plans & prices |
-| `contacto.html` | Contact + WhatsApp form |
+| `inscricao.html` | Enrollment form |
+| `contacto.html` | Contact form |
 | `admin.html` | Staff panel (password-gated) |
 
 ## Setup checklist
 
 1. **Cloudinary**
-   - Cloud name: `ogtzpc3v` (already set)
-   - Create an **unsigned** upload preset named `buzios_unsigned` (folder optional: `buzios`)
-   - API key / secret only go into the Worker (never in the browser)
+   - Cloud name: `ogtzpc3v` (already set in client JS)
+   - Create an **unsigned** upload preset named `buzios_unsigned` (folder: `buzios`)
+   - Use an API key with **upload/create** permission (Root key, or a key with Master Admin role)
+   - API key + secret go **only** into the Worker secrets (never in the browser)
 
-2. **Worker** (required for forms, publish, and admin store)
+2. **Worker** (required for forms, publish, and admin inbox)
    ```bash
    cd worker
    npx wrangler deploy
    npx wrangler secret put ADMIN_PASSWORD
-   npx wrangler secret put CLOUDINARY_CLOUD_NAME
-   npx wrangler secret put CLOUDINARY_API_KEY
-   npx wrangler secret put CLOUDINARY_API_SECRET
+   npx wrangler secret put CLOUDINARY_CLOUD_NAME   # ogtzpc3v
+   npx wrangler secret put CLOUDINARY_API_KEY      # key with create permission
+   npx wrangler secret put CLOUDINARY_API_SECRET   # matching secret, no trailing spaces
    ```
-   `PUBLISH_URL` in `js/admin.js` is set to:  
-   `https://buzios-publish.gymngola.workers.dev/publish`
+   Live base URL: `https://buzios-publish.gymngola.workers.dev`
+
+   | Route | Purpose |
+   |-------|---------|
+   | `POST /submit` | Public — enrollment, contact, newsletter |
+   | `POST /publish` | Admin — write `buzios/catalog.json` |
+   | `POST /admin/data` | Admin — read/update `buzios/store.json` |
 
    After any change to `worker/src/index.js`, run `npx wrangler deploy` again.
-   Forms and publish write `buzios/store.json` / `buzios/catalog.json` via signed
-   Cloudinary raw upload (signature must include `overwrite=true`, alphabetical).
 
 3. **Admin password**  
-   Default in `js/admin.js`: `buzios2026` — **change after handoff**.
+   Default in `js/admin.js`: `buzios2026` — **change after handoff** (and set the same value as Worker `ADMIN_PASSWORD`).
 
 4. **Deploy static site**  
    Point Cloudflare Pages (or any static host) at the project root (folder containing `index.html`).
 
 5. **Smoke test**
-   - Open `/admin.html` → login
-   - Edit a plan price → Guardar rascunho → open site in same browser
-   - Carregar an image → assign to Hero → Publicar na loja
+   - Contact form → success alert → Admin → **Inscrições** shows type Contacto
+   - Enrollment form → success box → appears in Inscrições + Clientes
+   - Admin → login → upload image → assign to Hero → **Publicar na loja**
    - Hard-refresh public site (catalog loads from Cloudinary)
+   - Optional CLI:
+     ```bash
+     curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/submit" \
+       -H "Content-Type: application/json" \
+       -d '{"type":"contact","name":"Test","phone":"900000000","message":"ping"}'
+     # expect: {"ok":true,"id":"..."}
+     ```
+
+## Cloudinary assets (Worker)
+
+| Public ID | Written by | Read by |
+|-----------|------------|---------|
+| `buzios/catalog.json` | `POST /publish` | Public site (`js/app.js`) |
+| `buzios/store.json` | `POST /submit`, `POST /admin/data` | Admin inbox / clients |
+
+Signed raw upload must include `overwrite=true` in the signature string (alphabetical params + API secret). Client image uploads use the unsigned preset only.
+
+**Permissions:** If the Worker returns `missing permissions (actions=["create"])`, the API key is restricted — use Root or assign Master Admin to that key.
+
+**Invalid Signature:** Almost always a mismatched key/secret pair or a trailing newline in `CLOUDINARY_API_SECRET`. Re-run `wrangler secret put` with the exact secret from Cloudinary.
 
 ## Brand
 
@@ -80,6 +107,9 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 ## Notes
 
 - Orders / inscriptions via WhatsApp (no payment backend).
-- Catalog URL pattern:  
+- Catalog URL:  
   `https://res.cloudinary.com/ogtzpc3v/raw/upload/buzios/catalog.json`
-- Media “delete” in admin only removes from local library list.
+- Store URL:  
+  `https://res.cloudinary.com/ogtzpc3v/raw/upload/buzios/store.json`
+- Media “delete” in admin only removes from the local library list (not Cloudinary).
+- Keep Worker `public_id` paths in sync with load URLs (`store.json` / `catalog.json` — not bare `store` / `catalog`).

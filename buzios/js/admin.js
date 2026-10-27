@@ -11,7 +11,8 @@
   const UPLOAD_PRESET = 'buzios_unsigned';
   const CATALOG_FOLDER = 'buzios';
   const SITE_IMAGE_SLOTS = [
-    { key: 'hero', label: 'Hero (página inicial)' },
+    { key: 'hero', label: 'Hero 1 (página inicial)' },
+    { key: 'hero2', label: 'Hero 2 (página inicial)' },
     { key: 'intro', label: 'Secção Sobre / Intro' },
     { key: 'ginasio', label: 'Página Ginásio (hero)' },
     { key: 'natacao', label: 'Página Natação (hero)' },

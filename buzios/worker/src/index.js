@@ -222,7 +222,7 @@ async function uploadRaw(env, publicId, content) {
   // Cloudinary: sign only included params, alphabetical, then append api_secret.
   // overwrite must be in the signature because we send it on the form.
   const toSign =
-    'overwrite=true&public_id=' + publicId + '&timestamp=' + timestamp + apiSecret;
+  'overwrite=true&public_id=' + publicId + '&timestamp=' + timestamp + apiSecret;
   const signature = await sha1(toSign);
 
   const form = new FormData();

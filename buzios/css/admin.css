@@ -36,16 +36,36 @@ a { color: var(--admin-accent); }
 }
 .login-box h1 { font-size: 1.25rem; font-weight: 500; margin-bottom: 0.35rem; }
 .login-box p { color: var(--admin-muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
-.login-box input {
+.login-box .pass-wrap {
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+.login-box .pass-wrap input {
   width: 100%;
   height: 46px;
-  padding: 0 1rem;
+  padding: 0 3.2rem 0 1rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
-  margin-bottom: 0.75rem;
   font-size: 16px;
+  background: #fff;
 }
-.login-box button {
+.login-box .pass-toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  color: var(--admin-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.45rem;
+  width: auto;
+  height: auto;
+  font-weight: 400;
+}
+.login-box .pass-toggle:hover { color: var(--admin-text); }
+.login-box #loginBtn {
   width: 100%;
   height: 46px;
   background: var(--admin-text);
@@ -55,6 +75,7 @@ a { color: var(--admin-accent); }
   font-weight: 500;
   cursor: pointer;
 }
+.login-box #loginBtn:hover { opacity: 0.9; }
 
 /* Header bar */
 .admin-bar {

@@ -24,6 +24,13 @@
     { key: 'ginasio_equip3', label: 'Ginásio — Equipamento (foto 3)' },
     { key: 'ginasio_cta', label: 'Ginásio — CTA “Marque a sua visita”' },
     { key: 'natacao', label: 'Página Natação (hero)' },
+    { key: 'natacao_equip1', label: 'Natação — Instalações (foto 1)' },
+    { key: 'natacao_equip2', label: 'Natação — Instalações (foto 2)' },
+    { key: 'natacao_equip3', label: 'Natação — Instalações (foto 3)' },
+    { key: 'natacao_cta', label: 'Natação — CTA “Inscreva-se na escola”' },
+    { key: 'planos', label: 'Planos & Preços (hero)' },
+    { key: 'inscricao', label: 'Inscrição (hero)' },
+    { key: 'contacto', label: 'Contacto (hero)' },
     { key: 'promo', label: 'Promo / banner extra' }
   ];
 

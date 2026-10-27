@@ -104,13 +104,69 @@
           <h2 class="section-title">Duas piscinas · Ambiente completo</h2>
           <p class="section-desc">Espaço pensado para a prática segura e confortável da natação, com áreas de apoio para toda a família.</p>
         </div>
-        <ul class="feature-list" style="max-width:520px;margin:0 auto">
-          <li>2 piscinas (aprox. 12×6 m e 10×5 m)</li>
-          <li>Piscina aquecida</li>
-          <li>WC e vestiários femininos / masculinos</li>
-          <li>Área de descanso e de espera com mesas e cadeiras</li>
-          <li>Lojinha Búzios</li>
-          <li>Aulas em grupo (máx. 7 alunos) e acompanhamento personalizado</li>
+
+        <div class="equip-carousel" id="equipCarousel" hidden>
+          <div class="equip-carousel-track">
+            <div class="equip-slide is-active">
+              <img data-site-img="natacao_equip1" src="" alt="Instalações da escola de natação Búzios" hidden>
+            </div>
+            <div class="equip-slide">
+              <img data-site-img="natacao_equip2" src="" alt="Piscina Búzios" hidden>
+            </div>
+            <div class="equip-slide">
+              <img data-site-img="natacao_equip3" src="" alt="Espaço de apoio Búzios" hidden>
+            </div>
+          </div>
+          <button type="button" class="equip-nav equip-prev" aria-label="Imagem anterior">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button type="button" class="equip-nav equip-next" aria-label="Imagem seguinte">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+          <div class="equip-dots" role="tablist" aria-label="Imagens das instalações">
+            <button type="button" class="equip-dot is-active" aria-label="Imagem 1" data-equip-dot="0"></button>
+            <button type="button" class="equip-dot" aria-label="Imagem 2" data-equip-dot="1"></button>
+            <button type="button" class="equip-dot" aria-label="Imagem 3" data-equip-dot="2"></button>
+          </div>
+        </div>
+
+        <ul class="feature-list feature-list--icons" style="max-width:520px;margin:0 auto">
+          <li>
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="8" height="12" rx="1"/><rect x="13" y="8" width="8" height="10" rx="1"/></svg>
+            </span>
+            <span>2 piscinas (aprox. 12×6 m e 10×5 m)</span>
+          </li>
+          <li>
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2 2.2 2 4.4 2"/><path d="M4 13c2.2 0 2.2-2 4.4-2s2.2 2 4.4 2 2.2-2 4.4-2 2.2 2 4.4 2"/><path d="M12 4v4"/></svg>
+            </span>
+            <span>Piscina aquecida</span>
+          </li>
+          <li>
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16v10H4z"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.2"/></svg>
+            </span>
+            <span>WC e vestiários femininos / masculinos</span>
+          </li>
+          <li>
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13h14v6H5z"/><path d="M8 13V9a4 4 0 0 1 8 0v4"/><path d="M9 19v2M15 19v2"/></svg>
+            </span>
+            <span>Área de descanso e de espera com mesas e cadeiras</span>
+          </li>
+          <li>
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1.5 10H5.5L4 9z"/><path d="M9 9V7a3 3 0 0 1 6 0v2"/><path d="M10 13h4"/></svg>
+            </span>
+            <span>Lojinha Búzios</span>
+          </li>
+          <li>
+            <span class="feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3.5 19c.7-2.8 2.8-4.5 5.5-4.5s4.8 1.7 5.5 4.5"/><path d="M14 19c.5-2 1.8-3.2 3.5-3.5"/></svg>
+            </span>
+            <span>Aulas em grupo (máx. 7 alunos) e acompanhamento personalizado</span>
+          </li>
         </ul>
       </div>
     </section>
@@ -194,7 +250,8 @@
       </div>
     </section>
 
-    <section class="cta-band">
+    <section class="cta-band" data-site-img-bg="natacao_cta">
+      <div class="cta-band-overlay"></div>
       <div class="container">
         <h2 class="section-title">Inscreva-se na escola de natação</h2>
         <p class="section-desc">Documentos: 2 fotos, cópia do BI ou cédula, atestado médico. Envie a inscrição e a equipa confirma.</p>

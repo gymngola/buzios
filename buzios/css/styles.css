@@ -1174,10 +1174,48 @@ body.drawer-open { overflow: hidden; }
 
 /* ========== PAGE HERO (inner pages) ========== */
 .page-hero {
+  position: relative;
+  overflow: hidden;
   padding: calc(var(--announce-h) + var(--header-h) + 3.5rem) 0 3.25rem;
   text-align: center;
-  background: var(--color-surface-soft);
+  background-color: var(--color-surface-soft);
+  background-size: cover;
+  background-position: center;
   border-bottom: 1px solid var(--color-border);
+}
+.page-hero-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(160deg, rgba(28, 25, 23, 0.58) 0%, rgba(42, 37, 32, 0.5) 100%),
+    radial-gradient(ellipse at 70% 20%, rgba(196, 92, 38, 0.1), transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+.page-hero .container {
+  position: relative;
+  z-index: 1;
+}
+.page-hero.has-photo {
+  border-bottom-color: transparent;
+}
+.page-hero.has-photo .page-hero-overlay {
+  display: block;
+}
+.page-hero.has-photo .section-eyebrow {
+  color: rgba(255, 255, 255, 0.72);
+}
+.page-hero.has-photo .section-title {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+.page-hero.has-photo .section-title::after {
+  background: var(--color-accent);
+}
+.page-hero.has-photo .section-desc {
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 .page-hero .section-title {
   margin-bottom: 0.55rem;

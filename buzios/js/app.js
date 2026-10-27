@@ -172,6 +172,10 @@
       const key = el.getAttribute('data-site-img-bg');
       if (images[key]) {
         el.style.backgroundImage = `url('${images[key]}')`;
+        el.classList.add('has-photo');
+      } else {
+        el.style.backgroundImage = '';
+        el.classList.remove('has-photo');
       }
     });
     initHeroSlideshow();

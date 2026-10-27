@@ -56,7 +56,7 @@ async function handlePublish(request, env) {
   if (!catalog || typeof catalog !== 'object') {
     return json({ error: 'Missing catalog' }, 400);
   }
-  const result = await uploadRaw(env, FOLDER + '/catalog', JSON.stringify(catalog, null, 2));
+  const result = await uploadRaw(env, FOLDER + '/catalog.json', JSON.stringify(catalog, null, 2));
   return json({ ok: true, url: result.secure_url, updatedAt: catalog.updatedAt });
 }
 
@@ -140,7 +140,7 @@ async function handleSubmit(request, env) {
   if (store.clients && store.clients.length > 500) store.clients = store.clients.slice(0, 500);
 
   store.updatedAt = new Date().toISOString();
-  await uploadRaw(env, FOLDER + '/store', JSON.stringify(store));
+  await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
   return json({ ok: true, id });
 }
 
@@ -164,7 +164,7 @@ async function handleAdminData(request, env) {
       store.submissions[idx] = Object.assign({}, store.submissions[idx], data, { id: data.id });
     }
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store', JSON.stringify(store));
+    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
     return json({ ok: true, store });
   }
 
@@ -177,21 +177,21 @@ async function handleAdminData(request, env) {
       store.clients.unshift(data);
     }
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store', JSON.stringify(store));
+    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
     return json({ ok: true, store });
   }
 
   if (action === 'delete_submission' && data && data.id) {
     store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store', JSON.stringify(store));
+    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
     return json({ ok: true, store });
   }
 
   if (action === 'replace_store' && data) {
     store = data;
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store', JSON.stringify(store));
+    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
     return json({ ok: true, store });
   }
 
@@ -199,40 +199,65 @@ async function handleAdminData(request, env) {
 }
 
 async function loadStore(env) {
-  const cloudName = env.CLOUDINARY_CLOUD_NAME;
-  const url = 'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + FOLDER + '/store.json?t=' + Date.now();
-  try {
-    const res = await fetch(url, { cf: { cacheTtl: 0, cacheEverything: false } });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (_) {}
+  const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
+  const bust = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  // Prefer store.json; also try legacy path without extension (old writes)
+  const candidates = [
+    'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + FOLDER + '/store.json?_=' + bust,
+    'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + FOLDER + '/store?_=' + bust
+  ];
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+        cf: { cacheTtl: 0, cacheEverything: false }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object') return data;
+      }
+    } catch (_) {}
+  }
   return { submissions: [], clients: [], newsletters: [], classes: [], updatedAt: null };
 }
 
 async function uploadRaw(env, publicId, content) {
-  const cloudName = env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = env.CLOUDINARY_API_KEY;
-  const apiSecret = env.CLOUDINARY_API_SECRET;
+  // Trim secrets — trailing newlines from `wrangler secret put` break signatures
+  const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
+  const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
+  const apiSecret = String(env.CLOUDINARY_API_SECRET || '').trim();
   if (!cloudName || !apiKey || !apiSecret) {
-    throw new Error('Server misconfigured');
+    throw new Error('Server misconfigured (missing Cloudinary secrets)');
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
-  // Cloudinary: sign only included params, alphabetical, then append api_secret.
-  // overwrite must be in the signature because we send it on the form.
+
+  // Params included in the signature (alphabetical). Never include file, api_key,
+  // cloud_name, or resource_type. Then append api_secret with no separator.
+  const signParams = {
+    overwrite: 'true',
+    public_id: publicId,
+    timestamp: String(timestamp)
+  };
   const toSign =
-  'overwrite=true&public_id=' + publicId + '&timestamp=' + timestamp + apiSecret;
+    Object.keys(signParams)
+      .sort()
+      .map((k) => k + '=' + signParams[k])
+      .join('&') + apiSecret;
   const signature = await sha1(toSign);
 
   const form = new FormData();
-  form.append('file', new Blob([content], { type: 'application/json' }), publicId.split('/').pop() + '.json');
+  // Data URI avoids Blob/filename quirks on some runtimes
+  const dataUri =
+    'data:application/json;base64,' +
+    btoa(unescape(encodeURIComponent(content)));
+  form.append('file', dataUri);
   form.append('api_key', apiKey);
   form.append('timestamp', String(timestamp));
   form.append('public_id', publicId);
   form.append('signature', signature);
   form.append('overwrite', 'true');
-  // resource_type is in the URL path (/raw/upload), not a signed form field
 
   const uploadRes = await fetch(
     'https://api.cloudinary.com/v1_1/' + cloudName + '/raw/upload',

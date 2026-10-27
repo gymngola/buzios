@@ -189,8 +189,8 @@ async function handleSubmit(request, env) {
   if (store.clients && store.clients.length > 500) store.clients = store.clients.slice(0, 500);
 
   store.updatedAt = new Date().toISOString();
-  await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
-  return json({ ok: true, id });
+  await saveStore(env, store);
+  return json({ ok: true, id, count: (store.submissions || []).length });
 }
 
 async function handleAdminData(request, env) {
@@ -213,7 +213,7 @@ async function handleAdminData(request, env) {
       store.submissions[idx] = Object.assign({}, store.submissions[idx], data, { id: data.id });
     }
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
+    await saveStore(env, store);
     return json({ ok: true, store });
   }
 
@@ -226,89 +226,163 @@ async function handleAdminData(request, env) {
       store.clients.unshift(data);
     }
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
+    await saveStore(env, store);
     return json({ ok: true, store });
   }
 
   if (action === 'delete_submission' && data && data.id) {
     store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
+    await saveStore(env, store);
     return json({ ok: true, store });
   }
 
   if (action === 'delete_newsletter' && data && data.id) {
     store.newsletters = (store.newsletters || []).filter(n => n.id !== data.id);
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
+    await saveStore(env, store);
     return json({ ok: true, store });
   }
 
   if (action === 'replace_store' && data) {
     store = data;
     store.updatedAt = new Date().toISOString();
-    await uploadRaw(env, FOLDER + '/store.json', JSON.stringify(store));
+    await saveStore(env, store);
     return json({ ok: true, store });
   }
 
   return json({ error: 'Unknown action' }, 400);
 }
 
-/**
- * Load store.json without Cloudinary CDN lag.
- * Uses Admin API to resolve the current version, then fetches the versioned URL.
- */
-async function loadStore(env) {
+const STORE_CACHE_URL = 'https://buzios-internal.workers.dev/store.json';
+
+function emptyStore() {
+  return { submissions: [], clients: [], newsletters: [], classes: [], updatedAt: null };
+}
+
+function storeScore(s) {
+  if (!s || typeof s !== 'object') return -1;
+  return (s.submissions || []).length + (s.newsletters || []).length + (s.clients || []).length;
+}
+
+/** Prefer the richer / newer of two store snapshots. */
+function preferStore(a, b) {
+  if (!a) return b || emptyStore();
+  if (!b) return a;
+  const sa = storeScore(a);
+  const sb = storeScore(b);
+  if (sa !== sb) return sa > sb ? a : b;
+  const ta = Date.parse(a.updatedAt || 0) || 0;
+  const tb = Date.parse(b.updatedAt || 0) || 0;
+  return ta >= tb ? a : b;
+}
+
+async function loadStoreFromCache() {
+  try {
+    const hit = await caches.default.match(STORE_CACHE_URL);
+    if (hit) {
+      const data = await hit.json();
+      if (data && typeof data === 'object') return data;
+    }
+  } catch (_) {}
+  return null;
+}
+
+async function loadStoreFromCloudinary(env) {
   const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
   const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
   const apiSecret = String(env.CLOUDINARY_API_SECRET || '').trim();
-  const empty = { submissions: [], clients: [], newsletters: [], classes: [], updatedAt: null };
+  if (!cloudName) return null;
 
-  const publicIds = [FOLDER + '/store.json', FOLDER + '/store'];
+  const publicId = FOLDER + '/store.json';
 
-  // 1. Admin API → versioned delivery (always current)
-  if (cloudName && apiKey && apiSecret) {
-    const auth = btoa(apiKey + ':' + apiSecret);
-    for (const publicId of publicIds) {
-      try {
-        const metaRes = await fetch(
-          'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + encodeURIComponent(publicId),
-          { headers: { Authorization: 'Basic ' + auth } }
-        );
-        if (!metaRes.ok) continue;
-        const meta = await metaRes.json();
-        const version = meta.version;
-        if (!version) continue;
-        const versioned =
-          'https://res.cloudinary.com/' + cloudName + '/raw/upload/v' + version + '/' + publicId;
-        const fileRes = await fetch(versioned, { cache: 'no-store' });
-        if (!fileRes.ok) continue;
-        const data = await fileRes.json();
-        if (data && typeof data === 'object') return data;
-      } catch (_) {}
-    }
-  }
-
-  // 2. Fallback: delivery URL (may be stale if CDN hasn't invalidated)
-  const bust = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-  for (const publicId of publicIds) {
+  // Admin API → versioned / secure_url (avoids 30-day delivery CDN)
+  if (apiKey && apiSecret) {
     try {
-      const res = await fetch(
-        'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId + '?_=' + bust,
-        {
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
-          cf: { cacheTtl: 0, cacheEverything: false }
-        }
+      const auth = btoa(apiKey + ':' + apiSecret);
+      const metaRes = await fetch(
+        'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + encodeURIComponent(publicId),
+        { headers: { Authorization: 'Basic ' + auth } }
       );
-      if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data === 'object') return data;
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        const urls = [];
+        if (meta.secure_url) urls.push(meta.secure_url);
+        if (meta.url) urls.push(meta.url.replace(/^http:/, 'https:'));
+        if (meta.version) {
+          urls.push(
+            'https://res.cloudinary.com/' + cloudName + '/raw/upload/v' + meta.version + '/' + publicId
+          );
+        }
+        for (const u of urls) {
+          try {
+            const fileRes = await fetch(u + (u.includes('?') ? '&' : '?') + '_=' + Date.now(), {
+              cache: 'no-store'
+            });
+            if (fileRes.ok) {
+              const data = await fileRes.json();
+              if (data && typeof data === 'object' && (data.submissions || data.newsletters || data.clients || data.updatedAt)) {
+                return data;
+              }
+            }
+          } catch (_) {}
+        }
       }
     } catch (_) {}
   }
 
-  return empty;
+  // Delivery fallback
+  try {
+    const res = await fetch(
+      'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId + '?_=' + Date.now(),
+      { cache: 'no-store', cf: { cacheTtl: 0, cacheEverything: false } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') return data;
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+/**
+ * Load store: Workers Cache (fast, same-colo) + Cloudinary (durable).
+ * Picks the richer snapshot so CDN lag cannot wipe submissions.
+ */
+async function loadStore(env) {
+  const fromCache = await loadStoreFromCache();
+  const fromCloud = await loadStoreFromCloudinary(env);
+  const chosen = preferStore(fromCache, fromCloud);
+  if (storeScore(chosen) > 0 && storeScore(chosen) > storeScore(fromCache || emptyStore())) {
+    try {
+      await caches.default.put(
+        STORE_CACHE_URL,
+        new Response(JSON.stringify(chosen), {
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=604800' }
+        })
+      );
+    } catch (_) {}
+  }
+  return chosen;
+}
+
+async function saveStore(env, store) {
+  const body = JSON.stringify(store);
+  // 1. Workers Cache — immediate read for this colo
+  try {
+    await caches.default.put(
+      STORE_CACHE_URL,
+      new Response(body, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'max-age=604800'
+        }
+      })
+    );
+  } catch (_) {}
+  // 2. Cloudinary — durable backup (invalidate CDN)
+  await uploadRaw(env, FOLDER + '/store.json', body);
 }
 
 async function uploadRaw(env, publicId, content) {

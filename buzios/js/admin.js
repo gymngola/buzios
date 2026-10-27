@@ -95,15 +95,28 @@
     if (e.key === 'Enter') $('#loginBtn').click();
   });
 
-  $$('.admin-tabs button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      $$('.admin-tabs button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      $$('.panel').forEach(p => p.classList.remove('active'));
-      const panel = $('#panel-' + btn.dataset.panel);
-      if (panel) panel.classList.add('active');
+  function activatePanel(name) {
+    if (!name) return;
+    $$('.admin-tabs button').forEach(b => {
+      b.classList.toggle('active', b.dataset.panel === name);
     });
+    $$('.panel').forEach(p => p.classList.remove('active'));
+    const panel = $('#panel-' + name);
+    if (panel) panel.classList.add('active');
+    try {
+      sessionStorage.setItem('buzios_admin_panel', name);
+    } catch (e) {}
+  }
+
+  $$('.admin-tabs button').forEach(btn => {
+    btn.addEventListener('click', () => activatePanel(btn.dataset.panel));
   });
+
+  // Keep the same tab after reload (default stays Inscrições)
+  try {
+    const saved = sessionStorage.getItem('buzios_admin_panel');
+    if (saved && $('#panel-' + saved)) activatePanel(saved);
+  } catch (e) {}
 
   /**
    * Source of truth:

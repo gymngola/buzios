@@ -30,7 +30,8 @@
     products: 'buzios_products_override',
     texts: 'buzios_texts_override',
     images: 'buzios_images_override',
-    media: 'buzios_media_library'
+    media: 'buzios_media_library',
+    dirty: 'buzios_draft_dirty'
   };
 
   let products = [];
@@ -40,6 +41,8 @@
   let store = { submissions: [], clients: [], newsletters: [] };
   let editingId = null;
   let editingClientId = null;
+  /** Slot key waiting for a pick from the media library (or null). */
+  let pendingSlotKey = null;
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -104,25 +107,22 @@
   /**
    * Source of truth:
    * 1. Defaults (products.js)
-   * 2. Live catalog.json from Cloudinary — shared by every browser
-   * After a successful remote load we overwrite localStorage so stale drafts
-   * from other sessions cannot hide the published version.
-   * "Guardar rascunho" still writes local only for mid-session work.
+   * 2. Live catalog.json from Cloudinary (shared across browsers)
+   * 3. If this browser has an unpublished draft (dirty flag), layer localStorage on top
+   * After publish → clear dirty and sync local to published state.
+   * Media library is always local-only.
    */
   async function loadState() {
-    // 1. Defaults
     products = (window.DEFAULT_PRODUCTS || []).map(x => ({ ...x }));
     texts = JSON.parse(JSON.stringify(window.DEFAULT_TEXTS || { pt: {}, en: {} }));
     images = Object.assign({}, window.DEFAULT_SITE_IMAGES || {});
 
-    // Media library stays local (not in catalog)
     try {
       mediaLibrary = JSON.parse(localStorage.getItem(LS.media) || '[]');
     } catch (e) {
       mediaLibrary = [];
     }
 
-    // 2. Live published catalog (same for every browser)
     let loadedRemote = false;
     try {
       const res = await fetch(CATALOG_JSON_URL + '?t=' + Date.now(), { cache: 'no-store' });
@@ -140,16 +140,13 @@
         loadedRemote = true;
       }
     } catch (e) {
-      console.warn('Catalog fetch failed, falling back to local draft', e);
+      console.warn('Catalog fetch failed', e);
     }
 
-    if (loadedRemote) {
-      // Align this browser with the live store so all admins see the same data
-      localStorage.setItem(LS.products, JSON.stringify(products));
-      localStorage.setItem(LS.texts, JSON.stringify(texts));
-      localStorage.setItem(LS.images, JSON.stringify(images));
-    } else {
-      // Offline / catalog missing → use local draft if any
+    const hasDirtyDraft = localStorage.getItem(LS.dirty) === '1';
+
+    if (hasDirtyDraft || !loadedRemote) {
+      // Keep unpublished work in this browser
       try {
         const p = localStorage.getItem(LS.products);
         if (p) products = JSON.parse(p);
@@ -162,6 +159,14 @@
         const i = localStorage.getItem(LS.images);
         if (i) images = Object.assign({}, images, JSON.parse(i));
       } catch (e) {}
+      if (hasDirtyDraft) {
+        toast('Rascunho local (ainda não publicado)');
+      }
+    } else {
+      // Clean browser → match live catalog
+      localStorage.setItem(LS.products, JSON.stringify(products));
+      localStorage.setItem(LS.texts, JSON.stringify(texts));
+      localStorage.setItem(LS.images, JSON.stringify(images));
     }
   }
 
@@ -184,20 +189,26 @@
     renderClients();
   }
 
+  function markDirty() {
+    localStorage.setItem(LS.dirty, '1');
+  }
+
   function saveDraft() {
     localStorage.setItem(LS.products, JSON.stringify(products));
     localStorage.setItem(LS.texts, JSON.stringify(texts));
     localStorage.setItem(LS.images, JSON.stringify(images));
     localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
+    markDirty();
     toast('Rascunho guardado neste browser (só este)');
   }
 
-  /** After a successful publish, sync localStorage so this browser matches the live catalog. */
+  /** After publish: local matches live catalog; clear dirty so other browsers stay in sync. */
   function syncLocalFromState() {
     localStorage.setItem(LS.products, JSON.stringify(products));
     localStorage.setItem(LS.texts, JSON.stringify(texts));
     localStorage.setItem(LS.images, JSON.stringify(images));
     localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
+    localStorage.removeItem(LS.dirty);
   }
 
   // —— Inbox ——
@@ -458,18 +469,21 @@
     if (!el) return;
     el.innerHTML = SITE_IMAGE_SLOTS.map(slot => {
       const url = images[slot.key] || '';
+      const picking = pendingSlotKey === slot.key;
       return `
-        <div class="img-slot" data-key="${slot.key}">
-          <strong style="font-size:0.85rem">${slot.label}</strong>
+        <div class="img-slot" data-key="${slot.key}" style="${picking ? 'outline:2px solid #c45c26;outline-offset:2px' : ''}">
+          <strong style="font-size:0.85rem">${slot.label}${picking ? ' — toque numa foto da biblioteca ↓' : ''}</strong>
           ${url ? `<img src="${url}" alt="">` : '<div style="height:80px;background:#eee;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.8rem">Sem imagem</div>'}
           <div class="slot-actions">
             <button type="button" data-upload="${slot.key}">Carregar</button>
+            <button type="button" data-pick="${slot.key}">Da biblioteca</button>
             <button type="button" data-clear="${slot.key}">Original</button>
           </div>
         </div>`;
     }).join('');
     el.querySelectorAll('[data-upload]').forEach(btn => {
       btn.addEventListener('click', () => {
+        pendingSlotKey = null;
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -481,19 +495,36 @@
             const url = await uploadToCloudinary(file);
             images[btn.dataset.upload] = url;
             mediaLibrary.unshift({ url, name: file.name, at: Date.now() });
+            markDirty();
+            localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
             renderImageSlots();
             renderMediaLibrary();
-            toast('Imagem carregada');
+            toast('Imagem carregada — publique para todos verem');
           } catch (err) {
-            toast('Erro no upload');
+            toast('Erro no upload: ' + (err.message || err));
           }
         };
         input.click();
       });
     });
+    el.querySelectorAll('[data-pick]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!mediaLibrary.length) {
+          toast('Biblioteca vazia — carregue fotos primeiro');
+          return;
+        }
+        pendingSlotKey = btn.dataset.pick;
+        renderImageSlots();
+        renderMediaLibrary();
+        toast('Toque numa foto da biblioteca para atribuir');
+        const lib = $('#mediaLibrary');
+        if (lib) lib.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    });
     el.querySelectorAll('[data-clear]').forEach(btn => {
       btn.addEventListener('click', () => {
         delete images[btn.dataset.clear];
+        markDirty();
         renderImageSlots();
       });
     });
@@ -502,15 +533,32 @@
   function renderMediaLibrary() {
     const el = $('#mediaLibrary');
     if (!el) return;
+    const picking = !!pendingSlotKey;
     el.innerHTML = mediaLibrary.map((m, i) => `
-      <div style="position:relative">
-        <img src="${m.url}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px">
+      <div style="position:relative;cursor:${picking ? 'pointer' : 'default'}" data-use="${i}" title="${picking ? 'Usar neste slot' : m.name || ''}">
+        <img src="${m.url}" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;${picking ? 'box-shadow:0 0 0 2px #c45c26' : ''}">
         <button type="button" data-rm="${i}" style="position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;font-size:12px;cursor:pointer">×</button>
       </div>
     `).join('');
+    el.querySelectorAll('[data-use]').forEach(wrap => {
+      wrap.addEventListener('click', (e) => {
+        if (e.target.closest('[data-rm]')) return;
+        if (!pendingSlotKey) return;
+        const m = mediaLibrary[Number(wrap.dataset.use)];
+        if (!m) return;
+        images[pendingSlotKey] = m.url;
+        pendingSlotKey = null;
+        markDirty();
+        renderImageSlots();
+        renderMediaLibrary();
+        toast('Imagem atribuída — publique para todos verem');
+      });
+    });
     el.querySelectorAll('[data-rm]').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         mediaLibrary.splice(Number(btn.dataset.rm), 1);
+        localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
         renderMediaLibrary();
       });
     });
@@ -523,10 +571,11 @@
     try {
       const url = await uploadToCloudinary(file);
       mediaLibrary.unshift({ url, name: file.name, at: Date.now() });
+      localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
       renderMediaLibrary();
       toast('Adicionado à biblioteca');
     } catch (err) {
-      toast('Erro no upload');
+      toast('Erro no upload: ' + (err.message || err));
     }
     e.target.value = '';
   });
@@ -539,8 +588,12 @@
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
       method: 'POST', body: fd
     });
-    if (!res.ok) throw new Error('upload failed');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data.error?.message || data.message || res.statusText || 'upload failed';
+      throw new Error(msg);
+    }
+    if (!data.secure_url) throw new Error('Resposta Cloudinary sem URL');
     return data.secure_url;
   }
 
@@ -591,7 +644,6 @@
         body: JSON.stringify({ password: ADMIN_PASSWORD, catalog })
       });
       if (!res.ok) throw new Error(await res.text());
-      // Keep this browser in sync with what was just published
       syncLocalFromState();
       toast('Publicado com sucesso — todos os browsers verão isto após refresh');
     } catch (err) {

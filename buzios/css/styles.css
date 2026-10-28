@@ -439,6 +439,7 @@ body.drawer-open { overflow: hidden; }
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 30%;
   opacity: 0;
   transition: opacity 1.2s ease, transform 12s var(--ease-out);
   transform: scale(1.02);
@@ -517,7 +518,7 @@ body.drawer-open { overflow: hidden; }
   overflow: hidden;
   background: var(--color-surface-soft);
   background-size: cover;
-  background-position: center;
+  background-position: center 25%;
 }
 .section-services > .container {
   position: relative;
@@ -708,6 +709,7 @@ body.drawer-open { overflow: hidden; }
 }
 @media (min-width: 900px) {
   .intro-grid { grid-template-columns: 1fr 1fr; gap: 4.5rem; }
+  .intro-media { aspect-ratio: 16 / 10; }
 }
 .intro-media {
   border-radius: var(--radius-card);
@@ -724,7 +726,12 @@ body.drawer-open { overflow: hidden; }
   background: linear-gradient(to top, rgba(28,25,23,0.12), transparent 45%);
   pointer-events: none;
 }
-.intro-media img { width: 100%; height: 100%; object-fit: cover; }
+.intro-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
 .intro-content .section-title {
   text-align: left;
   font-family: var(--font-display);
@@ -804,6 +811,12 @@ body.drawer-open { overflow: hidden; }
   box-shadow: 0 8px 28px var(--color-shadow);
   aspect-ratio: 16 / 10;
 }
+@media (min-width: 900px) {
+  .equip-carousel {
+    max-width: 900px;
+    aspect-ratio: 16 / 9;
+  }
+}
 .equip-carousel-track {
   position: absolute;
   inset: 0;
@@ -824,6 +837,7 @@ body.drawer-open { overflow: hidden; }
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 30%;
   display: block;
 }
 .equip-nav {
@@ -938,7 +952,7 @@ body.drawer-open { overflow: hidden; }
 .cta-band {
   background: linear-gradient(160deg, #1c1917 0%, #2a2520 100%);
   background-size: cover;
-  background-position: center;
+  background-position: center 25%;
   color: #fff;
   text-align: center;
   padding: 4rem 1.25rem;
@@ -1194,7 +1208,7 @@ body.drawer-open { overflow: hidden; }
   text-align: center;
   background-color: var(--color-surface-soft);
   background-size: cover;
-  background-position: center;
+  background-position: center 25%;
   border-bottom: 1px solid var(--color-border);
 }
 .page-hero-overlay {
@@ -1305,6 +1319,27 @@ body.drawer-open { overflow: hidden; }
 @media (max-width: 600px) {
   .hero { min-height: 92vh; min-height: 92dvh; }
   .hero-content { padding-bottom: 3.75rem; }
+}
+
+/* Desktop: gentler crop + keep subjects higher in frame */
+@media (min-width: 900px) {
+  .hero {
+    min-height: 85vh;
+    min-height: 85dvh;
+  }
+  .hero-media img,
+  .hero-media video {
+    object-position: center 28%;
+  }
+  .intro-media img,
+  .equip-slide img {
+    object-position: center 28%;
+  }
+  .cta-band,
+  .page-hero,
+  .section-services {
+    background-position: center 22%;
+  }
 }
 
 /* Thin dividers */

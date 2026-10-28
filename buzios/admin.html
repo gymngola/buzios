@@ -9,118 +9,39 @@
   <link rel="stylesheet" href="css/admin.css">
   <style>
     .status-badge {
-      display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.45rem;
-      border-radius: 4px; background: #eee; margin-left: 0.35rem;
+      display: inline-block; font-size: 0.68rem; padding: 0.18rem 0.5rem;
+      border-radius: 6px; background: #eef2f4; margin-left: 0.3rem;
+      font-weight: 600; letter-spacing: 0.01em;
     }
     .status-novo { background: #fde8d8; color: #a34a1c; }
     .status-contactado { background: #e3f0ff; color: #1a5a9c; }
     .status-inscrito { background: #e3f5e8; color: #1a6b3a; }
-    .status-arquivado { background: #eee; color: #666; }
+    .status-arquivado { background: #eef2f4; color: #5a6f78; }
     .status-activo { background: #e3f5e8; color: #1a6b3a; }
     .status-pendente { background: #fde8d8; color: #a34a1c; }
     .status-expirado { background: #f5e3e3; color: #8b2a2a; }
-    .status-suspenso { background: #eee; color: #666; }
-    .status-cancelado { background: #eee; color: #666; }
+    .status-suspenso { background: #eef2f4; color: #5a6f78; }
+    .status-cancelado { background: #eef2f4; color: #5a6f78; }
     .status-em_dia { background: #e3f5e8; color: #1a6b3a; }
     .status-em_divida { background: #f5e3e3; color: #8b2a2a; }
     .status-atrasado { background: #fde8d8; color: #a34a1c; }
     .status-isento { background: #e3f0ff; color: #1a5a9c; }
     .status-a_expirar { background: #fff3cd; color: #856404; }
-    .clients-summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    .clients-summary .stat {
-      background: #fff;
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 10px;
-      padding: 0.65rem 0.75rem;
-      text-align: center;
-    }
-    .clients-summary .stat strong {
-      display: block;
-      font-size: 1.25rem;
-      font-weight: 600;
-      line-height: 1.2;
-    }
-    .clients-summary .stat span {
-      font-size: 0.7rem;
-      color: #666;
-    }
-    .clients-summary .stat.warn strong { color: #856404; }
-    .clients-summary .stat.danger strong { color: #8b2a2a; }
-    .clients-summary .stat.ok strong { color: #1a6b3a; }
-    .client-filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-      margin-bottom: 1rem;
-    }
-    .client-filters button {
-      padding: 0.35rem 0.7rem;
-      font-size: 0.75rem;
-      border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 20px;
-      background: #fff;
-      cursor: pointer;
-      color: #444;
-    }
-    .client-filters button.active {
-      background: #1a1a1a;
-      color: #fff;
-      border-color: #1a1a1a;
-    }
-    .prod-card.card-debt {
-      border-color: #e8b4b4;
-      background: #fffafa;
-    }
-    .prod-card.card-expiring {
-      border-color: #e8d48b;
-      background: #fffdf5;
-    }
-    .nav-badge {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      min-width: 16px;
-      height: 16px;
-      padding: 0 4px;
-      border-radius: 8px;
-      background: #c45c26;
-      color: #fff;
-      font-size: 0.65rem;
-      font-weight: 600;
-      line-height: 16px;
-      text-align: center;
-    }
-    .admin-nav button { position: relative; }
-    .pay-history {
-      font-size: 0.8rem;
-      color: #555;
-      margin-top: 0.5rem;
-      max-height: 140px;
-      overflow-y: auto;
-    }
-    .pay-history li {
-      padding: 0.35rem 0;
-      border-bottom: 1px solid #eee;
-      list-style: none;
-    }
     .upload-zone {
-      border: 2px dashed #ccc;
-      border-radius: 12px;
-      padding: 1.5rem 1rem;
+      border: 2px dashed rgba(15, 42, 50, 0.18);
+      border-radius: 14px;
+      padding: 1.75rem 1.15rem;
       text-align: center;
-      background: #fafafa;
+      background: #fff;
       cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      box-shadow: 0 1px 2px rgba(15, 42, 50, 0.04);
     }
     .upload-zone:hover, .upload-zone:focus {
       border-color: #c45c26;
-      background: #fff8f4;
+      background: #fdf8f4;
       outline: none;
+      box-shadow: 0 0 0 3px rgba(196, 92, 38, 0.1);
     }
     .upload-zone.dragover {
       border-color: #c45c26;
@@ -242,6 +163,13 @@
       </div><!-- /.admin-main -->
 
       <nav class="admin-nav admin-tabs" aria-label="Secções">
+        <div class="admin-nav-brand" aria-hidden="true">
+          <div class="brand-mark">B</div>
+          <div class="brand-text">
+            <span class="brand-name">Búzios</span>
+            <span class="brand-sub">Admin</span>
+          </div>
+        </div>
         <button type="button" data-panel="inbox" class="active" title="Inscrições">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 4h16v12H4z"/><path d="M8 8h8M8 12h5"/><path d="M4 16l4 4h8l4-4"/></svg>
           <span class="nav-label">Inscrições</span>

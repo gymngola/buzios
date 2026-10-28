@@ -535,11 +535,19 @@
       fd.append('file', file);
       fd.append('upload_preset', UPLOAD_PRESET);
       fd.append('folder', FOLDER + '/docs');
-      const res = await fetch('https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/auto/upload', {
+      // Images → image/upload; PDF and other docs → raw/upload
+      // (Cloudinary returns 401 on PDFs served via /image/upload/)
+      const isImage = (file.type || '').startsWith('image/');
+      const resource = isImage ? 'image' : 'raw';
+      const res = await fetch('https://api.cloudinary.com/v1_1/' + CLOUD_NAME + '/' + resource + '/upload', {
         method: 'POST', body: fd
       });
-      if (!res.ok) throw new Error('Upload failed');
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error('Upload failed: ' + (errText || res.status));
+      }
       const data = await res.json();
+      if (!data.secure_url) throw new Error('Upload sem URL');
       return data.secure_url;
     }
 

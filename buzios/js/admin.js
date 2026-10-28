@@ -281,7 +281,7 @@
             : (s.emergency ? '<div class="meta">Emergência: ' + escapeHtml(s.emergency) + '</div>' : '')}
           ${schedule}
           ${s.notes ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + escapeHtml(s.notes) + '</p>' : ''}
-          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos (' + s.attachments.length + '): ' + s.attachments.map((u,i) => '<a href="'+u+'" target="_blank" rel="noopener">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
+          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos (' + s.attachments.length + '): ' + s.attachments.map((u,i) => '<a href="'+escapeHtml(fixAttachmentUrl(u))+'" target="_blank" rel="noopener">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
           <div class="actions" style="margin-top:0.65rem">
             <button type="button" data-st="${s.id}" data-v="contactado">Contactado</button>
             <button type="button" data-st="${s.id}" data-v="inscrito">Inscrito</button>
@@ -334,6 +334,15 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  /** PDFs stored under /image/upload/ return 401; serve them via /raw/upload/ */
+  function fixAttachmentUrl(url) {
+    if (!url || typeof url !== 'string') return url || '';
+    if (/\.pdf($|\?)/i.test(url) && url.includes('/image/upload/')) {
+      return url.replace('/image/upload/', '/raw/upload/');
+    }
+    return url;
   }
 
   function bindSubmissionActions(list) {

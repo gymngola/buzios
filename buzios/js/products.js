@@ -286,26 +286,26 @@ const DEFAULT_TEXTS = {
 };
 
 const DEFAULT_SITE_IMAGES = {
-  hero: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600&q=80",
-  hero2: "",
-  intro: "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=900&q=80",
-  services: "",
-  cta: "",
-  ginasio: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1200&q=80",
-  ginasio_equip1: "",
-  ginasio_equip2: "",
-  ginasio_equip3: "",
-  ginasio_cta: "",
-  natacao: "https://images.unsplash.com/photo-1530549387789-4c1017266635?w=1200&q=80",
-  natacao_equip1: "",
-  natacao_equip2: "",
-  natacao_equip3: "",
-  natacao_cta: "",
-  planos: "",
-  inscricao: "",
-  contacto: "",
-  contacto_form: "",
-  promo: ""
+  hero: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111894/buzios/rbl7aqadp2pcocz3dcrz.jpg",
+  hero2: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793113211/buzios/jiskjszqjqt4t6e6s10i.jpg",
+  intro: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111100/buzios/kswmggmwz9lwwvnwembp.jpg",
+  services: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111118/buzios/xsqnk1s81lk08tcjvnuc.jpg",
+  cta: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111141/buzios/svjafecqgrzickxaeqmd.jpg",
+  ginasio: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111152/buzios/tmll5dj1syf2cj7sdema.jpg",
+  ginasio_equip1: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111169/buzios/ljxtzrk9bpcr0cgos5qm.jpg",
+  ginasio_equip2: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111175/buzios/kxclolxhzrrvfujog7eb.jpg",
+  ginasio_equip3: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111198/buzios/llibv3hqqw4r4uw3x9f9.jpg",
+  ginasio_cta: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793124440/buzios/ed4hy7hd87buh8umsgkj.jpg",
+  natacao: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111234/buzios/rdpcwhuh4vlqeuawg6fy.jpg",
+  natacao_equip1: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793125480/buzios/u9mu9mct5ieyv6os2qrz.jpg",
+  natacao_equip2: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793125485/buzios/v5f8nuyise0ivvpuio7t.jpg",
+  natacao_equip3: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793125519/buzios/pnfgqyldfhxwjms8qkzh.jpg",
+  natacao_cta: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793125394/buzios/c6o9wsiiivcpwgefcqoo.jpg",
+  planos: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793125537/buzios/v3agfsinp4ls7o5ebckr.jpg",
+  inscricao: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793125550/buzios/xxhtpcqbngpqwkch5vcw.jpg",
+  contacto: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793125566/buzios/fq97qlgkug7wsvzrxnv9.jpg",
+  contacto_form: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793138216/buzios/se6mwmnk218fpv7zjyon.jpg",
+  promo: "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793129823/buzios/nwzaek05vflazmmnirmk.jpg"
 };
 
 // Expose for app.js / admin.js

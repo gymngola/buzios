@@ -13,6 +13,11 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
   - `invalidate=true` on every signed upload (CDN caches raw files ~30 days otherwise)
 - **localStorage** — admin mid-session drafts only (not cross-browser source of truth)
 - Orders / leads via WhatsApp (no payment backend)
+- **PWA** — installable as apps (public site + admin)
+  - `manifest.json` → public site (“Búzios”)
+  - `admin-manifest.json` → admin panel (“Búzios Admin”)
+  - `sw.js` — service worker (app shell cache)
+  - Icons in `/icons/`
 
 ## Pages
 
@@ -25,6 +30,10 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 | `inscricao.html` | Enrollment form |
 | `contacto.html` | Contact form |
 | `admin.html` | Staff panel (password-gated) |
+| `manifest.json` | PWA manifest — public site |
+| `admin-manifest.json` | PWA manifest — admin |
+| `sw.js` | Service worker (app shell) |
+| `icons/` | App icons (192 / 512 + Apple) |
 
 ## Setup checklist
 
@@ -96,6 +105,22 @@ Then:
 - Enrollment form → Inscrições + Clientes
 - Admin → assign image to a slot → **Publicar na loja** → hard-refresh public site
 - Catalog is loaded via Worker `GET /catalog` (not the raw Cloudinary URL)
+
+### 6. Install as apps (PWA)
+
+After deploy, both the public site and the admin panel can be installed:
+
+| App | Open this URL | Result |
+|-----|---------------|--------|
+| **Búzios** (public) | `https://buzioshealthclub.pages.dev/` | Install “Búzios” |
+| **Búzios Admin** | `https://buzioshealthclub.pages.dev/admin.html` | Install “Búzios Admin” |
+
+**How to install**
+- **Android / Chrome**: menu → “Install app” / “Add to Home screen”
+- **iOS Safari**: Share → “Add to Home Screen”
+- **Desktop Chrome/Edge**: install icon in the address bar
+
+Each installs as its own standalone app (different icons and names). The service worker caches the shell so the UI opens offline; live data (catalog, forms) still needs network.
 
 ## How data flows
 

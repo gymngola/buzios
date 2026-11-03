@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f2a32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Búzios">
   <meta name="description" content="Inscrição no Búzios Health Club e Escola de Natação — ginásio e natação em Luanda.">
   <title>Inscrição — Búzios Health Club</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +54,9 @@
       border: none; background: none; color: #b33; cursor: pointer; font-size: 0.75rem;
     }
   </style>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="icon" href="/icons/icon-192.png" type="image/png">
 </head>
 <body>
   <div class="announce-bar" id="announceBar">
@@ -636,6 +643,12 @@
         btn.textContent = 'Enviar inscrição';
       }
     });
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
   </script>
 </body>
 </html>

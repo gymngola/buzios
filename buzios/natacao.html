@@ -3,12 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f2a32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Búzios">
   <meta name="description" content="Escola de Natação Búzios — piscina aquecida em Luanda. Aulas para bebés, crianças, adultos, hidroginástica e hidroterapia.">
   <title>Natação — Escola de Natação Búzios</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="icon" href="/icons/icon-192.png" type="image/png">
 </head>
 <body>
   <div class="announce-bar" id="announceBar">
@@ -287,5 +294,11 @@
   <script src="js/products.js"></script>
   <script src="js/app.js"></script>
   <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
+  </script>
 </body>
 </html>

@@ -181,7 +181,8 @@ Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `publi
 - WhatsApp ginásio: +244 923 423 142  
 - WhatsApp natação: +244 929 208 317  
 - IBAN: A006 0040 0000 6810 2585 1017 3  
-- Address: Rua 21-c, Bairro do Benfica, Kifica nº 57-59, Luanda  
+- Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda  
+- Google Maps link uses business name search (`Buzios health club Luanda`) so the place panel opens reliably even when the full street text includes “travessa 5”  
 
 ## Visual system
 

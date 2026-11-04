@@ -276,6 +276,7 @@ async function handleAdminData(request, env) {
     const fromCloud = await loadStoreFromCloudinary(env);
     return json({
       ok: true,
+      codeVersion: 'cloud-load-debug-v2',
       secrets: {
         cloudName: cloudName || null,
         hasKey: !!apiKey,
@@ -284,6 +285,7 @@ async function handleAdminData(request, env) {
         secretLen: apiSecret.length
       },
       probes,
+      cloudLoadDebug: _cloudLoadDebug,
       cache: {
         clients: (fromCache && fromCache.clients) ? fromCache.clients.length : 0,
         updatedAt: fromCache && fromCache.updatedAt,
@@ -467,13 +469,18 @@ async function fetchStoreJson(url) {
   }
 }
 
+// Last loadStoreFromCloudinary trace (read by debug_store)
+let _cloudLoadDebug = null;
+
 async function loadStoreFromCloudinary(env) {
+  _cloudLoadDebug = { step: 'start' };
   const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
-  if (!cloudName) return null;
+  if (!cloudName) {
+    _cloudLoadDebug = { step: 'no_cloud_name' };
+    return null;
+  }
 
   const publicId = FOLDER + '/store.json';
-  // Same URL shape as the debug probe that already returns 264 clients.
-  // Keep it simple: public delivery + cache-bust. Admin API meta is not required for store reads.
   const url =
     'https://res.cloudinary.com/' +
     cloudName +
@@ -484,15 +491,53 @@ async function loadStoreFromCloudinary(env) {
     '&cb=' +
     Math.random().toString(36).slice(2, 8);
 
+  _cloudLoadDebug = { step: 'fetch', url: url.slice(0, 120) };
+
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url);
+    _cloudLoadDebug = {
+      step: 'response',
+      status: res.status,
+      ok: res.ok,
+      url: url.slice(0, 120)
+    };
     if (!res.ok) return null;
+
     const text = await res.text();
-    if (!text || text.length < 2) return null;
-    const data = JSON.parse(text);
-    if (!looksLikeStore(data)) return null;
+    _cloudLoadDebug.bytes = text ? text.length : 0;
+    _cloudLoadDebug.head = text ? text.slice(0, 60) : null;
+
+    if (!text || text.length < 2) {
+      _cloudLoadDebug.step = 'empty_body';
+      return null;
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      _cloudLoadDebug.step = 'json_parse_fail';
+      _cloudLoadDebug.parseErr = (e && e.message) || String(e);
+      return null;
+    }
+
+    _cloudLoadDebug.step = 'parsed';
+    _cloudLoadDebug.looksLike = looksLikeStore(data);
+    _cloudLoadDebug.clientLen = data && Array.isArray(data.clients) ? data.clients.length : null;
+    _cloudLoadDebug.updatedAt = data && data.updatedAt;
+
+    if (!looksLikeStore(data)) {
+      _cloudLoadDebug.step = 'looksLikeStore_false';
+      return null;
+    }
+
+    _cloudLoadDebug.step = 'ok';
     return data;
-  } catch (_) {
+  } catch (e) {
+    _cloudLoadDebug = {
+      step: 'exception',
+      error: (e && e.message) || String(e)
+    };
     return null;
   }
 }

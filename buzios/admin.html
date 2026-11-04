@@ -65,6 +65,10 @@
       <input type="password" id="adminPass" placeholder="Palavra-passe" autocomplete="current-password">
       <button type="button" class="pass-toggle" id="passToggle" aria-label="Mostrar palavra-passe">Mostrar</button>
     </div>
+    <label class="stay-logged" style="display:flex;align-items:center;gap:0.5rem;margin:0.85rem 0 0;font-size:0.85rem;color:#555;cursor:pointer;user-select:none">
+      <input type="checkbox" id="stayLoggedIn" style="width:auto;margin:0">
+      Manter sessão iniciada
+    </label>
     <button type="button" id="loginBtn">Entrar</button>
     <p id="loginError" style="color:#b33;font-size:0.8rem;margin-top:0.75rem;display:none">Palavra-passe incorrecta</p>
   </div>
@@ -80,12 +84,26 @@
       <!-- Inbox / Enrollments -->
       <div id="panel-inbox" class="panel active">
         <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Pedidos de inscrição (formulário de inscrição). Marque o estado após contactar o cliente.</p>
+        <div class="bulk-bar" id="inboxBulkBar" data-list="inbox" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="inbox"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="inbox">0</span>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="contactado">Marcar contactado</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="arquivado">Arquivar</button>
+          <button type="button" class="bulk-action danger" data-list="inbox" data-action="delete">Apagar</button>
+        </div>
         <div class="prod-list" id="inboxList"></div>
       </div>
 
       <!-- Contact form messages -->
       <div id="panel-contacts" class="panel">
         <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Mensagens enviadas pela página Contacto. Marque o estado após responder.</p>
+        <div class="bulk-bar" id="contactsBulkBar" data-list="contacts" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="contacts"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="contacts">0</span>
+          <button type="button" class="bulk-action" data-list="contacts" data-action="contactado">Marcar respondido</button>
+          <button type="button" class="bulk-action" data-list="contacts" data-action="arquivado">Arquivar</button>
+          <button type="button" class="bulk-action danger" data-list="contacts" data-action="delete">Apagar</button>
+        </div>
         <div class="prod-list" id="contactsList"></div>
       </div>
 
@@ -94,6 +112,11 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
           <p style="font-size:0.85rem;color:#666;margin:0">Números subscritos em “Receba novidades e promoções”.</p>
           <button type="button" id="copyNewslettersBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">Copiar todos</button>
+        </div>
+        <div class="bulk-bar" id="newslettersBulkBar" data-list="newsletters" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="newsletters"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="newsletters">0</span>
+          <button type="button" class="bulk-action danger" data-list="newsletters" data-action="delete">Apagar</button>
         </div>
         <div class="prod-list" id="newslettersList"></div>
       </div>
@@ -127,6 +150,13 @@
           <button type="button" data-filter="pendente">Pendentes</button>
           <button type="button" data-filter="suspenso">Suspensos</button>
           <button type="button" data-filter="arquivado">Arquivados</button>
+        </div>
+        <div class="bulk-bar" id="clientsBulkBar" data-list="clients" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="clients"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="clients">0</span>
+          <button type="button" class="bulk-action" data-list="clients" data-action="suspend">Suspender</button>
+          <button type="button" class="bulk-action" data-list="clients" data-action="archive">Arquivar</button>
+          <button type="button" class="bulk-action danger" data-list="clients" data-action="delete">Apagar</button>
         </div>
         <div class="prod-list" id="clientsList"></div>
       </div>

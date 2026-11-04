@@ -94,7 +94,13 @@
   }
   $('#loginBtn').addEventListener('click', () => {
     if ($('#adminPass').value === ADMIN_PASSWORD) {
+      const stay = $('#stayLoggedIn') && $('#stayLoggedIn').checked;
       sessionStorage.setItem(LS.auth, '1');
+      if (stay) {
+        localStorage.setItem(LS.auth, '1');
+      } else {
+        localStorage.removeItem(LS.auth);
+      }
       showApp();
     } else {
       $('#loginError').style.display = 'block';
@@ -102,6 +108,22 @@
   });
   $('#adminPass').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#loginBtn').click();
+  });
+
+  // Close modals when clicking the dimmed backdrop (not the panel itself)
+  function bindModalBackdropClose(modalId) {
+    const modal = $('#' + modalId);
+    if (!modal) return;
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+  }
+  bindModalBackdropClose('clientModal');
+  bindModalBackdropClose('prodModal');
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      $$('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+    }
   });
 
   const PANEL_TITLES = {
@@ -255,6 +277,7 @@
     const items = (store.submissions || []).filter(s => s.type === 'enrollment');
     if (!items.length) {
       list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma inscrição ainda. Aparecem quando alguém preenche o formulário de inscrição.</p>';
+      updateBulkBar('inbox');
       return;
     }
     list.innerHTML = items.map(s => {
@@ -265,6 +288,7 @@
         : '';
       return `
         <div class="prod-card">
+          <label class="card-check"><input type="checkbox" class="bulk-item" data-list="inbox" data-id="${escapeHtml(s.id)}"></label>
           <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${status}</span></h3>
           <div class="meta">Inscrição · ${escapeHtml(s.phone || '')} · ${when}</div>
           <div class="meta" style="margin-top:0.35rem">
@@ -296,6 +320,8 @@
     list.querySelectorAll('[data-promote-cli]').forEach(btn => {
       btn.addEventListener('click', () => promoteSubmissionToClient(btn.dataset.promoteCli));
     });
+    bindBulkItemChecks('inbox');
+    updateBulkBar('inbox');
   }
 
   // —— Contact form messages ——
@@ -305,6 +331,7 @@
     const items = (store.submissions || []).filter(s => s.type === 'contact' || (!s.type && s.message));
     if (!items.length) {
       list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma mensagem de contacto ainda. Aparecem quando alguém envia o formulário na página Contacto.</p>';
+      updateBulkBar('contacts');
       return;
     }
     list.innerHTML = items.map(s => {
@@ -313,6 +340,7 @@
       const msg = s.message || s.notes || '';
       return `
         <div class="prod-card">
+          <label class="card-check"><input type="checkbox" class="bulk-item" data-list="contacts" data-id="${escapeHtml(s.id)}"></label>
           <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${status}</span></h3>
           <div class="meta">Contacto · ${escapeHtml(s.phone || '')} · ${when}</div>
           <div class="meta" style="margin-top:0.35rem">
@@ -330,6 +358,8 @@
     }).join('');
 
     bindSubmissionActions(list);
+    bindBulkItemChecks('contacts');
+    updateBulkBar('contacts');
   }
 
   function escapeHtml(str) {
@@ -365,7 +395,8 @@
     });
   }
 
-  async function adminAction(action, data) {
+  async function adminAction(action, data, opts) {
+    const silent = opts && opts.silent;
     try {
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
@@ -375,17 +406,104 @@
       if (res.ok) {
         const json = await res.json();
         if (json.store) store = json.store;
-        renderInbox();
-        renderContacts();
-        renderNewsletters();
-        renderClients();
+        if (!silent) {
+          renderInbox();
+          renderContacts();
+          renderNewsletters();
+          renderClients();
+        }
+        return true;
       } else {
-        toast('Erro ao actualizar');
+        if (!silent) toast('Erro ao actualizar');
+        return false;
       }
     } catch (e) {
-      toast('Erro de rede');
+      if (!silent) toast('Erro de rede');
+      return false;
     }
   }
+
+  // —— Bulk selection ——
+  function getSelectedIds(listName) {
+    return $$('.bulk-item[data-list="' + listName + '"]:checked').map(el => el.dataset.id).filter(Boolean);
+  }
+
+  function updateBulkBar(listName) {
+    const bar = document.querySelector('.bulk-bar[data-list="' + listName + '"]');
+    if (!bar) return;
+    const items = $$('.bulk-item[data-list="' + listName + '"]');
+    const selected = getSelectedIds(listName);
+    const countEl = bar.querySelector('.bulk-count[data-list="' + listName + '"]');
+    if (countEl) countEl.textContent = selected.length ? selected.length + ' seleccionado(s)' : '0';
+    bar.style.display = items.length ? '' : 'none';
+    const all = bar.querySelector('.bulk-select-all[data-list="' + listName + '"]');
+    if (all) {
+      all.checked = items.length > 0 && selected.length === items.length;
+      all.indeterminate = selected.length > 0 && selected.length < items.length;
+    }
+  }
+
+  function bindBulkItemChecks(listName) {
+    $$('.bulk-item[data-list="' + listName + '"]').forEach(cb => {
+      cb.addEventListener('change', () => updateBulkBar(listName));
+    });
+  }
+
+  async function runBulkAction(listName, action) {
+    const ids = getSelectedIds(listName);
+    if (!ids.length) return toast('Seleccione pelo menos um item');
+
+    if (action === 'delete') {
+      if (!confirm('Apagar ' + ids.length + ' item(ns) seleccionados? Esta acção não pode ser desfeita.')) return;
+    }
+
+    let ok = 0;
+    for (const id of ids) {
+      let success = false;
+      if (listName === 'inbox' || listName === 'contacts') {
+        if (action === 'delete') {
+          success = await adminAction('delete_submission', { id }, { silent: true });
+        } else {
+          success = await adminAction('update_submission', { id, status: action }, { silent: true });
+        }
+      } else if (listName === 'newsletters') {
+        if (action === 'delete') {
+          success = await adminAction('delete_newsletter', { id }, { silent: true });
+        }
+      } else if (listName === 'clients') {
+        if (action === 'delete') {
+          success = await adminAction('delete_client', { id, hard: true }, { silent: true });
+        } else if (action === 'archive') {
+          success = await adminAction('delete_client', { id, hard: false }, { silent: true });
+        } else if (action === 'suspend') {
+          const existing = (store.clients || []).find(c => c.id === id);
+          if (existing) {
+            success = await adminAction('update_client', enrichClient(Object.assign({}, existing, { membershipStatus: 'suspenso' })), { silent: true });
+          }
+        }
+      }
+      if (success) ok++;
+    }
+    renderInbox();
+    renderContacts();
+    renderNewsletters();
+    renderClients();
+    toast(ok + ' de ' + ids.length + ' actualizado(s)');
+  }
+
+  // Wire bulk bars once
+  $$('.bulk-select-all').forEach(all => {
+    all.addEventListener('change', () => {
+      const listName = all.dataset.list;
+      $$('.bulk-item[data-list="' + listName + '"]').forEach(cb => {
+        cb.checked = all.checked;
+      });
+      updateBulkBar(listName);
+    });
+  });
+  $$('.bulk-action').forEach(btn => {
+    btn.addEventListener('click', () => runBulkAction(btn.dataset.list, btn.dataset.action));
+  });
 
   // —— Newsletter phones ——
   function renderNewsletters() {
@@ -394,6 +512,7 @@
     const items = store.newsletters || [];
     if (!items.length) {
       list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum número ainda. Aparecem quando alguém preenche o formulário no rodapé do site.</p>';
+      updateBulkBar('newsletters');
       return;
     }
     list.innerHTML = items.map(n => {
@@ -403,6 +522,7 @@
       const waLink = wa ? `https://wa.me/${wa.startsWith('244') ? wa : '244' + wa}` : '#';
       return `
         <div class="prod-card">
+          <label class="card-check"><input type="checkbox" class="bulk-item" data-list="newsletters" data-id="${escapeHtml(n.id)}"></label>
           <h3>${phone}</h3>
           <div class="meta">${when}</div>
           <div class="actions" style="margin-top:0.65rem">
@@ -419,6 +539,8 @@
         toast('Número apagado');
       });
     });
+    bindBulkItemChecks('newsletters');
+    updateBulkBar('newsletters');
   }
 
   $('#copyNewslettersBtn')?.addEventListener('click', async () => {
@@ -627,10 +749,12 @@
     const filtered = getVisibleClients();
     if (!raw.length) {
       list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione manualmente.</p>';
+      updateBulkBar('clients');
       return;
     }
     if (!filtered.length) {
       list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente neste filtro' + (clientsSearch ? ' / pesquisa' : '') + '.</p>';
+      updateBulkBar('clients');
       return;
     }
 
@@ -659,6 +783,7 @@
         : '';
       return `
         <div class="${cardClass}">
+          <label class="card-check"><input type="checkbox" class="bulk-item" data-list="clients" data-id="${escapeHtml(c.id)}"></label>
           <h3>${escapeHtml(c.name || '—')}
             <span class="status-badge status-${mem}">${mem}</span>
             <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
@@ -675,7 +800,8 @@
             ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
             ${mem !== 'suspenso' && mem !== 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="suspenso">Suspender</button>' : ''}
             ${mem === 'suspenso' || mem === 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="activo">Reactivar</button>' : ''}
-            ${mem !== 'arquivado' ? '<button type="button" class="danger" data-archive-cli="' + c.id + '">Arquivar</button>' : ''}
+            ${mem !== 'arquivado' ? '<button type="button" data-archive-cli="' + c.id + '">Arquivar</button>' : ''}
+            <button type="button" class="danger" data-del-cli="${c.id}">Apagar</button>
           </div>
         </div>`;
     }).join('');
@@ -708,6 +834,18 @@
         toast('Cliente arquivado');
       });
     });
+    list.querySelectorAll('[data-del-cli]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const existing = (store.clients || []).find(x => x.id === btn.dataset.delCli);
+        if (!existing) return;
+        if (!confirm('APAGAR definitivamente ' + (existing.name || 'este cliente') + '?\n\nPrefira Arquivar se quiser manter histórico.')) return;
+        if (!confirm('Confirma apagar para sempre?')) return;
+        await adminAction('delete_client', { id: existing.id, hard: true });
+        toast('Cliente apagado');
+      });
+    });
+    bindBulkItemChecks('clients');
+    updateBulkBar('clients');
   }
 
   function renderPayHistory(payments) {

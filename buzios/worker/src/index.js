@@ -221,6 +221,27 @@ async function handleAdminData(request, env) {
     return json({ ok: true, store });
   }
 
+  // Debug: compare cache vs Cloudinary (no write)
+  if (action === 'debug_store') {
+    const fromCache = await loadStoreFromCache();
+    const fromCloud = await loadStoreFromCloudinary(env);
+    return json({
+      ok: true,
+      cache: {
+        clients: (fromCache && fromCache.clients) ? fromCache.clients.length : 0,
+        updatedAt: fromCache && fromCache.updatedAt,
+        score: storeScore(fromCache)
+      },
+      cloudinary: {
+        clients: (fromCloud && fromCloud.clients) ? fromCloud.clients.length : 0,
+        updatedAt: fromCloud && fromCloud.updatedAt,
+        score: storeScore(fromCloud)
+      },
+      chosenClients: (store.clients || []).length,
+      chosenUpdatedAt: store.updatedAt
+    });
+  }
+
   if (action === 'update_submission' && data && data.id) {
     store.submissions = store.submissions || [];
     const idx = store.submissions.findIndex(s => s.id === data.id);
@@ -389,54 +410,68 @@ async function loadStoreFromCloudinary(env) {
 
   const publicId = FOLDER + '/store.json';
   const urls = [];
+  let best = null;
 
   // Admin API → versioned / secure_url (avoids 30-day delivery CDN)
   if (apiKey && apiSecret) {
     try {
       const auth = btoa(apiKey + ':' + apiSecret);
-      const metaRes = await fetch(
+      // Try both encoded and raw public_id paths (Cloudinary accepts either)
+      const metaPaths = [
         'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + encodeURIComponent(publicId),
-        { headers: { Authorization: 'Basic ' + auth } }
-      );
-      if (metaRes.ok) {
+        'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + publicId
+      ];
+      for (const metaUrl of metaPaths) {
+        const metaRes = await fetch(metaUrl, { headers: { Authorization: 'Basic ' + auth } });
+        if (!metaRes.ok) continue;
         const meta = await metaRes.json();
-        if (meta.secure_url) urls.push(meta.secure_url);
-        if (meta.url) urls.push(String(meta.url).replace(/^http:/, 'https:'));
         if (meta.version) {
-          urls.push(
+          urls.unshift(
             'https://res.cloudinary.com/' + cloudName + '/raw/upload/v' + meta.version + '/' + publicId
           );
         }
+        if (meta.secure_url) urls.unshift(meta.secure_url);
+        if (meta.url) urls.unshift(String(meta.url).replace(/^http:/, 'https:'));
+        break;
       }
     } catch (_) {}
   }
 
-  // Always try plain delivery as last resort (cache-busted)
+  // Plain delivery last (cache-busted in fetchStoreJson)
   urls.push('https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId);
 
   for (const u of urls) {
     try {
       const data = await fetchStoreJson(u);
-      if (data) return data;
+      if (!data) continue;
+      if (!best || storeScore(data) > storeScore(best)) best = data;
+      // Prefer any non-empty snapshot immediately when score looks real
+      if (storeScore(data) > 0) return data;
     } catch (_) {}
   }
 
-  return null;
+  return best;
 }
 
 /**
- * Load store: Workers Cache (fast, same-colo) + Cloudinary (durable).
- * Picks the richer snapshot so CDN lag / empty colo cache cannot wipe data.
- * Always backfills Cache when Cloudinary wins.
+ * Load store: Cloudinary is source of truth; Workers Cache is a fast path only
+ * when it is at least as rich/new. Stale colo caches can no longer hide a
+ * successful Cloudinary write from other regions.
  */
 async function loadStore(env) {
-  const fromCache = await loadStoreFromCache();
   const fromCloud = await loadStoreFromCloudinary(env);
-  const chosen = preferStore(fromCache, fromCloud);
+  const fromCache = await loadStoreFromCache();
+  const chosen = preferStore(fromCloud, fromCache);
 
-  // If cache was empty/stale and we got real data from Cloudinary, fix this colo's cache
-  if (!isEmptyStore(chosen) && (isEmptyStore(fromCache) || storeScore(chosen) > storeScore(fromCache || emptyStore()))) {
-    await putStoreCache(chosen);
+  // Always refresh this colo's cache when Cloudinary (or the winner) is richer
+  if (!isEmptyStore(chosen)) {
+    const cacheScore = storeScore(fromCache || emptyStore());
+    if (isEmptyStore(fromCache) || storeScore(chosen) > cacheScore) {
+      await putStoreCache(chosen);
+    } else if (fromCloud && storeScore(fromCloud) >= cacheScore) {
+      // Cloud matched cache — still write through so max-age stays fresh
+      await putStoreCache(chosen);
+    }
   }
 
   return chosen || emptyStore();
@@ -444,10 +479,10 @@ async function loadStore(env) {
 
 async function saveStore(env, store) {
   const body = JSON.stringify(store);
-  // 1. Workers Cache — immediate read for this colo
-  await putStoreCache(store);
-  // 2. Cloudinary — durable backup (invalidate CDN)
+  // 1. Cloudinary first — durable + CDN invalidate (source of truth)
   await uploadRaw(env, FOLDER + '/store.json', body);
+  // 2. Workers Cache — immediate read for this colo
+  await putStoreCache(store);
 }
 
 async function uploadRaw(env, publicId, content) {

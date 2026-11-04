@@ -4,6 +4,15 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 
 **Live site:** https://www.buzioshealthclub.com
 
+## Documentation rule
+
+**Update this README and `BLUEPRINT.md` on every significant or important change** (UX redesigns, data flow, brand assets, Worker behaviour, new admin features, deploy process). Do not leave docs lagging behind the code.
+
+| Doc | Role |
+|-----|------|
+| `README.md` | Setup, deploy, smoke tests, stack, quick reference |
+| `BLUEPRINT.md` | Product/architecture blueprint: pages, admin workflow, data model, brand, UX decisions |
+
 ## Stack
 
 - Pure HTML / CSS / JS (no build step)
@@ -19,7 +28,7 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
   - `manifest.json` → public site (“Búzios”)
   - `admin-manifest.json` → admin panel (“Búzios Admin”)
   - `sw.js` — service worker (app shell cache)
-  - Icons in `/icons/`
+  - Icons in `/icons/` (including brand logo `logo.png` / `logo.jpg`)
 
 ## Pages
 
@@ -37,7 +46,8 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 | `manifest.json` | PWA manifest — public site |
 | `admin-manifest.json` | PWA manifest — admin |
 | `sw.js` | Service worker (app shell) |
-| `icons/` | App icons (192 / 512 + Apple) |
+| `icons/` | App icons + brand logo (`logo.png`) |
+| `BLUEPRINT.md` | Architecture & product blueprint |
 
 ## Setup checklist
 
@@ -165,7 +175,8 @@ Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `publi
 ## Brand
 
 - Name: **Búzios** / Health Club  
-- Secondary: La Casa de Ferro / Escola de Natação Búzios  
+- Secondary: **La Casa de Ferro** / Escola de Natação Búzios  
+- Logo: `icons/logo.png` (circular mark) — used in public header, mobile drawer, footer, admin nav, admin login, and PWA icons  
 - WhatsApp ginásio: +244 923 423 142  
 - WhatsApp natação: +244 929 208 317  
 - IBAN: A006 0040 0000 6810 2585 1017 3  
@@ -174,12 +185,33 @@ Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `publi
 ## Visual system
 
 - Quiet luxury — warmer paper background, terracotta accent, soft elevation  
-- Cormorant Garamond (titles) + Inter (body)  
+- Cormorant Garamond (titles) + Inter (body) on public site; Inter on admin  
 - Thin borders, generous whitespace, light type (300–500)  
 - Mobile-first, safe-area, Portuguese first  
+
+## Admin — Clientes (summary)
+
+Dense operational list for membership staff:
+
+- Sticky status strip (Activos / A expirar / Expirados / Em dívida / Pendentes)
+- Default sort: priority (dívida → a expirar → rest)
+- Row layout with days-left pills and left border for debt / expiring
+- Primary actions: Renovar, WhatsApp; secondary under **Mais** (closes on outside click / Escape)
+- Bulk bar + floating bar: WhatsApp, Suspender, Arquivar, Exportar, Apagar
+- Shortcuts on Clientes panel: `/` focus search, `N` new client
+- Export CSV / Copiar telefones respect current selection when present
+
+See `BLUEPRINT.md` for full workflow and data fields.
+
+## Recent changes (2026-11-04)
+
+- **Clientes admin redesign** — denser rows, sticky summary/filters, priority actions, floating bulk bar, keyboard shortcuts, outside-click **Mais** menu
+- **Brand logo** — `icons/logo.png` on public header, drawer, footer; admin nav + login; PWA icons regenerated from logo artwork
+- **Docs** — `BLUEPRINT.md` added; README maintenance rule documented
 
 ## Notes
 
 - Media “delete” in admin removes the library list entry only (not the Cloudinary file)
 - Admin tab is remembered in `sessionStorage` across reloads
 - Keep `public_id` paths as `buzios/catalog.json` and `buzios/store.json` (with extension)
+- After significant product/UX/infra changes: update **README.md** and **BLUEPRINT.md** in the same change set

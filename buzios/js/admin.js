@@ -285,6 +285,7 @@
           <div class="actions" style="margin-top:0.65rem">
             <button type="button" data-st="${s.id}" data-v="contactado">Contactado</button>
             <button type="button" data-st="${s.id}" data-v="inscrito">Inscrito</button>
+            <button type="button" data-promote-cli="${s.id}">Criar cliente</button>
             <button type="button" data-st="${s.id}" data-v="arquivado">Arquivar</button>
             <button type="button" class="danger" data-del-sub="${s.id}">Apagar</button>
           </div>
@@ -292,6 +293,9 @@
     }).join('');
 
     bindSubmissionActions(list);
+    list.querySelectorAll('[data-promote-cli]').forEach(btn => {
+      btn.addEventListener('click', () => promoteSubmissionToClient(btn.dataset.promoteCli));
+    });
   }
 
   // —— Contact form messages ——
@@ -433,6 +437,8 @@
 
   // —— Clients (membership dates, debt, alerts) ——
   let clientsFilter = 'all';
+  let clientsSearch = '';
+  let clientsSort = 'priority';
 
   const CYCLE_MONTHS = { mensal: 1, trimestral: 3, anual: 12, pacote: 1 };
 
@@ -465,7 +471,18 @@
     }
   }
 
-  /** Derive membership/billing from planEnd (respect suspenso/cancelado/isento). */
+  function normalizePhone(p) {
+    return String(p || '').replace(/\D/g, '');
+  }
+
+  function whatsappUrl(phone) {
+    const wa = normalizePhone(phone);
+    if (!wa) return null;
+    const full = wa.startsWith('244') ? wa : '244' + wa;
+    return 'https://wa.me/' + full;
+  }
+
+  /** Derive membership/billing from planEnd (respect suspenso/cancelado/arquivado/isento). */
   function enrichClient(c) {
     const out = Object.assign({}, c);
     const days = daysUntil(out.planEnd);
@@ -473,7 +490,7 @@
     out._expiringSoon = days !== null && days >= 0 && days <= 7;
     out._expired = days !== null && days < 0;
 
-    if (out.membershipStatus === 'suspenso' || out.membershipStatus === 'cancelado') {
+    if (out.membershipStatus === 'suspenso' || out.membershipStatus === 'cancelado' || out.membershipStatus === 'arquivado') {
       return out;
     }
     if (out.billingStatus === 'isento') {
@@ -491,18 +508,58 @@
   }
 
   function clientMatchesFilter(c, filter) {
-    if (filter === 'all') return true;
+    if (filter === 'all') return c.membershipStatus !== 'arquivado';
     if (filter === 'activo') return c.membershipStatus === 'activo' && !c._expired;
     if (filter === 'a_expirar') return c._expiringSoon && c.membershipStatus === 'activo';
     if (filter === 'expirado') return c.membershipStatus === 'expirado' || c._expired;
     if (filter === 'em_divida') return c.billingStatus === 'em_divida' || c.billingStatus === 'atrasado';
     if (filter === 'pendente') return c.membershipStatus === 'pendente';
+    if (filter === 'suspenso') return c.membershipStatus === 'suspenso' || c.membershipStatus === 'cancelado';
+    if (filter === 'arquivado') return c.membershipStatus === 'arquivado';
     return true;
+  }
+
+  function clientMatchesSearch(c, q) {
+    if (!q) return true;
+    const hay = [c.name, c.phone, c.email, c.planName, c.notes, c.emergencyName, c.emergencyPhone]
+      .map(x => String(x || '').toLowerCase())
+      .join(' ');
+    const digits = normalizePhone(q);
+    if (digits && normalizePhone(c.phone).includes(digits)) return true;
+    return hay.includes(q.toLowerCase());
+  }
+
+  function sortClients(items, mode) {
+    const list = items.slice();
+    if (mode === 'name') {
+      list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt'));
+    } else if (mode === 'planEnd') {
+      list.sort((a, b) => String(a.planEnd || '9999').localeCompare(String(b.planEnd || '9999')));
+    } else if (mode === 'recent') {
+      list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    } else {
+      // priority: debt → expiring → pending → rest
+      list.sort((a, b) => {
+        const score = (c) => {
+          if (c.membershipStatus === 'arquivado') return 9;
+          if (c.billingStatus === 'em_divida' || c._expired) return 0;
+          if (c._expiringSoon) return 1;
+          if (c.membershipStatus === 'pendente') return 2;
+          if (c.membershipStatus === 'suspenso') return 3;
+          return 4;
+        };
+        const d = score(a) - score(b);
+        if (d !== 0) return d;
+        return String(a.planEnd || '9999').localeCompare(String(b.planEnd || '9999'));
+      });
+    }
+    return list;
   }
 
   function clientsStats(items) {
     let activo = 0, aExpirar = 0, expirado = 0, divida = 0, pendente = 0;
     items.forEach(c => {
+      if (c.membershipStatus === 'arquivado') return;
       if (c.membershipStatus === 'pendente') pendente++;
       if (c.membershipStatus === 'activo' && !c._expired) activo++;
       if (c._expiringSoon && c.membershipStatus === 'activo') aExpirar++;
@@ -530,28 +587,30 @@
     }
   }
 
+  function findDuplicatePhone(phone, excludeId) {
+    const n = normalizePhone(phone);
+    if (!n || n.length < 6) return null;
+    return (store.clients || []).find(c => {
+      if (excludeId && c.id === excludeId) return false;
+      if (c.membershipStatus === 'arquivado') return false;
+      return normalizePhone(c.phone) === n;
+    }) || null;
+  }
+
+  function getVisibleClients() {
+    const raw = store.clients || [];
+    let items = raw.map(enrichClient);
+    items = items.filter(c => clientMatchesFilter(c, clientsFilter));
+    items = items.filter(c => clientMatchesSearch(c, clientsSearch));
+    return sortClients(items, clientsSort);
+  }
+
   function renderClients() {
     const list = $('#clientsList');
     if (!list) return;
     const raw = store.clients || [];
-    const items = raw.map(enrichClient);
-
-    // Sort: debt first, then expiring, then by planEnd ascending
-    items.sort((a, b) => {
-      const score = (c) => {
-        if (c.billingStatus === 'em_divida' || c._expired) return 0;
-        if (c._expiringSoon) return 1;
-        if (c.membershipStatus === 'pendente') return 2;
-        return 3;
-      };
-      const d = score(a) - score(b);
-      if (d !== 0) return d;
-      const ae = a.planEnd || '9999';
-      const be = b.planEnd || '9999';
-      return ae < be ? -1 : ae > be ? 1 : 0;
-    });
-
-    const stats = clientsStats(items);
+    const allEnriched = raw.map(enrichClient);
+    const stats = clientsStats(allEnriched);
     updateClientsNavBadge(stats);
 
     const summary = $('#clientsSummary');
@@ -565,13 +624,13 @@
       `;
     }
 
-    const filtered = items.filter(c => clientMatchesFilter(c, clientsFilter));
+    const filtered = getVisibleClients();
     if (!raw.length) {
       list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione manualmente.</p>';
       return;
     }
     if (!filtered.length) {
-      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente neste filtro.</p>';
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente neste filtro' + (clientsSearch ? ' / pesquisa' : '') + '.</p>';
       return;
     }
 
@@ -594,6 +653,10 @@
       const price = c.price != null && c.price !== ''
         ? Number(c.price).toLocaleString('pt') + ' Kz'
         : '';
+      const wa = whatsappUrl(c.phone);
+      const emergency = (c.emergencyName || c.emergencyPhone)
+        ? '<div class="meta">Emergência: ' + escapeHtml([c.emergencyName, c.emergencyPhone].filter(Boolean).join(' — ')) + '</div>'
+        : '';
       return `
         <div class="${cardClass}">
           <h3>${escapeHtml(c.name || '—')}
@@ -604,10 +667,15 @@
           <div class="meta">${escapeHtml(c.phone || '')} · ${escapeHtml(c.email || '')} · ${escapeHtml(c.area || '')}</div>
           <div class="meta">${escapeHtml(c.planName || c.planId || 'Sem plano')}${price ? ' · ' + price : ''}${c.billingCycle ? ' · ' + c.billingCycle : ''}</div>
           ${dateLine ? '<div class="meta">' + dateLine + '</div>' : ''}
+          ${emergency}
           ${c.notes ? '<p style="font-size:0.85rem;margin:0.4rem 0;color:#444">' + escapeHtml(c.notes) + '</p>' : ''}
           <div class="actions">
             <button type="button" data-edit-cli="${c.id}">Editar</button>
-            <button type="button" data-renew-cli="${c.id}">Renovar período</button>
+            <button type="button" data-renew-cli="${c.id}">Renovar</button>
+            ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
+            ${mem !== 'suspenso' && mem !== 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="suspenso">Suspender</button>' : ''}
+            ${mem === 'suspenso' || mem === 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="activo">Reactivar</button>' : ''}
+            ${mem !== 'arquivado' ? '<button type="button" class="danger" data-archive-cli="' + c.id + '">Arquivar</button>' : ''}
           </div>
         </div>`;
     }).join('');
@@ -617,6 +685,28 @@
     });
     list.querySelectorAll('[data-renew-cli]').forEach(btn => {
       btn.addEventListener('click', () => quickRenewClient(btn.dataset.renewCli));
+    });
+    list.querySelectorAll('[data-status-cli]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const existing = (store.clients || []).find(x => x.id === btn.dataset.statusCli);
+        if (!existing) return;
+        const v = btn.dataset.statusV;
+        const data = enrichClient(Object.assign({}, existing, {
+          membershipStatus: v,
+          billingStatus: v === 'activo' ? (existing.billingStatus === 'em_divida' ? existing.billingStatus : 'em_dia') : existing.billingStatus
+        }));
+        await adminAction('update_client', data);
+        toast(v === 'activo' ? 'Cliente reactivado' : 'Cliente suspenso');
+      });
+    });
+    list.querySelectorAll('[data-archive-cli]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const existing = (store.clients || []).find(x => x.id === btn.dataset.archiveCli);
+        if (!existing) return;
+        if (!confirm('Arquivar ' + (existing.name || 'este cliente') + '? Pode reactivar depois no filtro Arquivados.')) return;
+        await adminAction('delete_client', { id: existing.id, hard: false });
+        toast('Cliente arquivado');
+      });
     });
   }
 
@@ -637,6 +727,19 @@
     }).join('');
   }
 
+  function updateDupWarn(phone, excludeId) {
+    const el = $('#cDupWarn');
+    if (!el) return;
+    const dup = findDuplicatePhone(phone, excludeId);
+    if (dup) {
+      el.style.display = '';
+      el.textContent = 'Já existe um cliente com este telefone: ' + (dup.name || dup.phone) + '. Confirme se não é duplicado.';
+    } else {
+      el.style.display = 'none';
+      el.textContent = '';
+    }
+  }
+
   function openClientModal(id) {
     editingClientId = id || null;
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
@@ -653,6 +756,8 @@
     $('#cPlanEnd').value = c?.planEnd || '';
     $('#cMembership').value = c?.membershipStatus || 'pendente';
     $('#cBilling').value = (c?.billingStatus === 'atrasado' ? 'em_divida' : (c?.billingStatus || 'em_dia'));
+    $('#cEmergencyName').value = c?.emergencyName || '';
+    $('#cEmergencyPhone').value = c?.emergencyPhone || '';
     $('#cNotes').value = c?.notes || '';
     $('#cPayAmount').value = c?.price != null ? c.price : '';
     $('#cPayMethod').value = 'cash';
@@ -660,6 +765,21 @@
     renderPayHistory(c?.payments);
     const payBlock = $('#paymentBlock');
     if (payBlock) payBlock.style.display = id ? '' : 'none';
+    const archBtn = $('#archiveClientBtn');
+    const delBtn = $('#deleteClientBtn');
+    if (archBtn) archBtn.style.display = id ? '' : 'none';
+    if (delBtn) delBtn.style.display = id ? '' : 'none';
+    const subLink = $('#cSubLink');
+    if (subLink) {
+      if (c && c.fromSubmission) {
+        subLink.style.display = '';
+        subLink.innerHTML = 'Ligado à inscrição <code>' + escapeHtml(c.fromSubmission) + '</code>';
+      } else {
+        subLink.style.display = 'none';
+        subLink.innerHTML = '';
+      }
+    }
+    updateDupWarn(c?.phone || '', id);
     $('#clientModal').classList.add('open');
   }
 
@@ -679,11 +799,14 @@
       planEnd: $('#cPlanEnd').value || null,
       membershipStatus: $('#cMembership').value,
       billingStatus: $('#cBilling').value,
+      emergencyName: ($('#cEmergencyName') && $('#cEmergencyName').value.trim()) || '',
+      emergencyPhone: ($('#cEmergencyPhone') && $('#cEmergencyPhone').value.trim()) || '',
       notes: $('#cNotes').value.trim(),
       payments: existing?.payments || [],
       lastPaymentAt: existing?.lastPaymentAt || null,
       createdAt: existing?.createdAt || new Date().toISOString(),
-      fromSubmission: existing?.fromSubmission || null
+      fromSubmission: existing?.fromSubmission || null,
+      archivedAt: existing?.archivedAt || null
     };
     return enrichClient(data);
   }
@@ -724,8 +847,99 @@
     toast('Período renovado até ' + formatDatePT(end));
   }
 
+  /** Create or update client from an enrollment submission. */
+  async function promoteSubmissionToClient(subId) {
+    const s = (store.submissions || []).find(x => x.id === subId);
+    if (!s) return toast('Inscrição não encontrada');
+    const phone = s.phone || '';
+    let existing = null;
+    if (s.fromClientId) {
+      existing = (store.clients || []).find(c => c.id === s.fromClientId);
+    }
+    if (!existing && phone) {
+      existing = findDuplicatePhone(phone, null);
+    }
+    const base = existing || {};
+    const data = enrichClient({
+      id: base.id || ('cli-' + Date.now()),
+      name: s.name || base.name || '',
+      phone: phone || base.phone || '',
+      email: s.email || base.email || '',
+      area: s.area || base.area || 'ginasio',
+      planName: s.planName || base.planName || '',
+      planId: s.planId || s.planIdGym || s.planIdSwim || base.planId || '',
+      price: s.estimatedTotal != null ? s.estimatedTotal : (base.price != null ? base.price : null),
+      billingCycle: base.billingCycle || 'mensal',
+      planStart: base.planStart || todayISO(),
+      planEnd: base.planEnd || addMonthsISO(todayISO(), 1),
+      membershipStatus: 'activo',
+      billingStatus: base.billingStatus || 'em_dia',
+      emergencyName: s.emergencyName || base.emergencyName || '',
+      emergencyPhone: s.emergencyPhone || base.emergencyPhone || '',
+      notes: [base.notes, s.notes].filter(Boolean).join('\n').trim(),
+      payments: base.payments || [],
+      lastPaymentAt: base.lastPaymentAt || null,
+      createdAt: base.createdAt || new Date().toISOString(),
+      fromSubmission: s.id
+    });
+    await adminAction('update_client', data);
+    // Mark submission as inscrito
+    await adminAction('update_submission', { id: s.id, status: 'inscrito', fromClientId: data.id });
+    toast(existing ? 'Cliente actualizado a partir da inscrição' : 'Cliente criado a partir da inscrição');
+    activatePanel('clients');
+    openClientModal(data.id);
+  }
+
+  function exportClientsCsv() {
+    const items = getVisibleClients();
+    if (!items.length) return toast('Nada para exportar');
+    const headers = ['Nome', 'Telefone', 'Email', 'Área', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
+    const rows = items.map(c => [
+      c.name, c.phone, c.email, c.area, c.planName || c.planId, c.price,
+      c.billingCycle, c.planStart, c.planEnd, c.membershipStatus, c.billingStatus,
+      c.emergencyName, c.emergencyPhone, c.notes
+    ].map(v => {
+      const s = v == null ? '' : String(v);
+      return '"' + s.replace(/"/g, '""') + '"';
+    }).join(','));
+    const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'buzios-clientes-' + todayISO() + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(items.length + ' cliente(s) exportados');
+  }
+
+  async function copyClientPhones() {
+    const items = getVisibleClients();
+    const phones = items.map(c => c.phone).filter(Boolean);
+    if (!phones.length) return toast('Nenhum telefone na lista');
+    try {
+      await navigator.clipboard.writeText(phones.join('\n'));
+      toast(phones.length + ' telefone(s) copiados');
+    } catch (e) {
+      toast('Não foi possível copiar');
+    }
+  }
+
   $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
   $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
+  $('#exportClientsBtn')?.addEventListener('click', exportClientsCsv);
+  $('#copyClientPhonesBtn')?.addEventListener('click', copyClientPhones);
+
+  $('#clientSearch')?.addEventListener('input', (e) => {
+    clientsSearch = e.target.value.trim();
+    renderClients();
+  });
+  $('#clientSort')?.addEventListener('change', (e) => {
+    clientsSort = e.target.value || 'priority';
+    renderClients();
+  });
+  $('#cPhone')?.addEventListener('input', (e) => {
+    updateDupWarn(e.target.value, editingClientId);
+  });
 
   $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -743,9 +957,34 @@
       : null;
     const data = readClientForm(existing);
     if (!data.name) return toast('Nome obrigatório');
+    const dup = findDuplicatePhone(data.phone, data.id);
+    if (dup && !confirm('Já existe cliente com este telefone (' + (dup.name || dup.phone) + '). Guardar na mesma?')) {
+      return;
+    }
     await adminAction('update_client', data);
     $('#clientModal').classList.remove('open');
     toast('Cliente guardado');
+  });
+
+  $('#archiveClientBtn')?.addEventListener('click', async () => {
+    if (!editingClientId) return;
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    if (!confirm('Arquivar ' + (existing.name || 'este cliente') + '?')) return;
+    await adminAction('delete_client', { id: editingClientId, hard: false });
+    $('#clientModal').classList.remove('open');
+    toast('Cliente arquivado');
+  });
+
+  $('#deleteClientBtn')?.addEventListener('click', async () => {
+    if (!editingClientId) return;
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    if (!confirm('APAGAR definitivamente ' + (existing.name || 'este cliente') + '?\n\nIsto não pode ser desfeito. Prefira Arquivar se quiser manter histórico.')) return;
+    if (!confirm('Confirma apagar para sempre?')) return;
+    await adminAction('delete_client', { id: editingClientId, hard: true });
+    $('#clientModal').classList.remove('open');
+    toast('Cliente apagado');
   });
 
   $('#payRenewBtn')?.addEventListener('click', async () => {

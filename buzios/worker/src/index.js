@@ -234,11 +234,37 @@ async function handleAdminData(request, env) {
 
   if (action === 'update_client' && data && data.id) {
     store.clients = store.clients || [];
+    // Strip UI-only fields; never accept a full clients array from the client
+    const clean = Object.assign({}, data);
+    delete clean._daysLeft;
+    delete clean._expiringSoon;
+    delete clean._expired;
     const idx = store.clients.findIndex(c => c.id === data.id);
     if (idx >= 0) {
-      store.clients[idx] = Object.assign({}, store.clients[idx], data, { id: data.id });
+      store.clients[idx] = Object.assign({}, store.clients[idx], clean, { id: data.id });
     } else {
-      store.clients.unshift(data);
+      store.clients.unshift(Object.assign({}, clean, { id: data.id }));
+    }
+    if (store.clients.length > 500) store.clients = store.clients.slice(0, 500);
+    store.updatedAt = new Date().toISOString();
+    await saveStore(env, store);
+    return json({ ok: true, store });
+  }
+
+  if (action === 'delete_client' && data && data.id) {
+    store.clients = store.clients || [];
+    const hard = !!data.hard;
+    if (hard) {
+      store.clients = store.clients.filter(c => c.id !== data.id);
+    } else {
+      // Soft delete → archive (keeps history)
+      const idx = store.clients.findIndex(c => c.id === data.id);
+      if (idx >= 0) {
+        store.clients[idx] = Object.assign({}, store.clients[idx], {
+          membershipStatus: 'arquivado',
+          archivedAt: new Date().toISOString()
+        });
+      }
     }
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
@@ -259,9 +285,22 @@ async function handleAdminData(request, env) {
     return json({ ok: true, store });
   }
 
-  if (action === 'replace_store' && data) {
-    store = data;
-    store.updatedAt = new Date().toISOString();
+  // replace_store only merges non-empty sections — never wipe clients/submissions with []
+  if (action === 'replace_store' && data && typeof data === 'object') {
+    const next = Object.assign({}, store);
+    if (Array.isArray(data.submissions) && data.submissions.length) next.submissions = data.submissions;
+    if (Array.isArray(data.clients) && data.clients.length) next.clients = data.clients;
+    if (Array.isArray(data.newsletters) && data.newsletters.length) next.newsletters = data.newsletters;
+    if (Array.isArray(data.classes)) next.classes = data.classes;
+    // Allow explicit full replace only when flag set (recovery tools)
+    if (data._forceReplace === true) {
+      next.submissions = data.submissions || [];
+      next.clients = data.clients || [];
+      next.newsletters = data.newsletters || [];
+      next.classes = data.classes || [];
+    }
+    next.updatedAt = new Date().toISOString();
+    store = next;
     await saveStore(env, store);
     return json({ ok: true, store });
   }

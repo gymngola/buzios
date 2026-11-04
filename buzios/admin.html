@@ -102,9 +102,22 @@
       <div id="panel-clients" class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.5rem">
           <p style="font-size:0.85rem;color:#666;margin:0">Membership, datas do plano e faturação. Estados actualizam-se pelas datas.</p>
-          <button type="button" id="addClientBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Cliente</button>
+          <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+            <button type="button" id="exportClientsBtn" style="padding:0.45rem 0.75rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">Exportar CSV</button>
+            <button type="button" id="copyClientPhonesBtn" style="padding:0.45rem 0.75rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">Copiar telefones</button>
+            <button type="button" id="addClientBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Cliente</button>
+          </div>
         </div>
         <div class="clients-summary" id="clientsSummary"></div>
+        <div class="client-toolbar">
+          <input type="search" id="clientSearch" placeholder="Pesquisar nome ou telefone…" autocomplete="off">
+          <select id="clientSort">
+            <option value="priority">Prioridade (dívida / a expirar)</option>
+            <option value="name">Nome A–Z</option>
+            <option value="planEnd">Fim do plano</option>
+            <option value="recent">Mais recentes</option>
+          </select>
+        </div>
         <div class="client-filters" id="clientFilters">
           <button type="button" data-filter="all" class="active">Todos</button>
           <button type="button" data-filter="activo">Activos</button>
@@ -112,6 +125,8 @@
           <button type="button" data-filter="expirado">Expirados</button>
           <button type="button" data-filter="em_divida">Em dívida</button>
           <button type="button" data-filter="pendente">Pendentes</button>
+          <button type="button" data-filter="suspenso">Suspensos</button>
+          <button type="button" data-filter="arquivado">Arquivados</button>
         </div>
         <div class="prod-list" id="clientsList"></div>
       </div>
@@ -161,7 +176,7 @@
           <h3>Como funciona</h3>
           <p><strong>Inscrições</strong> — pedidos do formulário de inscrição. Marque: Novo → Contactado → Inscrito.</p>
           <p><strong>Contactos</strong> — mensagens da página Contacto (nome, telefone, assunto, mensagem). Marque: Novo → Respondido → Arquivar.</p>
-          <p><strong>Clientes</strong> — base a partir de inscrições. Defina início/fim do plano e ciclo (mensal…). O estado passa a expirado/em dívida quando a data de fim passa. Use “Pagar e renovar” ou “Renovar período”. Filtros e resumo no topo; badge no menu se houver dívidas ou expirados.</p>
+          <p><strong>Clientes</strong> — base a partir de inscrições (botão “Criar cliente” na inscrição) ou manual. Pesquisa por nome/telefone, filtros, ordenação, WhatsApp, suspender/arquivar/apagar, contacto de emergência, exportar CSV e copiar telefones. O estado passa a expirado/em dívida quando a data de fim passa. Use “Pagar e renovar” ou “Renovar”. Badge no menu se houver dívidas ou expirados.</p>
           <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar na loja</strong>.</p>
           <p><strong>Rascunho / Publicar</strong> — planos, imagens e textos: rascunho só neste browser; Publicar actualiza o site para todos.</p>
           <h3>Redeploy do Worker</h3>
@@ -247,6 +262,8 @@
     <div class="modal">
       <button type="button" class="modal-close" id="closeClientModal">×</button>
       <h2 id="clientModalTitle">Cliente</h2>
+      <p id="cDupWarn" class="dup-warn" style="display:none"></p>
+      <p id="cSubLink" class="meta" style="display:none;margin-bottom:0.75rem"></p>
       <div class="form-row"><label>Nome</label><input type="text" id="cName"></div>
       <div class="form-row"><label>Telefone</label><input type="tel" id="cPhone" inputmode="tel"></div>
       <div class="form-row"><label>Email</label><input type="email" id="cEmail"></div>
@@ -272,6 +289,7 @@
           <option value="expirado">Expirado</option>
           <option value="suspenso">Suspenso</option>
           <option value="cancelado">Cancelado</option>
+          <option value="arquivado">Arquivado</option>
         </select>
       </div>
       <div class="form-row"><label>Faturação</label>
@@ -282,6 +300,8 @@
           <option value="isento">Isento</option>
         </select>
       </div>
+      <div class="form-row"><label>Contacto de emergência</label><input type="text" id="cEmergencyName" placeholder="Nome"></div>
+      <div class="form-row"><label>Tel. emergência</label><input type="tel" id="cEmergencyPhone" inputmode="tel" placeholder="Telefone"></div>
       <div class="form-row"><label>Notas</label><textarea id="cNotes" rows="2"></textarea></div>
 
       <div id="paymentBlock" style="margin-top:1rem;padding-top:1rem;border-top:1px solid #eee">
@@ -304,8 +324,10 @@
         <ul class="pay-history" id="cPayHistory"></ul>
       </div>
 
-      <div class="form-actions" style="margin-top:1.25rem">
-        <button type="button" id="saveClientBtn" style="flex:1;height:44px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">Guardar cliente</button>
+      <div class="form-actions" style="margin-top:1.25rem;flex-wrap:wrap">
+        <button type="button" id="saveClientBtn" style="flex:1;min-width:120px;height:44px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">Guardar cliente</button>
+        <button type="button" id="archiveClientBtn" class="btn-secondary" style="display:none;height:44px;padding:0 1rem;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem">Arquivar</button>
+        <button type="button" id="deleteClientBtn" class="danger" style="display:none;height:44px;padding:0 1rem;border:1px solid #e8b4b4;border-radius:8px;background:#fff;color:#b33;cursor:pointer;font-size:0.85rem">Apagar</button>
       </div>
     </div>
   </div>

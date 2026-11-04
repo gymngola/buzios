@@ -200,6 +200,8 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - Google SERP favicon: root `favicon.ico` + sized PNGs (`favicon-48/96/192`), schema.org `logo`, solid-background icons for clarity at small sizes
 - Typography: switched display font from Cormorant Garamond to **Montserrat** (geometric, aligned with La Casa de Ferro logo lettering); Inter kept for body
 - Documentation rule: keep **README.md** + **BLUEPRINT.md** updated on every significant change
+- **Store clients cap** raised 500 → **3000** in Worker (`worker/src/index.js`); redeploy required
+- Excel membership import: `import-clients.json` + `import-clients-payload.json` + `IMPORT.md` (one client per Nº, `payments[]` history, debtors flagged)
 
 ---
 

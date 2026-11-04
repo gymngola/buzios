@@ -212,6 +212,8 @@ See `BLUEPRINT.md` for full workflow and data fields.
 - **Google favicon** — `/favicon.ico` + `icons/favicon-48/96/192.png` on all public pages so search results can show the logo next to the URL
 - **Typography** — Montserrat for titles/brand/nav/buttons (matches logo); Inter for body text
 - **Docs** — `BLUEPRINT.md` added; README maintenance rule documented
+- **Clients store limit** — Worker cap raised from 500 to **3000** (redeploy Worker to apply)
+- **Excel import** — cleaned membership dump from facturação spreadsheet; see `IMPORT.md`, `import-clients.json`, `import-clients-payload.json`
 
 ## Notes
 

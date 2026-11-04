@@ -201,7 +201,7 @@ async function handleSubmit(request, env) {
 
   if (store.submissions && store.submissions.length > 500) store.submissions = store.submissions.slice(0, 500);
   if (store.newsletters && store.newsletters.length > 1000) store.newsletters = store.newsletters.slice(0, 1000);
-  if (store.clients && store.clients.length > 500) store.clients = store.clients.slice(0, 500);
+  if (store.clients && store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
 
   store.updatedAt = new Date().toISOString();
   await saveStore(env, store);
@@ -245,7 +245,7 @@ async function handleAdminData(request, env) {
     } else {
       store.clients.unshift(Object.assign({}, clean, { id: data.id }));
     }
-    if (store.clients.length > 500) store.clients = store.clients.slice(0, 500);
+    if (store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
     return json({ ok: true, store });

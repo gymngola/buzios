@@ -441,11 +441,25 @@
     const selected = getSelectedIds(listName);
     const countEl = bar.querySelector('.bulk-count[data-list="' + listName + '"]');
     if (countEl) countEl.textContent = selected.length ? selected.length + ' seleccionado(s)' : '0';
+    // Top bar: show whenever there are list items (select-all always available)
     bar.style.display = items.length ? '' : 'none';
     const all = bar.querySelector('.bulk-select-all[data-list="' + listName + '"]');
     if (all) {
       all.checked = items.length > 0 && selected.length === items.length;
       all.indeterminate = selected.length > 0 && selected.length < items.length;
+    }
+    // Floating action bar for clients when something is selected
+    if (listName === 'clients') {
+      const float = $('#clientsBulkFloat');
+      if (float) {
+        if (selected.length > 0) {
+          float.hidden = false;
+          const fc = float.querySelector('.bulk-float-count');
+          if (fc) fc.textContent = selected.length + ' seleccionado' + (selected.length === 1 ? '' : 's');
+        } else {
+          float.hidden = true;
+        }
+      }
     }
   }
 
@@ -458,6 +472,46 @@
   async function runBulkAction(listName, action) {
     const ids = getSelectedIds(listName);
     if (!ids.length) return toast('Seleccione pelo menos um item');
+
+    // Clients: bulk WhatsApp / export selected
+    if (listName === 'clients' && action === 'whatsapp') {
+      const clients = (store.clients || []).filter(c => ids.includes(c.id));
+      const phones = clients.map(c => c.phone).filter(Boolean);
+      if (!phones.length) return toast('Nenhum telefone nos seleccionados');
+      // Open first WhatsApp; copy all numbers for the rest
+      const first = clients.find(c => c.phone);
+      const wa = first ? whatsappUrl(first.phone) : null;
+      try {
+        await navigator.clipboard.writeText(phones.join('\n'));
+        toast(phones.length + ' telefone(s) copiados' + (wa ? ' · a abrir WhatsApp…' : ''));
+      } catch (e) {
+        toast('Não foi possível copiar telefones');
+      }
+      if (wa) window.open(wa, '_blank', 'noopener');
+      return;
+    }
+    if (listName === 'clients' && action === 'export') {
+      const items = getVisibleClients().filter(c => ids.includes(c.id));
+      if (!items.length) return toast('Nada para exportar');
+      const headers = ['Nome', 'Telefone', 'Email', 'Área', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
+      const rows = items.map(c => [
+        c.name, c.phone, c.email, c.area, c.planName || c.planId, c.price,
+        c.billingCycle, c.planStart, c.planEnd, c.membershipStatus, c.billingStatus,
+        c.emergencyName, c.emergencyPhone, c.notes
+      ].map(v => {
+        const s = v == null ? '' : String(v);
+        return '"' + s.replace(/"/g, '""') + '"';
+      }).join(','));
+      const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'buzios-clientes-seleccionados-' + todayISO() + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(items.length + ' cliente(s) exportados');
+      return;
+    }
 
     if (action === 'delete') {
       if (!confirm('Apagar ' + ids.length + ' item(ns) seleccionados? Esta acção não pode ser desfeita.')) return;
@@ -507,8 +561,31 @@
       updateBulkBar(listName);
     });
   });
-  $$('.bulk-action').forEach(btn => {
-    btn.addEventListener('click', () => runBulkAction(btn.dataset.list, btn.dataset.action));
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.bulk-action');
+    if (!btn || !btn.dataset.list) return;
+    runBulkAction(btn.dataset.list, btn.dataset.action);
+  });
+  $('#clientsBulkClear')?.addEventListener('click', () => {
+    $$('.bulk-item[data-list="clients"]').forEach(cb => { cb.checked = false; });
+    updateBulkBar('clients');
+  });
+
+  // Keyboard shortcuts on Clients panel: / = search, N = new client
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target && e.target.tagName) || '';
+    const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable;
+    if (typing && e.key !== 'Escape') return;
+    const clientsPanel = $('#panel-clients');
+    if (!clientsPanel || !clientsPanel.classList.contains('active')) return;
+    if (e.key === '/' && !typing) {
+      e.preventDefault();
+      const search = $('#clientSearch');
+      if (search) { search.focus(); search.select(); }
+    } else if ((e.key === 'n' || e.key === 'N') && !e.metaKey && !e.ctrlKey && !e.altKey && !typing) {
+      e.preventDefault();
+      openClientModal(null);
+    }
   });
 
   // —— Newsletter phones ——
@@ -733,6 +810,15 @@
     return sortClients(items, clientsSort);
   }
 
+  function daysPillHtml(days) {
+    if (days === null || days === undefined) return '';
+    if (days < 0) return '<span class="days-pill danger">há ' + Math.abs(days) + ' d</span>';
+    if (days === 0) return '<span class="days-pill danger">vence hoje</span>';
+    if (days <= 7) return '<span class="days-pill warn">' + days + ' dia(s)</span>';
+    if (days <= 14) return '<span class="days-pill warn">' + days + ' dia(s)</span>';
+    return '<span class="days-pill ok">' + days + ' dia(s)</span>';
+  }
+
   function renderClients() {
     const list = $('#clientsList');
     if (!list) return;
@@ -748,72 +834,112 @@
         <div class="stat warn"><strong>${stats.aExpirar}</strong><span>A expirar (7d)</span></div>
         <div class="stat danger"><strong>${stats.expirado}</strong><span>Expirados</span></div>
         <div class="stat danger"><strong>${stats.divida}</strong><span>Em dívida</span></div>
-        <div class="stat"><strong>${stats.pendente}</strong><span>Pendentes</span></div>
+        <div class="stat neutral"><strong>${stats.pendente}</strong><span>Pendentes</span></div>
       `;
     }
 
     const filtered = getVisibleClients();
     if (!raw.length) {
-      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione manualmente.</p>';
+      list.innerHTML = '<div class="clients-empty">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione com <strong>+ Cliente</strong>.</div>';
       updateBulkBar('clients');
       return;
     }
     if (!filtered.length) {
-      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum cliente neste filtro' + (clientsSearch ? ' / pesquisa' : '') + '.</p>';
+      list.innerHTML = `
+        <div class="clients-empty">
+          Nenhum cliente neste filtro${clientsSearch ? ' / pesquisa' : ''}.
+          <br><button type="button" id="clearClientFiltersBtn">Limpar filtros</button>
+        </div>`;
+      $('#clearClientFiltersBtn')?.addEventListener('click', () => {
+        clientsFilter = 'all';
+        clientsSearch = '';
+        const search = $('#clientSearch');
+        if (search) search.value = '';
+        $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(b => {
+          b.classList.toggle('active', b.dataset.filter === 'all');
+        });
+        renderClients();
+      });
       updateBulkBar('clients');
       return;
     }
 
     list.innerHTML = filtered.map(c => {
       const days = c._daysLeft;
-      let dateLine = '';
-      if (c.planStart || c.planEnd) {
-        dateLine = formatDatePT(c.planStart) + ' → ' + formatDatePT(c.planEnd);
-        if (days !== null) {
-          if (days < 0) dateLine += ' · há ' + Math.abs(days) + ' dia(s)';
-          else if (days === 0) dateLine += ' · vence hoje';
-          else dateLine += ' · ' + days + ' dia(s)';
-        }
-      }
       const bill = c.billingStatus || 'em_dia';
       const mem = c.membershipStatus || 'pendente';
-      const cardClass = (bill === 'em_divida' || c._expired)
-        ? 'prod-card card-debt'
-        : (c._expiringSoon ? 'prod-card card-expiring' : 'prod-card');
+      const isDebt = bill === 'em_divida' || c._expired;
+      const isExpiring = c._expiringSoon && !c._expired;
+      const rowClass = isDebt ? 'client-row row-debt' : (isExpiring ? 'client-row row-expiring' : 'client-row');
       const price = c.price != null && c.price !== ''
         ? Number(c.price).toLocaleString('pt') + ' Kz'
         : '';
       const wa = whatsappUrl(c.phone);
-      const emergency = (c.emergencyName || c.emergencyPhone)
-        ? '<div class="meta">Emergência: ' + escapeHtml([c.emergencyName, c.emergencyPhone].filter(Boolean).join(' — ')) + '</div>'
+      const contactBits = [c.phone, c.email, c.area].filter(Boolean).map(escapeHtml).join(' · ');
+      const periodDates = (c.planStart || c.planEnd)
+        ? escapeHtml(formatDatePT(c.planStart) + ' → ' + formatDatePT(c.planEnd))
         : '';
+      const needsAttention = isDebt || isExpiring;
+
+      const primaryActions = `
+        <button type="button" class="btn-renew" data-renew-cli="${c.id}">Renovar</button>
+        ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
+      `;
+      const secondaryButtons = `
+        <button type="button" data-edit-cli="${c.id}">Editar</button>
+        ${mem !== 'suspenso' && mem !== 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="suspenso">Suspender</button>' : ''}
+        ${mem === 'suspenso' || mem === 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="activo">Reactivar</button>' : ''}
+        ${mem !== 'arquivado' ? '<button type="button" data-archive-cli="' + c.id + '">Arquivar</button>' : ''}
+        <button type="button" class="danger" data-del-cli="${c.id}">Apagar</button>
+      `;
+
       return `
-        <div class="${cardClass}">
-          <label class="card-check"><input type="checkbox" class="bulk-item" data-list="clients" data-id="${escapeHtml(c.id)}"></label>
-          <h3>${escapeHtml(c.name || '—')}
-            <span class="status-badge status-${mem}">${mem}</span>
-            <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
-            ${c._expiringSoon && !c._expired ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
-          </h3>
-          <div class="meta">${escapeHtml(c.phone || '')} · ${escapeHtml(c.email || '')} · ${escapeHtml(c.area || '')}</div>
-          <div class="meta">${escapeHtml(c.planName || c.planId || 'Sem plano')}${price ? ' · ' + price : ''}${c.billingCycle ? ' · ' + c.billingCycle : ''}</div>
-          ${dateLine ? '<div class="meta">' + dateLine + '</div>' : ''}
-          ${emergency}
-          ${c.notes ? '<p style="font-size:0.85rem;margin:0.4rem 0;color:#444">' + escapeHtml(c.notes) + '</p>' : ''}
-          <div class="actions">
-            <button type="button" data-edit-cli="${c.id}">Editar</button>
-            <button type="button" data-renew-cli="${c.id}">Renovar</button>
-            ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
-            ${mem !== 'suspenso' && mem !== 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="suspenso">Suspender</button>' : ''}
-            ${mem === 'suspenso' || mem === 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="activo">Reactivar</button>' : ''}
-            ${mem !== 'arquivado' ? '<button type="button" data-archive-cli="' + c.id + '">Arquivar</button>' : ''}
-            <button type="button" class="danger" data-del-cli="${c.id}">Apagar</button>
+        <div class="${rowClass}">
+          <div class="row-check">
+            <input type="checkbox" class="bulk-item" data-list="clients" data-id="${escapeHtml(c.id)}" aria-label="Seleccionar ${escapeHtml(c.name || '')}">
           </div>
+          <div class="row-main">
+            <span class="row-name" data-edit-cli="${c.id}" title="Editar">${escapeHtml(c.name || '—')}</span>
+            <span class="row-badges">
+              <span class="status-badge status-${mem}">${mem}</span>
+              <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
+              ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
+            </span>
+            <div class="row-contact">${contactBits || '—'}</div>
+          </div>
+          <div class="row-plan">
+            <div class="plan-name">${escapeHtml(c.planName || c.planId || 'Sem plano')}</div>
+            <div class="plan-meta">${[price, c.billingCycle].filter(Boolean).map(escapeHtml).join(' · ')}</div>
+          </div>
+          <div class="row-period">
+            ${periodDates ? '<span class="period-dates">' + periodDates + '</span>' : ''}
+            ${daysPillHtml(days)}
+          </div>
+          <div class="row-actions">
+            ${needsAttention ? primaryActions : ''}
+            ${!needsAttention ? `
+              <button type="button" data-edit-cli="${c.id}" class="hide-mobile">Editar</button>
+              <button type="button" class="btn-renew" data-renew-cli="${c.id}">Renovar</button>
+              ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
+            ` : `
+              <button type="button" data-edit-cli="${c.id}" class="hide-mobile">Editar</button>
+            `}
+            <details class="row-more">
+              <summary>Mais</summary>
+              <div class="more-menu">
+                ${secondaryButtons}
+              </div>
+            </details>
+          </div>
+          ${c.notes ? '<div class="row-notes">' + escapeHtml(c.notes) + '</div>' : ''}
         </div>`;
     }).join('');
 
     list.querySelectorAll('[data-edit-cli]').forEach(btn => {
-      btn.addEventListener('click', () => openClientModal(btn.dataset.editCli));
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openClientModal(btn.dataset.editCli);
+      });
     });
     list.querySelectorAll('[data-renew-cli]').forEach(btn => {
       btn.addEventListener('click', () => quickRenewClient(btn.dataset.renewCli));
@@ -848,6 +974,16 @@
         if (!confirm('Confirma apagar para sempre?')) return;
         await adminAction('delete_client', { id: existing.id, hard: true });
         toast('Cliente apagado');
+      });
+    });
+    // Close "Mais" menus when clicking outside
+    list.querySelectorAll('.row-more').forEach(d => {
+      d.addEventListener('toggle', () => {
+        if (d.open) {
+          list.querySelectorAll('.row-more').forEach(other => {
+            if (other !== d) other.open = false;
+          });
+        }
       });
     });
     bindBulkItemChecks('clients');
@@ -1035,7 +1171,9 @@
   }
 
   function exportClientsCsv() {
-    const items = getVisibleClients();
+    const selected = getSelectedIds('clients');
+    let items = getVisibleClients();
+    if (selected.length) items = items.filter(c => selected.includes(c.id));
     if (!items.length) return toast('Nada para exportar');
     const headers = ['Nome', 'Telefone', 'Email', 'Área', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
     const rows = items.map(c => [
@@ -1057,12 +1195,14 @@
   }
 
   async function copyClientPhones() {
-    const items = getVisibleClients();
+    const selected = getSelectedIds('clients');
+    let items = getVisibleClients();
+    if (selected.length) items = items.filter(c => selected.includes(c.id));
     const phones = items.map(c => c.phone).filter(Boolean);
     if (!phones.length) return toast('Nenhum telefone na lista');
     try {
       await navigator.clipboard.writeText(phones.join('\n'));
-      toast(phones.length + ' telefone(s) copiados');
+      toast(phones.length + ' telefone(s) copiados' + (selected.length ? ' (seleccionados)' : ''));
     } catch (e) {
       toast('Não foi possível copiar');
     }

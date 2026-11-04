@@ -248,7 +248,25 @@
     }
   }
 
+  async function loadStoreFromCloudinaryDirect() {
+    const url =
+      'https://res.cloudinary.com/' +
+      CLOUD_NAME +
+      '/raw/upload/' +
+      CATALOG_FOLDER +
+      '/store.json?_=' +
+      Date.now() +
+      '&cb=' +
+      Math.random().toString(36).slice(2, 8);
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || typeof data !== 'object') return null;
+    return data;
+  }
+
   async function loadStore() {
+    let fromWorker = null;
     try {
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
@@ -257,11 +275,40 @@
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.store) store = data.store;
+        if (data.store) fromWorker = data.store;
       }
     } catch (e) {
-      console.warn('Store load failed', e);
+      console.warn('Store load (worker) failed', e);
     }
+
+    // Prefer richer snapshot: Worker cache can lag behind Cloudinary on some colos
+    let fromCloud = null;
+    try {
+      fromCloud = await loadStoreFromCloudinaryDirect();
+    } catch (e) {
+      console.warn('Store load (cloudinary) failed', e);
+    }
+
+    const score = (s) =>
+      s
+        ? (s.clients || []).length +
+          (s.submissions || []).length +
+          (s.newsletters || []).length
+        : -1;
+    if (score(fromCloud) > score(fromWorker)) {
+      store = fromCloud;
+      console.info(
+        'Store: using Cloudinary direct (' +
+          (fromCloud.clients || []).length +
+          ' clients); worker had ' +
+          score(fromWorker)
+      );
+    } else if (fromWorker) {
+      store = fromWorker;
+    } else if (fromCloud) {
+      store = fromCloud;
+    }
+
     renderInbox();
     renderContacts();
     renderNewsletters();

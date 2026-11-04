@@ -221,12 +221,69 @@ async function handleAdminData(request, env) {
     return json({ ok: true, store });
   }
 
-  // Debug: compare cache vs Cloudinary (no write)
+  // Debug: compare cache vs Cloudinary + raw fetch probes (no write)
   if (action === 'debug_store') {
     const fromCache = await loadStoreFromCache();
+    const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
+    const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
+    const apiSecret = String(env.CLOUDINARY_API_SECRET || '').trim();
+    const publicId = FOLDER + '/store.json';
+    const probes = [];
+
+    const probe = async (label, url, init) => {
+      try {
+        const res = await fetch(url, init || {});
+        const text = await res.text();
+        let clients = null;
+        let updatedAt = null;
+        let parseErr = null;
+        try {
+          const j = JSON.parse(text);
+          clients = Array.isArray(j.clients) ? j.clients.length : null;
+          updatedAt = j.updatedAt || null;
+        } catch (e) {
+          parseErr = (e && e.message) || 'parse error';
+        }
+        probes.push({
+          label,
+          status: res.status,
+          bytes: text.length,
+          clients,
+          updatedAt,
+          parseErr,
+          head: text.slice(0, 80)
+        });
+      } catch (e) {
+        probes.push({ label, error: (e && e.message) || String(e) });
+      }
+    };
+
+    if (cloudName) {
+      await probe(
+        'delivery',
+        'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId + '?_=' + Date.now()
+      );
+      if (apiKey && apiSecret) {
+        const auth = btoa(apiKey + ':' + apiSecret);
+        await probe(
+          'admin_meta',
+          'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + encodeURIComponent(publicId),
+          { headers: { Authorization: 'Basic ' + auth } }
+        );
+      }
+    }
+
     const fromCloud = await loadStoreFromCloudinary(env);
     return json({
       ok: true,
+      secrets: {
+        cloudName: cloudName || null,
+        hasKey: !!apiKey,
+        hasSecret: !!apiSecret,
+        keyLen: apiKey.length,
+        secretLen: apiSecret.length
+      },
+      probes,
       cache: {
         clients: (fromCache && fromCache.clients) ? fromCache.clients.length : 0,
         updatedAt: fromCache && fromCache.updatedAt,
@@ -392,14 +449,22 @@ function looksLikeStore(data) {
 }
 
 async function fetchStoreJson(url) {
-  const bust = (url.includes('?') ? '&' : '?') + '_=' + Date.now() + '&cb=' + Math.random().toString(36).slice(2, 8);
-  const res = await fetch(url + bust, {
-    cache: 'no-store',
-    cf: { cacheTtl: 0, cacheEverything: false }
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return looksLikeStore(data) ? data : null;
+  const bust =
+    (url.includes('?') ? '&' : '?') +
+    '_=' +
+    Date.now() +
+    '&cb=' +
+    Math.random().toString(36).slice(2, 8);
+  try {
+    const res = await fetch(url + bust, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text || text.length < 2) return null;
+    const data = JSON.parse(text);
+    return looksLikeStore(data) ? data : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 async function loadStoreFromCloudinary(env) {

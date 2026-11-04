@@ -1,6 +1,8 @@
 # Búzios Health Club — Website
 
-Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de Natação Búzios** (Luanda).
+Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de Natação Búzios** (Kifica, Benfica, Luanda).
+
+**Live site:** https://www.buzioshealthclub.com
 
 ## Stack
 
@@ -29,7 +31,9 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 | `planos.html` | All plans & prices |
 | `inscricao.html` | Enrollment form |
 | `contacto.html` | Contact form |
-| `admin.html` | Staff panel (password-gated) |
+| `admin.html` | Staff panel (password-gated, noindex) |
+| `robots.txt` | Search engine crawl rules |
+| `sitemap.xml` | XML sitemap for Google |
 | `manifest.json` | PWA manifest — public site |
 | `admin-manifest.json` | PWA manifest — admin |
 | `sw.js` | Service worker (app shell) |
@@ -112,8 +116,8 @@ After deploy, both the public site and the admin panel can be installed:
 
 | App | Open this URL | Result |
 |-----|---------------|--------|
-| **Búzios** (public) | `https://buzioshealthclub.pages.dev/` | Install “Búzios” |
-| **Búzios Admin** | `https://buzioshealthclub.pages.dev/admin.html` | Install “Búzios Admin” |
+| **Búzios** (public) | `https://www.buzioshealthclub.com/` | Install “Búzios” |
+| **Búzios Admin** | `https://www.buzioshealthclub.com/admin.html` | Install “Búzios Admin” |
 
 **How to install**
 - **Android / Chrome**: menu → “Install app” / “Add to Home screen”

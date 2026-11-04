@@ -27,8 +27,12 @@
   <meta name="twitter:description" content="Ginásio e Escola de Natação em Kifica, Benfica. Musculação, cardio e natação em piscina aquecida.">
   <meta name="twitter:image" content="https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111894/buzios/rbl7aqadp2pcocz3dcrz.jpg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
-  <link rel="icon" href="/icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="/icons/favicon-96.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/favicon-192.png">
+  <link rel="shortcut icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -44,7 +48,11 @@
     "url": "https://www.buzioshealthclub.com/",
     "telephone": "+244923423142",
     "email": "lacasadeferro521@gmail.com",
-    "image": "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111894/buzios/rbl7aqadp2pcocz3dcrz.jpg",
+    "logo": "https://www.buzioshealthclub.com/icons/logo.png",
+    "image": [
+      "https://www.buzioshealthclub.com/icons/logo.png",
+      "https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111894/buzios/rbl7aqadp2pcocz3dcrz.jpg"
+    ],
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "Rua 21-c, Bairro do Benfica, Kifica nº 57-59",
@@ -76,14 +84,13 @@
       </button>
 
       <a href="index.html" class="brand">
-        <img class="brand-logo" src="icons/logo.png" width="50" height="50" alt="Búzios Health Club">
         <span class="brand-text">
           <span class="brand-name">Búzios</span>
           <span class="brand-tag">Health Club</span>
         </span>
       </a>
 
-      <div class="header-right" style="width:44px"></div>
+      <div class="header-right" aria-hidden="true"></div>
 
       <nav class="desktop-nav" aria-label="Principal">
         <a href="index.html" class="nav-link">Início</a>

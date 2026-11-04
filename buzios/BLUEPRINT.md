@@ -196,6 +196,7 @@ Address: Rua 21-c, Bairro do Benfica, Kifica nº 57-59, Luanda
 
 - Clientes page: dense rows, sticky summary/filters, priority actions, floating bulk bar, bulk WhatsApp/export, keyboard shortcuts, **Mais** closes on outside click / Escape
 - Brand logo rolled out site-wide (header, drawer, footer, admin nav, login) and into PWA icons
+- Google SERP favicon: root `favicon.ico` + sized PNGs (`favicon-48/96/192`), schema.org `logo`, solid-background icons for clarity at small sizes
 - Documentation rule: keep **README.md** + **BLUEPRINT.md** updated on every significant change
 
 ---

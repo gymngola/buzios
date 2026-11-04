@@ -176,7 +176,8 @@ Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `publi
 
 - Name: **Búzios** / Health Club  
 - Secondary: **La Casa de Ferro** / Escola de Natação Búzios  
-- Logo: `icons/logo.png` (circular mark) — used in public header, mobile drawer, footer, admin nav, admin login, and PWA icons  
+- Logo: `icons/logo.png` (circular mark) — used in public header, mobile drawer, footer, admin nav, admin login, and PWA icons
+- **Google search favicon:** `/favicon.ico` + `icons/favicon-48.png` / `96` / `192` on every public page (shown next to the URL in Google results; Google’s cache can take days–weeks to refresh)  
 - WhatsApp ginásio: +244 923 423 142  
 - WhatsApp natação: +244 929 208 317  
 - IBAN: A006 0040 0000 6810 2585 1017 3  
@@ -207,6 +208,7 @@ See `BLUEPRINT.md` for full workflow and data fields.
 
 - **Clientes admin redesign** — denser rows, sticky summary/filters, priority actions, floating bulk bar, keyboard shortcuts, outside-click **Mais** menu
 - **Brand logo** — `icons/logo.png` on public header, drawer, footer; admin nav + login; PWA icons regenerated from logo artwork
+- **Google favicon** — `/favicon.ico` + `icons/favicon-48/96/192.png` on all public pages so search results can show the logo next to the URL
 - **Docs** — `BLUEPRINT.md` added; README maintenance rule documented
 
 ## Notes

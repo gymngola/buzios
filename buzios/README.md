@@ -148,9 +148,12 @@ Each installs as its own standalone app (different icons and names). The service
 ### Store (inscriptions, contact, newsletter, clients)
 
 1. Public forms → `POST /submit`
-2. Worker: **Workers Cache** (immediate) + Cloudinary `buzios/store.json` (durable)
-3. Admin → `POST /admin/data` reads the richer of cache + Cloudinary (avoids empty inbox from CDN lag)
+2. Worker **writes**: Cloudinary `buzios/store.json` first (signed upload + `invalidate`), then Workers Cache
+3. Worker **reads**: Cloudinary delivery URL (cache-busted) as source of truth; Workers Cache is a fast path only when it is at least as rich; richer snapshot always wins
+4. Admin `loadStore()` also fetches Cloudinary **directly** from the browser and keeps the richer of Worker response vs Cloudinary (protects UI if a colo cache is stale)
+5. **Backup** (Clientes → Backup) downloads full JSON: store + catalog — use before bulk deletes or re-imports
 
+`replace_store` ignores empty `clients` / `submissions` arrays unless `data._forceReplace === true` (recovery/import only).
 ### Site images
 
 - Upload to Cloudinary with unsigned preset (or pick from media library)
@@ -162,16 +165,18 @@ Each installs as its own standalone app (different icons and names). The service
 | Public ID | Written by | Read by |
 |-----------|------------|---------|
 | `buzios/catalog.json` | `POST /publish` | Worker `GET /catalog` → public + admin |
-| `buzios/store.json` | `POST /submit`, `POST /admin/data` | Worker (cache + Admin API / delivery) |
+| `buzios/store.json` | `POST /submit`, `POST /admin/data` | Worker (Cloudinary delivery + cache); admin also reads delivery URL as fallback |
 
 Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `public_id`, `timestamp` + API secret.
 
-**Permissions:** restricted keys often fail Admin API / create — use **Root** for Worker secrets.
+**Permissions:** use **Root** API key for Worker secrets (upload + Admin API).
 
-**Invalid Signature:** mismatched key/secret or trailing newline in `CLOUDINARY_API_SECRET`.
+**Invalid Signature:** mismatched key/secret or trailing newline in `CLOUDINARY_API_SECRET` — Worker trims secrets; still paste the exact secret with no extra newline when running `wrangler secret put`.
 
-**CDN lag:** delivery URLs for raw JSON use `max-age=2592000`. Always use Worker `/catalog` and Worker store load — never rely on unversioned `res.cloudinary.com/.../catalog.json` alone for live data.
+**CDN lag:** delivery URLs for raw JSON use `max-age=2592000`. Catalog: always use Worker `GET /catalog`. Store: Worker uses cache-busted delivery; admin dual-reads Cloudinary if needed.
 
+**Debug store (ops):**  
+`POST /admin/data` with `{"password":"…","action":"debug_store"}` returns secret presence, delivery probe, cache vs Cloudinary scores, and `chosenClients`.
 ## Brand
 
 - Name: **Búzios** / Health Club  
@@ -201,11 +206,12 @@ Dense operational list for membership staff:
 - Primary actions: Renovar, WhatsApp; secondary under **Mais** (closes on outside click / Escape)
 - Bulk bar + floating bar: WhatsApp, Suspender, Arquivar, Exportar, Apagar
 - Shortcuts on Clientes panel: `/` focus search, `N` new client
+- **Backup** — full JSON (store + catalog) for recovery
 - Export CSV / Copiar telefones respect current selection when present
 
 See `BLUEPRINT.md` for full workflow and data fields.
 
-## Recent changes (2026-11-04)
+## Recent changes (2026-11-04 → 2026-11-05)
 
 - **Clientes admin redesign** — denser rows, sticky summary/filters, priority actions, floating bulk bar, keyboard shortcuts, outside-click **Mais** menu
 - **Brand logo** — `icons/logo.png` on public header, drawer, footer; admin nav + login; PWA icons regenerated from logo artwork
@@ -213,7 +219,10 @@ See `BLUEPRINT.md` for full workflow and data fields.
 - **Typography** — Montserrat for titles/brand/nav/buttons (matches logo); Inter for body text
 - **Docs** — `BLUEPRINT.md` added; README maintenance rule documented
 - **Clients store limit** — Worker cap raised from 500 to **3000** (redeploy Worker to apply)
-- **Excel import** — cleaned membership dump from facturação spreadsheet; see `IMPORT.md`, `import-clients.json`, `import-clients-payload.json`
+- **Excel import** — cleaned membership dump (~264 clients); see `IMPORT.md`, `import-clients.json`, `import-clients-payload.json`
+- **Store durability** — Worker writes Cloudinary before cache; reads prefer Cloudinary delivery; admin dual-reads Cloudinary if Worker returns a thinner store
+- **Backup button** — Clientes → Backup downloads `buzios-backup-YYYY-MM-DD.json` (full store + catalog)
+- **Safety** — `replace_store` will not wipe clients with an empty array unless `_forceReplace: true`
 
 ## Notes
 

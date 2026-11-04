@@ -1253,6 +1253,50 @@
     toast(items.length + ' cliente(s) exportados');
   }
 
+  /** Full backup: store (clients, inbox, newsletter) + catalog (plans, texts, images). */
+  function downloadFullBackup() {
+    const payload = {
+      meta: {
+        app: 'buzios-admin',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        source: 'admin-backup'
+      },
+      store: {
+        clients: (store && store.clients) || [],
+        submissions: (store && store.submissions) || [],
+        newsletters: (store && store.newsletters) || [],
+        classes: (store && store.classes) || [],
+        updatedAt: (store && store.updatedAt) || null
+      },
+      catalog: {
+        products: products || [],
+        texts: texts || { pt: {}, en: {} },
+        images: images || {},
+        mediaLibrary: mediaLibrary || []
+      }
+    };
+    const nClients = payload.store.clients.length;
+    const nSub = payload.store.submissions.length;
+    const nNews = payload.store.newsletters.length;
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'buzios-backup-' + todayISO() + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(
+      'Backup: ' +
+        nClients +
+        ' clientes, ' +
+        nSub +
+        ' inscrições/contactos, ' +
+        nNews +
+        ' newsletter'
+    );
+  }
+
   async function copyClientPhones() {
     const selected = getSelectedIds('clients');
     let items = getVisibleClients();
@@ -1269,6 +1313,7 @@
 
   $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
   $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
+  $('#backupAllBtn')?.addEventListener('click', downloadFullBackup);
   $('#exportClientsBtn')?.addEventListener('click', exportClientsCsv);
   $('#copyClientPhonesBtn')?.addEventListener('click', copyClientPhones);
 

@@ -20,12 +20,15 @@ Live: https://www.buzioshealthclub.com
 ```
 [Browser public pages] ──POST /submit──► [Cloudflare Worker]
 [Browser admin.html]  ──POST /admin/data /publish──► [Worker]
-                              │
-                              ├─ Workers Cache (fast store reads)
-                              └─ Cloudinary
-                                   ├─ buzios/store.json   (inbox, clients, newsletter)
-                                   ├─ buzios/catalog.json (plans, texts, image slots)
-                                   └─ media (unsigned browser uploads)
+         │                        │
+         │                        ├─ Cloudinary first on write (durable + CDN invalidate)
+         │                        ├─ Workers Cache second (per-colo fast path)
+         │                        └─ Read: Cloudinary delivery (source of truth) vs cache → richer wins
+         └── also GET res.cloudinary.com/…/buzios/store.json (admin fallback if Worker thin)
+Cloudinary
+  ├─ buzios/store.json   (inbox, clients, newsletter)
+  ├─ buzios/catalog.json (plans, texts, image slots)
+  └─ media (unsigned browser uploads)
 [Static HTML/CSS/JS] ◄── Cloudflare Pages
 ```
 
@@ -104,7 +107,7 @@ Designed for daily membership ops: who is active, who expires soon, who owes.
 
 ### Layout
 
-1. Page head — description + Exportar CSV · Copiar telefones · **+ Cliente**
+1. Page head — description + **Backup** · Exportar CSV · Copiar telefones · **+ Cliente**
 2. **Sticky strip**
    - Status counts: Activos · A expirar (7d) · Expirados · Em dívida · Pendentes (coloured underline)
    - Search + sort
@@ -132,6 +135,7 @@ Closes on **outside click** or **Escape**.
 - Status derived from `planEnd` via `enrichClient()` (respects suspenso / cancelado / arquivado / isento)
 - Empty filter → message + **Limpar filtros**
 - Bulk: WhatsApp (copy phones + open first), Suspender, Arquivar, Exportar selected, Apagar
+- **Backup**: downloads full JSON (`store` + `catalog`) — use before bulk delete or re-import
 - Export CSV / Copiar telefones use **selection** if any, else current filtered list
 - Shortcuts (Clientes panel only, not while typing): `/` → search, `N` → new client
 - Quick **Renovar**: extends period by billing cycle, records payment, sets activo / em_dia
@@ -151,10 +155,17 @@ Plans, site texts, image slot URLs — edited in admin, published explicitly.
 ### Store (`buzios/store.json`)
 
 - `submissions` — inscrição + contacto
-- `clients` — membership records
+- `clients` — membership records (cap **3000** in Worker)
 - `newsletters` — phone opt-ins
+- `updatedAt` — ISO timestamp on every write
 
 Public `POST /submit` appends; admin mutates via `POST /admin/data`.
+
+**Write order:** Cloudinary signed upload (`invalidate=true`) → Workers Cache.  
+**Read order:** Cloudinary delivery (cache-busted) vs Workers Cache → prefer richer / newer; backfill cache when Cloudinary wins.  
+**Admin:** also loads Cloudinary delivery directly and keeps the richer snapshot (guards against stale colo cache).  
+**Replace safety:** `replace_store` ignores empty client/submission arrays unless `_forceReplace: true`.  
+**Backup:** Clientes → Backup → `buzios-backup-YYYY-MM-DD.json` (store + catalog).
 
 ---
 
@@ -193,7 +204,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 
 ## 9. Change log (blueprint)
 
-### 2026-11-04
+### 2026-11-04 → 2026-11-05
 
 - Clientes page: dense rows, sticky summary/filters, priority actions, floating bulk bar, bulk WhatsApp/export, keyboard shortcuts, **Mais** closes on outside click / Escape
 - Brand logo rolled out site-wide (header, drawer, footer, admin nav, login) and into PWA icons
@@ -201,7 +212,10 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - Typography: switched display font from Cormorant Garamond to **Montserrat** (geometric, aligned with La Casa de Ferro logo lettering); Inter kept for body
 - Documentation rule: keep **README.md** + **BLUEPRINT.md** updated on every significant change
 - **Store clients cap** raised 500 → **3000** in Worker (`worker/src/index.js`); redeploy required
-- Excel membership import: `import-clients.json` + `import-clients-payload.json` + `IMPORT.md` (one client per Nº, `payments[]` history, debtors flagged)
+- Excel membership import (~264 clients): `import-clients.json` + `import-clients-payload.json` + `IMPORT.md`
+- **Store durability fix:** Cloudinary-first writes; delivery-URL reads as source of truth; admin dual-read fallback; `debug_store` action for ops
+- **Backup** button on Clientes — full JSON export (store + catalog)
+- **replace_store** does not wipe lists with `[]` unless `_forceReplace: true`
 
 ---
 

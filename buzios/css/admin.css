@@ -456,7 +456,7 @@ a { color: var(--admin-accent); }
 .form-row textarea { min-height: 80px; resize: vertical; }
 .form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
 
-/* —— Sticky actions —— */
+/* —— Sticky publish (only Planos / Imagens / Textos) —— */
 .sticky-actions {
   position: fixed;
   bottom: 0;
@@ -469,13 +469,28 @@ a { color: var(--admin-accent); }
   padding: 0.75rem 1rem;
   padding-bottom: calc(0.75rem + var(--safe-bottom));
   display: flex;
-  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 1rem;
   z-index: 100;
   box-shadow: 0 -4px 20px rgba(15, 42, 50, 0.06);
 }
 
+.sticky-actions[hidden] {
+  display: none !important;
+}
+
+.sticky-actions .publish-hint {
+  flex: 1 1 160px;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+  line-height: 1.35;
+}
+
 .sticky-actions button {
-  flex: 1;
+  flex: 0 1 220px;
+  min-width: 160px;
   height: 46px;
   border: none;
   border-radius: 10px;
@@ -487,17 +502,11 @@ a { color: var(--admin-accent); }
 
 .sticky-actions button:active { transform: scale(0.98); }
 
-.btn-save {
-  background: #e8ecee;
-  color: var(--admin-text);
-}
-
-.btn-save:hover { background: #dde3e6; }
-
 .btn-publish {
   background: var(--admin-accent);
   color: #fff;
   box-shadow: 0 2px 8px rgba(196, 92, 38, 0.3);
+  margin-left: auto;
 }
 
 .btn-publish:hover { opacity: 0.95; }

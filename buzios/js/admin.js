@@ -137,6 +137,9 @@
     guide: 'Guia'
   };
 
+  /** Panels that edit the public website catalog (need Publish). */
+  const PUBLISH_PANELS = { products: true, images: true, texts: true };
+
   function activatePanel(name) {
     if (!name) return;
     $$('.admin-tabs button').forEach(b => {
@@ -147,6 +150,11 @@
     if (panel) panel.classList.add('active');
     const titleEl = $('#sectionTitle');
     if (titleEl) titleEl.textContent = PANEL_TITLES[name] || name;
+    const publishBar = $('#publishBar');
+    if (publishBar) {
+      if (PUBLISH_PANELS[name]) publishBar.removeAttribute('hidden');
+      else publishBar.setAttribute('hidden', '');
+    }
     try {
       sessionStorage.setItem('buzios_admin_panel', name);
     } catch (e) {}
@@ -248,17 +256,15 @@
     renderClients();
   }
 
+  /** Auto-save catalog edits to this browser (no manual “Guardar rascunho”). */
   function markDirty() {
-    localStorage.setItem(LS.dirty, '1');
-  }
-
-  function saveDraft() {
-    localStorage.setItem(LS.products, JSON.stringify(products));
-    localStorage.setItem(LS.texts, JSON.stringify(texts));
-    localStorage.setItem(LS.images, JSON.stringify(images));
-    localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
-    markDirty();
-    toast('Rascunho guardado neste browser (só este)');
+    try {
+      localStorage.setItem(LS.products, JSON.stringify(products));
+      localStorage.setItem(LS.texts, JSON.stringify(texts));
+      localStorage.setItem(LS.images, JSON.stringify(images));
+      localStorage.setItem(LS.media, JSON.stringify(mediaLibrary));
+      localStorage.setItem(LS.dirty, '1');
+    } catch (e) {}
   }
 
   /** After publish: local matches live catalog; clear dirty so other browsers stay in sync. */
@@ -1494,7 +1500,7 @@
 
   // —— Publish ——
   async function publish() {
-    if (!confirm('Publicar na loja?\n\nActualiza planos, textos e imagens para todos os visitantes.')) return;
+    if (!confirm('Publicar no website?\n\nActualiza planos, textos e imagens para todos os visitantes.')) return;
     $$('[data-text-key]').forEach(ta => {
       if (!texts.pt) texts.pt = {};
       texts.pt[ta.dataset.textKey] = ta.value;
@@ -1518,13 +1524,12 @@
       });
       if (!res.ok) throw new Error(await res.text());
       syncLocalFromState();
-      toast('Publicado com sucesso — todos os browsers verão isto após refresh');
+      toast('Publicado no website — visitantes verão após refresh');
     } catch (err) {
       toast('Erro ao publicar: ' + (err.message || err));
     }
   }
 
-  $('#saveDraftBtn')?.addEventListener('click', saveDraft);
   $('#publishBtn')?.addEventListener('click', publish);
 
   function renderAll() {

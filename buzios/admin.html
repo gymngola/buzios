@@ -164,7 +164,7 @@
       <!-- Products -->
       <div id="panel-products" class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-          <p style="font-size:0.85rem;color:#666">Edite preços e descrições. Guarde rascunho para pré-visualizar.</p>
+          <p style="font-size:0.85rem;color:#666">Edite preços e descrições. Clique <strong>Publicar no website</strong> para os visitantes verem.</p>
           <button type="button" id="addProductBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Novo</button>
         </div>
         <div class="prod-list" id="prodList"></div>
@@ -173,7 +173,7 @@
       <!-- Images -->
       <div id="panel-images" class="panel">
         <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">
-          Carregue fotos para o site (hero, ginásio, natação, contacto…). Depois clique <strong>Publicar na loja</strong> para todos verem.
+          Carregue fotos para o site (hero, ginásio, natação, contacto…). Depois clique <strong>Publicar no website</strong> para todos verem.
         </p>
 
         <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Zona de carregamento de imagens">
@@ -207,8 +207,8 @@
           <p><strong>Inscrições</strong> — pedidos do formulário de inscrição. Marque: Novo → Contactado → Inscrito.</p>
           <p><strong>Contactos</strong> — mensagens da página Contacto (nome, telefone, assunto, mensagem). Marque: Novo → Respondido → Arquivar.</p>
           <p><strong>Clientes</strong> — base a partir de inscrições (botão “Criar cliente” na inscrição) ou manual. Pesquisa por nome/telefone, filtros, ordenação, WhatsApp, suspender/arquivar/apagar, contacto de emergência, exportar CSV e copiar telefones. O estado passa a expirado/em dívida quando a data de fim passa. Use “Pagar e renovar” ou “Renovar”. Badge no menu se houver dívidas ou expirados.</p>
-          <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar na loja</strong>.</p>
-          <p><strong>Rascunho / Publicar</strong> — planos, imagens e textos: rascunho só neste browser; Publicar actualiza o site para todos.</p>
+          <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar no website</strong>.</p>
+          <p><strong>Publicar no website</strong> — só em Planos, Imagens e Textos. Clientes, inscrições e contactos guardam-se sozinhos (não precisam de publicar).</p>
           <h3>Redeploy do Worker</h3>
           <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>
         </div>
@@ -258,9 +258,9 @@
       </nav>
     </div><!-- /.admin-layout -->
 
-    <div class="sticky-actions">
-      <button type="button" class="btn-save" id="saveDraftBtn">Guardar rascunho</button>
-      <button type="button" class="btn-publish" id="publishBtn">Publicar na loja</button>
+    <div class="sticky-actions" id="publishBar" hidden>
+      <p class="publish-hint">Alterações em planos, imagens ou textos só aparecem no site após publicar.</p>
+      <button type="button" class="btn-publish" id="publishBtn">Publicar no website</button>
     </div>
   </div>
 

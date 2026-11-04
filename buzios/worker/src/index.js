@@ -280,16 +280,33 @@ function storeScore(s) {
   return (s.submissions || []).length + (s.newsletters || []).length + (s.clients || []).length;
 }
 
-/** Prefer the richer / newer of two store snapshots. */
+/** True when snapshot has no real data (uninitialized or wiped). */
+function isEmptyStore(s) {
+  if (!s || typeof s !== 'object') return true;
+  return storeScore(s) <= 0 && !s.updatedAt;
+}
+
+/** Prefer the richer / newer of two store snapshots. Never prefer empty over real data. */
 function preferStore(a, b) {
-  if (!a) return b || emptyStore();
-  if (!b) return a;
+  if (!a || isEmptyStore(a)) return b && !isEmptyStore(b) ? b : (b || a || emptyStore());
+  if (!b || isEmptyStore(b)) return a;
   const sa = storeScore(a);
   const sb = storeScore(b);
   if (sa !== sb) return sa > sb ? a : b;
   const ta = Date.parse(a.updatedAt || 0) || 0;
   const tb = Date.parse(b.updatedAt || 0) || 0;
   return ta >= tb ? a : b;
+}
+
+async function putStoreCache(store) {
+  try {
+    await caches.default.put(
+      STORE_CACHE_URL,
+      new Response(JSON.stringify(store), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=604800' }
+      })
+    );
+  } catch (_) {}
 }
 
 async function loadStoreFromCache() {
@@ -303,6 +320,28 @@ async function loadStoreFromCache() {
   return null;
 }
 
+function looksLikeStore(data) {
+  return (
+    data &&
+    typeof data === 'object' &&
+    (Array.isArray(data.submissions) ||
+      Array.isArray(data.newsletters) ||
+      Array.isArray(data.clients) ||
+      data.updatedAt != null)
+  );
+}
+
+async function fetchStoreJson(url) {
+  const bust = (url.includes('?') ? '&' : '?') + '_=' + Date.now() + '&cb=' + Math.random().toString(36).slice(2, 8);
+  const res = await fetch(url + bust, {
+    cache: 'no-store',
+    cf: { cacheTtl: 0, cacheEverything: false }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return looksLikeStore(data) ? data : null;
+}
+
 async function loadStoreFromCloudinary(env) {
   const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
   const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
@@ -310,6 +349,7 @@ async function loadStoreFromCloudinary(env) {
   if (!cloudName) return null;
 
   const publicId = FOLDER + '/store.json';
+  const urls = [];
 
   // Admin API → versioned / secure_url (avoids 30-day delivery CDN)
   if (apiKey && apiSecret) {
@@ -321,81 +361,52 @@ async function loadStoreFromCloudinary(env) {
       );
       if (metaRes.ok) {
         const meta = await metaRes.json();
-        const urls = [];
         if (meta.secure_url) urls.push(meta.secure_url);
-        if (meta.url) urls.push(meta.url.replace(/^http:/, 'https:'));
+        if (meta.url) urls.push(String(meta.url).replace(/^http:/, 'https:'));
         if (meta.version) {
           urls.push(
             'https://res.cloudinary.com/' + cloudName + '/raw/upload/v' + meta.version + '/' + publicId
           );
         }
-        for (const u of urls) {
-          try {
-            const fileRes = await fetch(u + (u.includes('?') ? '&' : '?') + '_=' + Date.now(), {
-              cache: 'no-store'
-            });
-            if (fileRes.ok) {
-              const data = await fileRes.json();
-              if (data && typeof data === 'object' && (data.submissions || data.newsletters || data.clients || data.updatedAt)) {
-                return data;
-              }
-            }
-          } catch (_) {}
-        }
       }
     } catch (_) {}
   }
 
-  // Delivery fallback
-  try {
-    const res = await fetch(
-      'https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId + '?_=' + Date.now(),
-      { cache: 'no-store', cf: { cacheTtl: 0, cacheEverything: false } }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (data && typeof data === 'object') return data;
-    }
-  } catch (_) {}
+  // Always try plain delivery as last resort (cache-busted)
+  urls.push('https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId);
+
+  for (const u of urls) {
+    try {
+      const data = await fetchStoreJson(u);
+      if (data) return data;
+    } catch (_) {}
+  }
 
   return null;
 }
 
 /**
  * Load store: Workers Cache (fast, same-colo) + Cloudinary (durable).
- * Picks the richer snapshot so CDN lag cannot wipe submissions.
+ * Picks the richer snapshot so CDN lag / empty colo cache cannot wipe data.
+ * Always backfills Cache when Cloudinary wins.
  */
 async function loadStore(env) {
   const fromCache = await loadStoreFromCache();
   const fromCloud = await loadStoreFromCloudinary(env);
   const chosen = preferStore(fromCache, fromCloud);
-  if (storeScore(chosen) > 0 && storeScore(chosen) > storeScore(fromCache || emptyStore())) {
-    try {
-      await caches.default.put(
-        STORE_CACHE_URL,
-        new Response(JSON.stringify(chosen), {
-          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=604800' }
-        })
-      );
-    } catch (_) {}
+
+  // If cache was empty/stale and we got real data from Cloudinary, fix this colo's cache
+  if (!isEmptyStore(chosen) && (isEmptyStore(fromCache) || storeScore(chosen) > storeScore(fromCache || emptyStore()))) {
+    await putStoreCache(chosen);
   }
-  return chosen;
+
+  return chosen || emptyStore();
 }
 
 async function saveStore(env, store) {
   const body = JSON.stringify(store);
   // 1. Workers Cache — immediate read for this colo
-  try {
-    await caches.default.put(
-      STORE_CACHE_URL,
-      new Response(body, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'max-age=604800'
-        }
-      })
-    );
-  } catch (_) {}
+  await putStoreCache(store);
   // 2. Cloudinary — durable backup (invalidate CDN)
   await uploadRaw(env, FOLDER + '/store.json', body);
 }

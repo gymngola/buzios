@@ -469,53 +469,32 @@ async function fetchStoreJson(url) {
 
 async function loadStoreFromCloudinary(env) {
   const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
-  const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
-  const apiSecret = String(env.CLOUDINARY_API_SECRET || '').trim();
   if (!cloudName) return null;
 
   const publicId = FOLDER + '/store.json';
-  const urls = [];
-  let best = null;
+  // Same URL shape as the debug probe that already returns 264 clients.
+  // Keep it simple: public delivery + cache-bust. Admin API meta is not required for store reads.
+  const url =
+    'https://res.cloudinary.com/' +
+    cloudName +
+    '/raw/upload/' +
+    publicId +
+    '?_=' +
+    Date.now() +
+    '&cb=' +
+    Math.random().toString(36).slice(2, 8);
 
-  // Admin API → versioned / secure_url (avoids 30-day delivery CDN)
-  if (apiKey && apiSecret) {
-    try {
-      const auth = btoa(apiKey + ':' + apiSecret);
-      // Try both encoded and raw public_id paths (Cloudinary accepts either)
-      const metaPaths = [
-        'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + encodeURIComponent(publicId),
-        'https://api.cloudinary.com/v1_1/' + cloudName + '/resources/raw/upload/' + publicId
-      ];
-      for (const metaUrl of metaPaths) {
-        const metaRes = await fetch(metaUrl, { headers: { Authorization: 'Basic ' + auth } });
-        if (!metaRes.ok) continue;
-        const meta = await metaRes.json();
-        if (meta.version) {
-          urls.unshift(
-            'https://res.cloudinary.com/' + cloudName + '/raw/upload/v' + meta.version + '/' + publicId
-          );
-        }
-        if (meta.secure_url) urls.unshift(meta.secure_url);
-        if (meta.url) urls.unshift(String(meta.url).replace(/^http:/, 'https:'));
-        break;
-      }
-    } catch (_) {}
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!text || text.length < 2) return null;
+    const data = JSON.parse(text);
+    if (!looksLikeStore(data)) return null;
+    return data;
+  } catch (_) {
+    return null;
   }
-
-  // Plain delivery last (cache-busted in fetchStoreJson)
-  urls.push('https://res.cloudinary.com/' + cloudName + '/raw/upload/' + publicId);
-
-  for (const u of urls) {
-    try {
-      const data = await fetchStoreJson(u);
-      if (!data) continue;
-      if (!best || storeScore(data) > storeScore(best)) best = data;
-      // Prefer any non-empty snapshot immediately when score looks real
-      if (storeScore(data) > 0) return data;
-    } catch (_) {}
-  }
-
-  return best;
 }
 
 /**

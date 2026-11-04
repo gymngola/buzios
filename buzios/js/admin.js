@@ -123,8 +123,20 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       $$('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+      $$('.client-row .row-more[open]').forEach(d => { d.open = false; });
     }
   });
+
+  // Close "Mais" menus when clicking anywhere outside them
+  document.addEventListener('click', (e) => {
+    const openMenus = $$('.client-row .row-more[open]');
+    if (!openMenus.length) return;
+    openMenus.forEach(d => {
+      if (!d.contains(e.target)) d.open = false;
+    });
+  });
+  // Prevent the toggle click from immediately re-closing via the document listener
+  // (details toggle happens before bubble; closing only when outside is enough)
 
   const PANEL_TITLES = {
     inbox: 'Inscrições',

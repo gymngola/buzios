@@ -101,19 +101,27 @@ a { color: var(--admin-accent); }
   text-align: center;
 }
 
+.admin-nav-brand .brand-mark,
+.admin-nav-brand .brand-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #fff;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
 .admin-nav-brand .brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: linear-gradient(145deg, #c45c26, #a34a1c);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 0.85rem;
   letter-spacing: -0.02em;
+  color: #c45c26;
+  background: linear-gradient(145deg, #c45c26, #a34a1c);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(196, 92, 38, 0.35);
+  border-radius: 9px;
 }
 
 .admin-nav-brand .brand-name {
@@ -223,6 +231,11 @@ a { color: var(--admin-accent); }
     display: block;
   }
 
+  .admin-nav-brand .brand-logo {
+    width: 40px;
+    height: 40px;
+  }
+
   .admin-nav-brand .brand-text {
     display: flex;
     flex-direction: column;
@@ -264,6 +277,17 @@ a { color: var(--admin-accent); }
 }
 
 /* —— Login —— */
+.login-box .login-logo {
+  display: block;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(15, 42, 50, 0.1);
+}
+
 .login-box {
   max-width: 380px;
   margin: 12vh auto;

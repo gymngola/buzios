@@ -187,13 +187,31 @@ button { cursor: pointer; }
 
 /* Brand */
 .brand {
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: left;
   line-height: 1.12;
+  text-decoration: none;
+}
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .brand-name {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -202,17 +220,21 @@ button { cursor: pointer; }
 }
 .brand-tag {
   display: block;
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   font-weight: var(--fw-light);
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.72);
-  margin-top: 0.1rem;
+  margin-top: 0.05rem;
   transition: color var(--t-med);
 }
 @media (min-width: 900px) {
-  .brand-name { font-size: 1.65rem; letter-spacing: 0.1em; }
-  .brand-tag { font-size: 0.62rem; letter-spacing: 0.32em; }
+  .brand-logo { width: 50px; height: 50px; }
+  .brand-name { font-size: 1.45rem; letter-spacing: 0.1em; }
+  .brand-tag { font-size: 0.6rem; letter-spacing: 0.32em; }
+}
+.site-header.scrolled .brand-logo {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* Desktop nav */
@@ -316,6 +338,16 @@ button { cursor: pointer; }
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 2.5rem;
+}
+.drawer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.drawer-brand .brand-logo {
+  width: 48px;
+  height: 48px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
 }
 .drawer-brand .brand-name {
   color: var(--color-text);
@@ -1161,6 +1193,20 @@ body.drawer-open { overflow: hidden; }
 }
 .footer-legal a:hover { color: var(--color-text-muted); }
 
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+.footer-brand img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #fff;
+}
 .footer-copy {
   font-size: 0.7rem;
   color: var(--color-text-soft);

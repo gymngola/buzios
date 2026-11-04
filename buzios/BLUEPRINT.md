@@ -172,7 +172,7 @@ Public `POST /submit` appends; admin mutates via `POST /admin/data`.
 
 WhatsApp: ginásio +244 923 423 142 · natação +244 929 208 317  
 IBAN: A006 0040 0000 6810 2585 1017 3  
-Address: Rua 21-c, travessa 5, Bairro do Benfica Kifica nº 57-59, Luanda
+Address: Rua 21-c, Bairro do Benfica, Kifica nº 57-59, Luanda
 
 ---
 

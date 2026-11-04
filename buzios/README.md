@@ -181,13 +181,13 @@ Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `publi
 - WhatsApp ginásio: +244 923 423 142  
 - WhatsApp natação: +244 929 208 317  
 - IBAN: A006 0040 0000 6810 2585 1017 3  
-- Address: Rua 21-c, Bairro do Benfica, Kifica nº 57-59, Luanda  
+- Address: Rua 21-c, travessa 5, Bairro do Benfica Kifica nº 57-59, Luanda  
 
 ## Visual system
 
 - Quiet luxury — warmer paper background, terracotta accent, soft elevation  
-- Cormorant Garamond (titles) + Inter (body) on public site; Inter on admin  
-- Thin borders, generous whitespace, light type (300–500)  
+- **Montserrat** (titles, brand, nav, buttons — geometric, in tune with logo) + **Inter** (body) on public site; Inter on admin  
+- Thin borders, generous whitespace  
 - Mobile-first, safe-area, Portuguese first  
 
 ## Admin — Clientes (summary)
@@ -209,6 +209,7 @@ See `BLUEPRINT.md` for full workflow and data fields.
 - **Clientes admin redesign** — denser rows, sticky summary/filters, priority actions, floating bulk bar, keyboard shortcuts, outside-click **Mais** menu
 - **Brand logo** — `icons/logo.png` on public header, drawer, footer; admin nav + login; PWA icons regenerated from logo artwork
 - **Google favicon** — `/favicon.ico` + `icons/favicon-48/96/192.png` on all public pages so search results can show the logo next to the URL
+- **Typography** — Montserrat for titles/brand/nav/buttons (matches logo); Inter for body text
 - **Docs** — `BLUEPRINT.md` added; README maintenance rule documented
 
 ## Notes

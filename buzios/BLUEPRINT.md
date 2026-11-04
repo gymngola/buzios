@@ -166,13 +166,13 @@ Public `POST /submit` appends; admin mutates via `POST /admin/data`.
 | Secondary | La Casa de Ferro · Escola de Natação Búzios |
 | Logo file | `icons/logo.png` (source `logo.jpg`; circular mark) |
 | Accent | Terracotta `#c45c26` |
-| Public type | Cormorant Garamond + Inter |
+| Public type | Montserrat (display/brand, matches logo) + Inter (body) |
 | Admin type | Inter |
 | Language | Portuguese first |
 
 WhatsApp: ginásio +244 923 423 142 · natação +244 929 208 317  
 IBAN: A006 0040 0000 6810 2585 1017 3  
-Address: Rua 21-c, Bairro do Benfica, Kifica nº 57-59, Luanda
+Address: Rua 21-c, travessa 5, Bairro do Benfica Kifica nº 57-59, Luanda
 
 ---
 
@@ -197,6 +197,7 @@ Address: Rua 21-c, Bairro do Benfica, Kifica nº 57-59, Luanda
 - Clientes page: dense rows, sticky summary/filters, priority actions, floating bulk bar, bulk WhatsApp/export, keyboard shortcuts, **Mais** closes on outside click / Escape
 - Brand logo rolled out site-wide (header, drawer, footer, admin nav, login) and into PWA icons
 - Google SERP favicon: root `favicon.ico` + sized PNGs (`favicon-48/96/192`), schema.org `logo`, solid-background icons for clarity at small sizes
+- Typography: switched display font from Cormorant Garamond to **Montserrat** (geometric, aligned with La Casa de Ferro logo lettering); Inter kept for body
 - Documentation rule: keep **README.md** + **BLUEPRINT.md** updated on every significant change
 
 ---

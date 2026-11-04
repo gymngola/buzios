@@ -25,9 +25,9 @@
   --color-shadow: rgba(28, 25, 23, 0.06);
   --color-shadow-lg: rgba(28, 25, 23, 0.10);
 
-  /* Typography */
+  /* Typography — Montserrat matches geometric logo lettering (La Casa de Ferro) */
   --font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-display: "Cormorant Garamond", "Georgia", "Times New Roman", serif;
+  --font-display: "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --fw-light: 300;
   --fw-regular: 400;
   --fw-medium: 500;
@@ -223,21 +223,22 @@ button { cursor: pointer; }
 .brand-name {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.45rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-hero-text);
   transition: color var(--t-med);
 }
 .brand-tag {
   display: block;
+  font-family: var(--font-display);
   font-size: 0.58rem;
-  font-weight: var(--fw-light);
-  letter-spacing: 0.28em;
+  font-weight: 600;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.72);
-  margin-top: 0.05rem;
+  margin-top: 0.12rem;
   transition: color var(--t-med);
 }
 @media (min-width: 900px) {
@@ -250,8 +251,8 @@ button { cursor: pointer; }
   .site-header .brand-text {
     align-items: flex-start;
   }
-  .brand-name { font-size: 1.35rem; letter-spacing: 0.1em; }
-  .brand-tag { font-size: 0.58rem; letter-spacing: 0.28em; }
+  .brand-name { font-size: 1.28rem; letter-spacing: 0.16em; }
+  .brand-tag { font-size: 0.56rem; letter-spacing: 0.34em; }
 }
 
 /* Desktop nav */
@@ -268,9 +269,10 @@ button { cursor: pointer; }
     margin-left: auto;
   }
   .nav-link {
+    font-family: var(--font-display);
     font-size: 0.68rem;
-    font-weight: var(--fw-medium);
-    letter-spacing: 0.12em;
+    font-weight: 600;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-hero-text);
     transition: color var(--t-fast), opacity var(--t-fast);
@@ -417,10 +419,11 @@ body.drawer-open { overflow: hidden; }
   justify-content: center;
   gap: 0.5rem;
   padding: 0.9rem 1.85rem;
-  font-size: 0.8rem;
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.05em;
-  text-transform: none;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   border-radius: var(--radius-btn);
   transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast),
               box-shadow var(--t-fast), transform var(--t-fast);
@@ -539,11 +542,11 @@ body.drawer-open { overflow: hidden; }
 }
 .hero-title {
   font-family: var(--font-display);
-  font-size: clamp(2.15rem, 7vw, 3.65rem);
-  font-weight: 400;
-  line-height: 1.12;
-  letter-spacing: -0.01em;
-  max-width: 14ch;
+  font-size: clamp(2rem, 6.5vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  max-width: 16ch;
   margin-bottom: 1.3rem;
 }
 .hero-sub {
@@ -603,19 +606,20 @@ body.drawer-open { overflow: hidden; }
   margin: 0 auto 3rem;
 }
 .section-eyebrow {
+  font-family: var(--font-display);
   font-size: 0.68rem;
-  font-weight: var(--fw-medium);
-  letter-spacing: 0.2em;
+  font-weight: 600;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--color-accent);
   margin-bottom: 0.75rem;
 }
 .section-title {
   font-family: var(--font-display);
-  font-size: clamp(1.75rem, 4.2vw, 2.55rem);
-  font-weight: 400;
-  letter-spacing: -0.015em;
-  line-height: 1.22;
+  font-size: clamp(1.55rem, 3.8vw, 2.2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
   margin-bottom: 0.95rem;
   position: relative;
 }
@@ -715,11 +719,11 @@ body.drawer-open { overflow: hidden; }
 
 .card-title {
   font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 500;
+  font-size: 1.1rem;
+  font-weight: 600;
   margin-bottom: 0.45rem;
-  letter-spacing: 0.01em;
-  line-height: 1.25;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 .card-text {
   font-size: 0.9rem;

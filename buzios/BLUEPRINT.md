@@ -79,7 +79,7 @@ Password gate → sections:
 
 | Panel | Function |
 |-------|----------|
-| Inscrições | Enrollment submissions; promote to client |
+| Inscrições | Enrollment submissions; promote to client (see §4.1) |
 | Contactos | Contact form messages |
 | Newsletter | Phone list |
 | **Clientes** | Membership CRM (see §5) |
@@ -92,12 +92,34 @@ Password gate → sections:
 - Clientes / inscrições / contactos / newsletter persist via `/admin/data` automatically.
 - Nav badge on Clientes when debt + expired count > 0.
 - Active panel remembered in `sessionStorage`.
+- **Session:** `sessionStorage` / `localStorage` (`buzios_admin_auth`). Reload does not flash login when already authed (`html.admin-authed` set in `<head>`).
+- **Multi-device sync:** while admin is open, store is polled ~every 7s (and on tab focus). Newer `updatedAt` replaces local store; toast “Actualizado noutro dispositivo”. Writes pause polling briefly.
 
 **Admin chrome**
 
 - Login: logo + “Búzios Admin”
 - Sidebar brand: logo (+ text on wide nav)
 - Icons: `icons/admin-192.png`, `admin-512.png` (from same logo artwork)
+
+### 4.1 Inscrições workflow
+
+Suggested path: **Novo → Contactado → Aguarda docs → Inscrito**, then **Arquivar** so the active queue stays clean.
+
+| Status | Meaning |
+|--------|---------|
+| `novo` | Just submitted |
+| `contactado` | Staff contacted the person |
+| `pendente_docs` | Waiting for documents (BI, medical, photos) |
+| `inscrito` | Converted / marked enrolled |
+| `arquivado` | Closed ticket (history only) |
+
+- Statuses are **reversible** (e.g. back to Novo).
+- Filters + bulk actions for each status.
+- **Criar cliente** → client `membershipStatus: activo`, submission → `inscrito`, linked via `fromClientId`.
+- **Criar pendente (docs)** → client `membershipStatus: pendente`, submission → `pendente_docs`.
+- **Ver cliente** when already linked.
+- **Arquivar** removes from the daily queue; does **not** delete the client in Clientes.
+- **Apagar** deletes only the enrollment submission.
 
 ---
 
@@ -132,13 +154,17 @@ Closes on **outside click** or **Escape**.
 ### Behaviour
 
 - **Default sort:** priority (dívida → a expirar → pendente → rest), then plan end ascending
-- Status derived from `planEnd` via `enrichClient()` (respects suspenso / cancelado / arquivado / isento)
+- Status derived from `planEnd` via `enrichClient()`:
+  - Auto-sets **expirado** when `planEnd` is past (unless suspenso / cancelado / arquivado / pendente / isento)
+  - Explicit **expirado** from the form is **kept**; if `planEnd` is still future/empty, it is backdated to yesterday so derived state matches
+  - Does **not** force expirado → activo when the staff chose expirado
 - Empty filter → message + **Limpar filtros**
 - Bulk: WhatsApp (copy phones + open first), Suspender, Arquivar, Exportar selected, Apagar
 - **Backup**: downloads full JSON (`store` + `catalog`) — use before bulk delete or re-import
 - Export CSV / Copiar telefones use **selection** if any, else current filtered list
 - Shortcuts (Clientes panel only, not while typing): `/` → search, `N` → new client
 - Quick **Renovar**: extends period by billing cycle, records payment, sets activo / em_dia
+- **Worker `update_client`:** re-loads store immediately before applying the patch (reduces multi-staff lost updates on *other* clients; same-client last-write still wins)
 
 ### Client data (store)
 
@@ -219,6 +245,16 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Backup** button on Clientes — full JSON export (store + catalog)
 - **replace_store** does not wipe lists with `[]` unless `_forceReplace: true`
 - Client edit: structured **Nº sócio**, **Idade**, **Horário**, **Cartão** fields; legacy notes parse on open; list shows Nº / horário / cartão; CSV columns updated
+
+### 2026-11-05 (later)
+
+- **Import notes cleanup:** removed `Import Excel (X meses) · planEnd provisório…` from all 264 clients; filled `schedule` / `hasCard` / `age` from legacy notes (see `IMPORT.md`)
+- **Client save / Expirado:** explicit Expirado from form is kept; future `planEnd` backdated to yesterday; `pendente` not auto-flipped by plan dates
+- **Inscrições:** reversible statuses; new `pendente_docs`; filters + bulk; **Criar cliente** vs **Criar pendente (docs)**; Arquivar closes the ticket without deleting the client
+- **Multi-device admin sync:** poll store ~7s + on tab focus; prefer newer `updatedAt`
+- **Worker:** `update_client` re-loads store before write (multi-staff safety)
+- **Login flash:** early `admin-authed` class so reload does not show login when session is valid
+- **Public mobile:** tighter layout for ≤600px / ≤380px (iPhone 6s-class); SW `buzios-v3` network-first for HTML/JS/CSS
 
 ---
 

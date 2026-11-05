@@ -246,25 +246,33 @@
               <input type="tel" id="ePhone" required inputmode="tel" autocomplete="tel" placeholder="9XX XXX XXX">
             </div>
             <div class="form-group">
-              <label>Email</label>
-              <input type="email" id="eEmail" autocomplete="email" placeholder="opcional">
+              <label>Email <span class="req">*</span></label>
+              <input type="email" id="eEmail" required autocomplete="email" placeholder="email@exemplo.com">
             </div>
             <div class="form-group" id="ageGroup" style="display:none">
               <label>Idade (natação)</label>
               <input type="number" id="eAge" min="0" max="120" inputmode="numeric">
             </div>
             <div class="form-group">
-              <label>Contacto de emergência — nome</label>
-              <input type="text" id="eEmergencyName" autocomplete="name" placeholder="Nome completo">
+              <label>Contacto de emergência — nome <span class="req">*</span></label>
+              <input type="text" id="eEmergencyName" required autocomplete="name" placeholder="Nome completo">
             </div>
             <div class="form-group">
-              <label>Contacto de emergência — telefone</label>
-              <input type="tel" id="eEmergencyPhone" inputmode="tel" autocomplete="tel" placeholder="9XX XXX XXX">
+              <label>Contacto de emergência — telefone <span class="req">*</span></label>
+              <input type="tel" id="eEmergencyPhone" required inputmode="tel" autocomplete="tel" placeholder="9XX XXX XXX">
             </div>
           </div>
 
           <div class="form-section">
-            <h3>3. Horário e notas</h3>
+            <h3>3. Objectivos e condições</h3>
+            <div class="form-group">
+              <label>Objectivos de treino <span class="req">*</span></label>
+              <textarea id="eGoals" required placeholder="Ex.: perda de peso, ganho de massa muscular, condicionamento, natação para iniciantes…"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Condições médicas <span class="req">*</span></label>
+              <textarea id="eMedical" required placeholder="Indique lesões, alergias, medicação ou restrições. Se não tiver, escreva «Nenhuma»."></textarea>
+            </div>
             <div class="form-group">
               <label>Horário preferido</label>
               <div class="check-row">
@@ -276,21 +284,54 @@
             </div>
             <div class="form-group">
               <label>Notas ou questões</label>
-              <textarea id="eNotes" placeholder="Ex.: objectivos de treino, restrições médicas, dúvidas…"></textarea>
+              <textarea id="eNotes" placeholder="Dúvidas ou informações adicionais (opcional)"></textarea>
             </div>
           </div>
 
           <div class="form-section" id="docsSection">
             <h3>4. Documentos</h3>
-            <p class="muted" id="docsCopy" style="font-size:0.85rem;margin-bottom:0.85rem">Para a inscrição no ginásio são necessários: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar vários ficheiros agora ou entregar no local.</p>
+            <p class="muted" id="docsCopy" style="font-size:0.85rem;margin-bottom:0.85rem">Anexe cada documento em separado. Aceite imagem ou PDF.</p>
             <div class="form-group">
-              <label>Anexar documentos (opcional — pode seleccionar vários)</label>
-              <input type="file" id="eFiles" accept="image/*,.pdf" multiple>
-              <p class="muted" style="font-size:0.75rem;margin-top:0.35rem">No telemóvel: escolha “Ficheiros” ou “Galeria” e seleccione vários de uma vez, ou adicione mais vezes — a lista acumula.</p>
-              <ul class="file-list" id="fileList" style="list-style:none;padding:0;margin-top:0.5rem"></ul>
+              <label>BI / Cédula / Passaporte <span class="req">*</span></label>
+              <input type="file" id="eDocId" accept="image/*,.pdf" required>
+              <p class="file-hint muted" id="hintDocId" style="font-size:0.75rem;margin-top:0.35rem"></p>
+            </div>
+            <div class="form-group">
+              <label>Atestado médico <span class="req">*</span></label>
+              <input type="file" id="eDocMedical" accept="image/*,.pdf" required>
+              <p class="file-hint muted" id="hintDocMedical" style="font-size:0.75rem;margin-top:0.35rem"></p>
+            </div>
+            <div class="form-group">
+              <label>Foto tipo passe 1 <span class="req">*</span></label>
+              <input type="file" id="eDocPhoto1" accept="image/*" required>
+              <p class="file-hint muted" id="hintDocPhoto1" style="font-size:0.75rem;margin-top:0.35rem"></p>
+            </div>
+            <div class="form-group">
+              <label>Foto tipo passe 2 <span class="req">*</span></label>
+              <input type="file" id="eDocPhoto2" accept="image/*" required>
+              <p class="file-hint muted" id="hintDocPhoto2" style="font-size:0.75rem;margin-top:0.35rem"></p>
             </div>
             <div class="check-row">
               <label><input type="checkbox" id="eDocsLater"> Prefiro entregar os documentos no local</label>
+            </div>
+          </div>
+
+          <div class="form-section" id="paymentSection">
+            <h3>5. Pagamento</h3>
+            <div class="iban-box" style="border:1px solid var(--color-border);border-radius:var(--radius-input);padding:1rem 1.15rem;margin-bottom:1rem;background:var(--color-surface)">
+              <p style="font-size:0.8rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 0.5rem">Transferência bancária</p>
+              <p style="margin:0 0 0.35rem;font-size:0.9rem"><strong>Titular:</strong> Búzios Health Club</p>
+              <p style="margin:0;font-size:0.95rem;font-weight:500;letter-spacing:0.02em">
+                <strong>IBAN:</strong>
+                <span id="ibanValue" style="font-family:ui-monospace,monospace">A006 0040 0000 6810 2585 1017 3</span>
+                <button type="button" id="copyIban" class="btn" style="margin-left:0.5rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--color-border);background:transparent;cursor:pointer">Copiar</button>
+              </p>
+              <p class="muted" style="font-size:0.75rem;margin:0.65rem 0 0">Após a transferência, anexe o comprovativo abaixo.</p>
+            </div>
+            <div class="form-group">
+              <label>Comprovativo de pagamento <span class="req">*</span></label>
+              <input type="file" id="ePaymentProof" accept="image/*,.pdf" required>
+              <p class="file-hint muted" id="hintPaymentProof" style="font-size:0.75rem;margin-top:0.35rem">Imagem do recibo, captura do multibanco ou PDF da transferência.</p>
             </div>
           </div>
 
@@ -427,11 +468,11 @@
       }
 
       if (area === 'natacao') {
-        docsCopy.textContent = 'Para natação pode anexar identificação se preferir. Documentos completos (BI, atestado, fotos) são sobretudo necessários no ginásio — pode entregar vários ficheiros agora ou no local.';
+        docsCopy.textContent = 'Anexe cada documento em separado (BI, atestado, 2 fotos). Para natação a identificação é recomendada; pode entregar no local se preferir.';
       } else if (area === 'ambos') {
-        docsCopy.textContent = 'Para o ginásio: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar vários ficheiros agora ou entregar no local.';
+        docsCopy.textContent = 'Anexe cada documento em separado: BI/cédula/passaporte, atestado médico e 2 fotos tipo passe.';
       } else {
-        docsCopy.textContent = 'Para a inscrição no ginásio são necessários: cópia do BI/cédula/passaporte, atestado médico e 2 fotos tipo passe. Pode anexar vários ficheiros agora ou entregar no local.';
+        docsCopy.textContent = 'Anexe cada documento em separado: BI/cédula/passaporte, atestado médico e 2 fotos tipo passe.';
       }
 
       if (!isGym) {
@@ -508,36 +549,63 @@
         : `Total estimado: ${formatPrice(sum)}`;
     }
 
-    // Accumulated file list (supports multiple picks on mobile)
-    let pendingFiles = [];
+    const DOC_FIELDS = [
+      { id: 'eDocId', key: 'id', label: 'BI / Cédula / Passaporte', hint: 'hintDocId' },
+      { id: 'eDocMedical', key: 'medicalCert', label: 'Atestado médico', hint: 'hintDocMedical' },
+      { id: 'eDocPhoto1', key: 'photo1', label: 'Foto tipo passe 1', hint: 'hintDocPhoto1' },
+      { id: 'eDocPhoto2', key: 'photo2', label: 'Foto tipo passe 2', hint: 'hintDocPhoto2' },
+      { id: 'ePaymentProof', key: 'paymentProof', label: 'Comprovativo de pagamento', hint: 'hintPaymentProof' }
+    ];
 
-    function renderFileList() {
-      const list = document.getElementById('fileList');
-      if (!pendingFiles.length) {
-        list.innerHTML = '';
-        return;
-      }
-      list.innerHTML = pendingFiles.map((f, i) =>
-        `<li><span>${f.name}</span><button type="button" data-rm="${i}">Remover</button></li>`
-      ).join('');
-      list.querySelectorAll('[data-rm]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          pendingFiles.splice(Number(btn.dataset.rm), 1);
-          renderFileList();
+    function bindDocHints() {
+      DOC_FIELDS.forEach(f => {
+        const input = document.getElementById(f.id);
+        const hint = document.getElementById(f.hint);
+        if (!input) return;
+        input.addEventListener('change', function () {
+          const file = this.files && this.files[0];
+          if (hint) hint.textContent = file ? file.name + ' (' + Math.round(file.size / 1024) + ' KB)' : '';
         });
       });
     }
+    bindDocHints();
 
-    document.getElementById('eFiles').addEventListener('change', function () {
-      const added = Array.from(this.files || []);
-      added.forEach(f => {
-        // Avoid exact name+size duplicates
-        if (!pendingFiles.some(x => x.name === f.name && x.size === f.size)) {
-          pendingFiles.push(f);
+    const docsLaterCb = document.getElementById('eDocsLater');
+    function syncDocsRequired() {
+      const later = !!(docsLaterCb && docsLaterCb.checked);
+      ['eDocId', 'eDocMedical', 'eDocPhoto1', 'eDocPhoto2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.required = !later;
+          el.disabled = later;
+          if (later) el.value = '';
+          const field = DOC_FIELDS.find(d => d.id === id);
+          const hint = field && document.getElementById(field.hint);
+          if (later && hint) hint.textContent = 'Será entregue no local';
+          if (!later && hint && !(el.files && el.files[0])) hint.textContent = '';
         }
       });
-      this.value = ''; // allow re-selecting same files later
-      renderFileList();
+    }
+    if (docsLaterCb) {
+      docsLaterCb.addEventListener('change', syncDocsRequired);
+      syncDocsRequired();
+    }
+
+    document.getElementById('copyIban')?.addEventListener('click', function () {
+      const iban = 'A006 0040 0000 6810 2585 1017 3';
+      const done = () => {
+        this.textContent = 'Copiado';
+        setTimeout(() => { this.textContent = 'Copiar'; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(iban.replace(/\s/g, '')).then(done).catch(() => {
+          prompt('Copie o IBAN:', iban);
+          done();
+        });
+      } else {
+        prompt('Copie o IBAN:', iban);
+        done();
+      }
     });
 
     // Pre-select from URL ?plano=
@@ -627,13 +695,52 @@
       const emergencyName = document.getElementById('eEmergencyName').value.trim();
       const emergencyPhone = document.getElementById('eEmergencyPhone').value.trim();
       const emergency = [emergencyName, emergencyPhone].filter(Boolean).join(' — ');
+      const goals = document.getElementById('eGoals').value.trim();
+      const medical = document.getElementById('eMedical').value.trim();
+      const docsLater = !!(document.getElementById('eDocsLater') && document.getElementById('eDocsLater').checked);
+
+      if (!goals || !medical) {
+        alert('Preencha os objectivos de treino e as condições médicas.');
+        btn.disabled = false;
+        btn.textContent = 'Enviar inscrição';
+        return;
+      }
+
+      const paymentInput = document.getElementById('ePaymentProof');
+      if (!paymentInput.files || !paymentInput.files[0]) {
+        alert('Anexe o comprovativo de pagamento.');
+        btn.disabled = false;
+        btn.textContent = 'Enviar inscrição';
+        return;
+      }
+
+      if (!docsLater) {
+        for (const f of DOC_FIELDS) {
+          if (f.key === 'paymentProof') continue;
+          const el = document.getElementById(f.id);
+          if (!el || !el.files || !el.files[0]) {
+            alert('Anexe todos os documentos obrigatórios ou escolha entregar no local.');
+            btn.disabled = false;
+            btn.textContent = 'Enviar inscrição';
+            return;
+          }
+        }
+      }
 
       let attachments = [];
+      let documents = {};
       try {
-        for (const f of pendingFiles) {
-          attachments.push(await uploadFile(f));
+        for (const f of DOC_FIELDS) {
+          if (f.key !== 'paymentProof' && docsLater) continue;
+          const el = document.getElementById(f.id);
+          const file = el && el.files && el.files[0];
+          if (!file) continue;
+          const url = await uploadFile(file);
+          documents[f.key] = { url, label: f.label, name: file.name };
+          attachments.push({ url, label: f.label, key: f.key, name: file.name });
         }
       } catch (err) {
+        console.error(err);
         alert('Erro ao enviar documentos. Tente novamente ou entregue no local.');
         btn.disabled = false;
         btn.textContent = 'Enviar inscrição';
@@ -658,9 +765,13 @@
         emergency,
         emergencyName,
         emergencyPhone,
+        goals,
+        medicalConditions: medical,
         schedule,
         notes: document.getElementById('eNotes').value.trim(),
-        docsLater: document.getElementById('eDocsLater').checked,
+        docsLater,
+        documents,
+        paymentProof: documents.paymentProof ? documents.paymentProof.url : null,
         attachments,
         status: 'novo',
         createdAt: new Date().toISOString()

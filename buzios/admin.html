@@ -12,10 +12,26 @@
   <link rel="apple-touch-icon" href="/icons/admin-192.png">
   <link rel="icon" href="/icons/admin-192.png" type="image/png">
   <title>Admin — Búzios Health Club</title>
+  <script>
+    /* Avoid login flash on reload when session is already valid */
+    (function () {
+      try {
+        if (
+          sessionStorage.getItem('buzios_admin_auth') === '1' ||
+          localStorage.getItem('buzios_admin_auth') === '1'
+        ) {
+          document.documentElement.classList.add('admin-authed');
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/admin.css">
   <style>
+    html.admin-authed #loginScreen { display: none !important; }
+    html.admin-authed #adminApp.hidden { display: block !important; }
+    html.admin-authed #adminApp { display: block !important; }
     .status-badge {
       display: inline-block; font-size: 0.68rem; padding: 0.18rem 0.5rem;
       border-radius: 6px; background: #eef2f4; margin-left: 0.3rem;
@@ -421,7 +437,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261105d"></script>
+  <script src="js/admin.js?v=20261105e"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

@@ -80,14 +80,22 @@
   }
 
   function checkAuth() {
-    if (sessionStorage.getItem(LS.auth) === '1' || localStorage.getItem(LS.auth) === '1') {
-      showApp();
+    const authed =
+      sessionStorage.getItem(LS.auth) === '1' ||
+      localStorage.getItem(LS.auth) === '1';
+    if (authed) {
+      if (localStorage.getItem(LS.auth) === '1' && $('#stayLoggedIn')) {
+        $('#stayLoggedIn').checked = true;
+      }
+      showApp({ resume: true });
     }
   }
-  async function showApp() {
+  async function showApp(opts) {
+    const resume = !!(opts && opts.resume);
+    document.documentElement.classList.add('admin-authed');
     $('#loginScreen').classList.add('hidden');
     $('#adminApp').classList.remove('hidden');
-    toast('A carregar catálogo…');
+    if (!resume) toast('A carregar catálogo…');
     await loadState();
     await loadStore();
     renderAll();
@@ -490,12 +498,16 @@
           ${s.extras && s.extras.length ? '<div class="meta">Extras: ' + escapeHtml(s.extras.join(', ')) + '</div>' : ''}
           ${s.estimatedTotal != null ? '<div class="meta">Total estimado: ' + Number(s.estimatedTotal).toLocaleString('pt') + ' Kz</div>' : ''}
           ${s.age ? '<div class="meta">Idade: ' + escapeHtml(String(s.age)) + '</div>' : ''}
+          ${s.email ? '<div class="meta">Email: ' + escapeHtml(s.email) + '</div>' : ''}
           ${s.emergencyName || s.emergencyPhone
             ? '<div class="meta">Emergência: ' + escapeHtml([s.emergencyName, s.emergencyPhone].filter(Boolean).join(' — ')) + '</div>'
             : (s.emergency ? '<div class="meta">Emergência: ' + escapeHtml(s.emergency) + '</div>' : '')}
+          ${s.goals ? '<div class="meta"><strong>Objectivos:</strong> ' + escapeHtml(s.goals) + '</div>' : ''}
+          ${s.medicalConditions ? '<div class="meta"><strong>Condições médicas:</strong> ' + escapeHtml(s.medicalConditions) + '</div>' : ''}
           ${schedule}
           ${s.notes ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + escapeHtml(s.notes) + '</p>' : ''}
-          ${s.attachments && s.attachments.length ? '<div class="meta">Anexos (' + s.attachments.length + '): ' + s.attachments.map((u,i) => '<a href="'+escapeHtml(fixAttachmentUrl(u))+'" target="_blank" rel="noopener">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
+          ${s.docsLater ? '<div class="meta">Documentos: a entregar no local</div>' : ''}
+          ${renderAttachmentGallery(s)}
           ${s.fromClientId ? '<div class="meta">Cliente ligado: <code>' + escapeHtml(s.fromClientId) + '</code></div>' : ''}
           <div class="actions" style="margin-top:0.65rem">
             ${enrollmentActionButtons(s)}
@@ -568,11 +580,67 @@
 
   /** PDFs stored under /image/upload/ return 401; serve them via /raw/upload/ */
   function fixAttachmentUrl(url) {
-    if (!url || typeof url !== 'string') return url || '';
+    if (!url) return '';
+    if (typeof url === 'object') url = url.url || '';
+    if (typeof url !== 'string') return '';
     if (/\.pdf($|\?)/i.test(url) && url.includes('/image/upload/')) {
       return url.replace('/image/upload/', '/raw/upload/');
     }
     return url;
+  }
+
+  function normalizeAttachments(s) {
+    const list = [];
+    const seen = new Set();
+    function push(item) {
+      if (!item) return;
+      const url = typeof item === 'string' ? item : (item.url || '');
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      list.push({
+        url,
+        label: (typeof item === 'object' && item.label) ? item.label : 'Documento',
+        key: (typeof item === 'object' && item.key) ? item.key : 'doc',
+        name: (typeof item === 'object' && item.name) ? item.name : ''
+      });
+    }
+    if (s.documents && typeof s.documents === 'object') {
+      Object.keys(s.documents).forEach(k => {
+        const d = s.documents[k];
+        if (!d) return;
+        push(typeof d === 'string' ? { url: d, key: k, label: k } : Object.assign({ key: k }, d));
+      });
+    }
+    (s.attachments || []).forEach(push);
+    if (s.paymentProof && typeof s.paymentProof === 'string') {
+      push({ url: s.paymentProof, label: 'Comprovativo de pagamento', key: 'paymentProof' });
+    }
+    return list;
+  }
+
+  function isImageUrl(url) {
+    return /\.(jpe?g|png|gif|webp|bmp)($|\?)/i.test(url || '') ||
+      (url || '').includes('/image/upload/');
+  }
+
+  function renderAttachmentGallery(s) {
+    const items = normalizeAttachments(s);
+    if (!items.length) return '';
+    const cards = items.map((a, i) => {
+      const href = escapeHtml(fixAttachmentUrl(a.url));
+      const label = escapeHtml(a.label || ('Doc ' + (i + 1)));
+      const thumb = isImageUrl(a.url)
+        ? `<a href="${href}" target="_blank" rel="noopener" style="display:block;border:1px solid #ddd;border-radius:6px;overflow:hidden;aspect-ratio:4/3;background:#f4f4f4">
+             <img src="${href}" alt="${label}" style="width:100%;height:100%;object-fit:cover" loading="lazy">
+           </a>`
+        : `<a href="${href}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;border:1px solid #ddd;border-radius:6px;aspect-ratio:4/3;background:#f4f4f4;font-size:0.75rem;color:#555;text-decoration:none;padding:0.5rem;text-align:center">Abrir PDF / ficheiro</a>`;
+      return `<div style="min-width:0">
+        ${thumb}
+        <div style="font-size:0.72rem;margin-top:0.35rem;color:#555;line-height:1.3">${label}</div>
+      </div>`;
+    }).join('');
+    return `<div class="meta" style="margin-top:0.65rem"><strong>Documentos (${items.length})</strong></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:0.65rem;margin-top:0.45rem">${cards}</div>`;
   }
 
   function bindSubmissionActions(list) {
@@ -1467,7 +1535,13 @@
       billingStatus: asPending ? (base.billingStatus || 'em_dia') : (base.billingStatus || 'em_dia'),
       emergencyName: s.emergencyName || base.emergencyName || '',
       emergencyPhone: s.emergencyPhone || base.emergencyPhone || '',
-      notes: [base.notes, s.notes, pendingNote].filter(Boolean).join('\n').trim(),
+      notes: [
+        base.notes,
+        s.goals ? 'Objectivos: ' + s.goals : '',
+        s.medicalConditions ? 'Condições médicas: ' + s.medicalConditions : '',
+        s.notes,
+        pendingNote
+      ].filter(Boolean).join('\n').trim(),
       payments: base.payments || [],
       lastPaymentAt: base.lastPaymentAt || null,
       createdAt: base.createdAt || new Date().toISOString(),

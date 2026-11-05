@@ -211,6 +211,26 @@ Dense operational list for membership staff:
 
 See `BLUEPRINT.md` for full workflow and data fields.
 
+## Admin — Inscrições (summary)
+
+Enrollment pipeline (reversible statuses):
+
+**Novo → Contactado → Aguarda docs → Inscrito → Arquivar**
+
+- **Criar cliente** — membership **activo**, submission **inscrito**
+- **Criar pendente (docs)** — membership **pendente** until documents are complete
+- **Arquivar** closes the ticket (does not delete the client in Clientes)
+- Filters + bulk status actions; see `BLUEPRINT.md` §4.1
+
+## Multi-device admin
+
+Several staff devices can keep admin open:
+
+- Store polled about every **7 seconds** while the tab is visible; also on tab focus
+- Newer `store.updatedAt` wins; toast **Actualizado noutro dispositivo**
+- Worker `update_client` re-loads store before write (reduces lost updates across devices)
+- Same client edited at the same time → last write wins
+
 ## Recent changes (2026-11-04 → 2026-11-05)
 
 - **Clientes admin redesign** — denser rows, sticky summary/filters, priority actions, floating bulk bar, keyboard shortcuts, outside-click **Mais** menu
@@ -223,10 +243,18 @@ See `BLUEPRINT.md` for full workflow and data fields.
 - **Store durability** — Worker writes Cloudinary before cache; reads prefer Cloudinary delivery; admin dual-reads Cloudinary if Worker returns a thinner store
 - **Backup button** — Clientes → Backup downloads `buzios-backup-YYYY-MM-DD.json` (full store + catalog)
 - **Safety** — `replace_store` will not wipe clients with an empty array unless `_forceReplace: true`
+- **Import notes cleanup (2026-11-05)** — provisional Excel notes removed from all clients; structured fields filled (`IMPORT.md`)
+- **Client Expirado save** — explicit status kept; `planEnd` backdated when marking expired with a future date
+- **Inscrições flow** — reversible statuses, `pendente_docs`, create client vs create pending
+- **Multi-device sync** — admin poll + focus refresh; Worker pre-write reload on `update_client`
+- **Login flash fixed** — session resume without showing login first
+- **Small-phone CSS** — iPhone 6s-class layout; SW `buzios-v3` network-first for HTML/JS/CSS
 
 ## Notes
 
 - Media “delete” in admin removes the library list entry only (not the Cloudinary file)
 - Admin tab is remembered in `sessionStorage` across reloads
+- Auth: `sessionStorage` / `localStorage` key `buzios_admin_auth`; “Manter sessão iniciada” uses `localStorage`
 - Keep `public_id` paths as `buzios/catalog.json` and `buzios/store.json` (with extension)
 - After significant product/UX/infra changes: update **README.md** and **BLUEPRINT.md** in the same change set
+- Deploy: **Pages** = static root; **Worker** = always `cd worker && npx wrangler deploy` (never from project root)

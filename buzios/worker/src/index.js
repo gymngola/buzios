@@ -132,7 +132,19 @@ async function handleSubmit(request, env) {
     }
   } else if (type === 'enrollment') {
     if (!payload.name || !payload.phone) return json({ error: 'Name and phone required' }, 400);
+    if (!payload.email) return json({ error: 'Email required' }, 400);
     store.submissions = store.submissions || [];
+    // Normalize attachments: accept string URLs (legacy) or {url,label,key}
+    const rawAtt = payload.attachments || [];
+    const attachments = rawAtt.map(a => {
+      if (typeof a === 'string') return { url: a, label: 'Documento', key: 'doc' };
+      return {
+        url: a.url || '',
+        label: a.label || 'Documento',
+        key: a.key || 'doc',
+        name: a.name || ''
+      };
+    }).filter(a => a.url);
     store.submissions.unshift({
       id,
       type: 'enrollment',
@@ -153,10 +165,14 @@ async function handleSubmit(request, env) {
       emergency: payload.emergency || '',
       emergencyName: payload.emergencyName || '',
       emergencyPhone: payload.emergencyPhone || '',
+      goals: payload.goals || '',
+      medicalConditions: payload.medicalConditions || '',
       schedule: payload.schedule || [],
       notes: payload.notes || '',
       docsLater: !!payload.docsLater,
-      attachments: payload.attachments || [],
+      documents: payload.documents || {},
+      paymentProof: payload.paymentProof || null,
+      attachments,
       createdAt: payload.createdAt || new Date().toISOString()
     });
     store.clients = store.clients || [];
@@ -177,7 +193,9 @@ async function handleSubmit(request, env) {
         billingStatus: 'em_dia',
         lastPaymentAt: null,
         payments: [],
-        notes: payload.notes || '',
+        notes: [payload.notes, payload.goals ? 'Objectivos: ' + payload.goals : '', payload.medicalConditions ? 'Médicas: ' + payload.medicalConditions : ''].filter(Boolean).join('\n'),
+        emergencyName: payload.emergencyName || '',
+        emergencyPhone: payload.emergencyPhone || '',
         createdAt: new Date().toISOString(),
         fromSubmission: id
       });

@@ -1,15 +1,6 @@
 {
-  "generatedAt": "2026-11-04T21:34:25.855732+00:00",
-  "source": "1 FACTURAÇÃO GIMY 2025.xlsx",
-  "asOfSheet": "2025-12-31",
-  "importDay": "2026-11-04",
-  "note": "planEnd for activos is provisional (spreadsheet ends Dec 2025; import day is later). Staff must confirm/renew.",
-  "clientCount": 264,
-  "withPhone": 255,
-  "emDivida": 209,
-  "activo": 96,
-  "expirado": 168,
-  "withPayments": 239,
+  "generated": "2026-11-05 full note cleanup",
+  "total": 264,
   "clients": [
     {
       "id": "cli-13",
@@ -33,10 +24,13 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 13 · Horário 08:00 · Cartão: SIM · Idade 36 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 13,
       "createdAt": "2024-07-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 36
     },
     {
       "id": "cli-45",
@@ -70,10 +64,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 45 · Horário 16:00 · Cartão: mildandreiahotmail.com · Idade 35 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 45,
       "createdAt": "2024-02-20T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "age": 35
     },
     {
       "id": "cli-249",
@@ -127,10 +123,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 249 · Horário 07:00 · Cartão: SIM · Idade 29 · Import Excel (13 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 249,
       "createdAt": "2024-03-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 29
     },
     {
       "id": "cli-305",
@@ -219,10 +218,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 305 · Horário 17:00 · Cartão: SIM · Idade 28 · Import Excel (17 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 305,
       "createdAt": "2024-01-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 28
     },
     {
       "id": "cli-476",
@@ -301,10 +303,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 476 · Horário 08:00 · Cartão: SIM · Idade 42 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 476,
       "createdAt": "2024-04-09T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 42
     },
     {
       "id": "cli-477",
@@ -328,10 +333,12 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 477 · Horário 15:00 · Cartão: handamadalena@gmail.com · Idade 31 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 477,
       "createdAt": "2024-08-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "age": 31
     },
     {
       "id": "cli-488",
@@ -365,10 +372,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 488 · Horário 0 · Cartão: margaridapuati@hotmail.com · Idade 39 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 488,
       "createdAt": "2023-12-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 39
     },
     {
       "id": "cli-556",
@@ -386,10 +394,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 556 · Horário 17:00 · Cartão: SEM FOTO · Idade 53 · Import Excel (3 meses)",
+      "notes": "FOTO",
       "memberNumber": 556,
       "createdAt": "2024-01-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "nao",
+      "age": 53
     },
     {
       "id": "cli-562",
@@ -478,10 +489,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 562 · Horário 07:00 · Cartão: SIM · Idade 27 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 562,
       "createdAt": "2024-03-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 27
     },
     {
       "id": "cli-572",
@@ -520,10 +534,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 572 · Horário 06:00 · Cartão: N TEM CARTÃO · Idade 67 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 572,
       "createdAt": "2024-07-10T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "nao",
+      "age": 67
     },
     {
       "id": "cli-577",
@@ -557,10 +574,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 577 · Horário 14:00 · Cartão: SIM · Idade 24 · Import Excel (6 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 577,
       "createdAt": "2022-04-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-597",
@@ -589,10 +609,13 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 597 · Horário 19:00 · Cartão: SIM · Idade 41 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 597,
       "createdAt": "2024-07-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "sim",
+      "age": 41
     },
     {
       "id": "cli-667",
@@ -610,10 +633,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 667 · Horário 18:00 · Cartão: SEM FOTO · Import Excel (1 meses)",
+      "notes": "FOTO",
       "memberNumber": 667,
       "createdAt": "2019-12-31T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao"
     },
     {
       "id": "cli-671",
@@ -702,10 +727,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 671 · Horário 14:00 · Cartão: N TEM CARTÃO · Idade 25 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 671,
       "createdAt": "2024-04-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "nao",
+      "age": 25
     },
     {
       "id": "cli-674",
@@ -759,10 +787,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 674 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 31 · Import Excel (8 meses)",
+      "notes": "",
       "memberNumber": 674,
       "createdAt": "2025-03-05T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 31
     },
     {
       "id": "cli-677",
@@ -780,10 +811,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 677 · Horário 16:00 · Cartão: N TEM CARTÃO · Idade 36 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 677,
       "createdAt": "2024-06-05T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 36
     },
     {
       "id": "cli-700",
@@ -812,10 +846,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 700 · Horário 6600 · Cartão: martatemo95@icloud.com · Idade 27 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 700,
       "createdAt": "2024-12-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 27
     },
     {
       "id": "cli-724",
@@ -849,10 +884,11 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 724 · Horário 6600 · Cartão: neidefilipe@gmail.com · Idade 26 · Import Excel (8 meses)",
+      "notes": "",
       "memberNumber": 724,
       "createdAt": "2022-11-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 26
     },
     {
       "id": "cli-735",
@@ -891,10 +927,13 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 735 · Horário 10:00 · Cartão: SIM · Idade 43 · Import Excel (15 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 735,
       "createdAt": "2024-07-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "10:00",
+      "hasCard": "sim",
+      "age": 43
     },
     {
       "id": "cli-739",
@@ -928,10 +967,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 739 · Horário 18:00 · Idade 28 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 739,
       "createdAt": "2025-09-18T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 28
     },
     {
       "id": "cli-741",
@@ -990,10 +1031,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 741 · Horário 08:00 · Cartão: N TEM EMAIL · Idade 45 · Import Excel (11 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 741,
       "createdAt": "2025-01-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "nao",
+      "age": 45
     },
     {
       "id": "cli-770",
@@ -1042,10 +1086,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 770 · Horário 17:00 · Cartão: anterozacarias007@gmail.com · Idade 26 · Import Excel (8 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 770,
       "createdAt": "2025-05-14T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 26
     },
     {
       "id": "cli-782",
@@ -1069,10 +1115,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 782 · Horário 15:00 · Cartão: N TEM EMAIL · Idade 20 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 782,
       "createdAt": "2024-05-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "nao",
+      "age": 20
     },
     {
       "id": "cli-797",
@@ -1106,10 +1155,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 797 · Horário 06:00 · Cartão: eliandro20luka21@hotmail.com · Idade 34 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 797,
       "createdAt": "2024-09-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "age": 34
     },
     {
       "id": "cli-800",
@@ -1168,10 +1219,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 800 · Horário 08:00 · Cartão: euclidesnunda@gmail.com · Idade 21 · Import Excel (12 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 800,
       "createdAt": "2024-01-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 21
     },
     {
       "id": "cli-818",
@@ -1215,10 +1268,12 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 818 · Horário 08:00 · Cartão: muanzapedro@gmail.com · Idade 38 · Import Excel (16 meses)",
+      "notes": "",
       "memberNumber": 818,
       "createdAt": "2021-07-29T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 38
     },
     {
       "id": "cli-827",
@@ -1252,10 +1307,12 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 827 · Horário 09:00 · Cartão: ludmilambacameira@gmail.com · Idade 37 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 827,
       "createdAt": "2021-08-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "age": 37
     },
     {
       "id": "cli-830",
@@ -1324,10 +1381,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 830 · Horário 19:00 · Cartão: yurimadeira1210@hotmail.com · Idade 39 · Import Excel (17 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 830,
       "createdAt": "2024-07-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "age": 39
     },
     {
       "id": "cli-836",
@@ -1376,10 +1435,13 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 836 · Horário 09:00 · Cartão: N TEM EMAIL · Idade 28 · Import Excel (17 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 836,
       "createdAt": "2021-09-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "hasCard": "nao",
+      "age": 28
     },
     {
       "id": "cli-843",
@@ -1448,10 +1510,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 843 · Horário 16:00 · Cartão: N TEM CARTÃO · Idade 29 · Import Excel (14 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 843,
       "createdAt": "2024-08-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 29
     },
     {
       "id": "cli-845",
@@ -1480,10 +1545,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 845 · Horário 06:00 · Idade 45 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 845,
       "createdAt": "2025-10-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "age": 45
     },
     {
       "id": "cli-849",
@@ -1507,10 +1574,12 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 849 · Horário KEURIA · Cartão: N TEM EMAIL · Idade 37 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 849,
       "createdAt": "2021-11-09T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 37
     },
     {
       "id": "cli-853",
@@ -1539,10 +1608,13 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 853 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 36 · Import Excel (12 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 853,
       "createdAt": "2025-01-23T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 36
     },
     {
       "id": "cli-860",
@@ -1566,10 +1638,12 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 860 · Horário 09:00 · Idade 35 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 860,
       "createdAt": "2023-02-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "age": 35
     },
     {
       "id": "cli-868",
@@ -1603,10 +1677,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 868 · Horário 18:00 · Cartão: SIM · Idade 26 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 868,
       "createdAt": "2025-10-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 26
     },
     {
       "id": "cli-884",
@@ -1640,10 +1717,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 884 · Horário 15:00 · Cartão: N TEM CARTÃO · Idade 44 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 884,
       "createdAt": "2025-09-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "nao",
+      "age": 44
     },
     {
       "id": "cli-885",
@@ -1672,10 +1752,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 885 · Horário 10:00 · Cartão: celénia.hamanes.@gmail.com · Idade 31 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 885,
       "createdAt": "2024-03-20T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "10:00",
+      "age": 31
     },
     {
       "id": "cli-900",
@@ -1724,10 +1806,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 900 · Horário 17:00 · Idade 46 · Import Excel (6 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 900,
       "createdAt": "2025-07-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 46
     },
     {
       "id": "cli-908",
@@ -1745,10 +1829,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 908 · Horário 15:00 · Cartão: ireneantoniofortes@gmail.com · Idade 34 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 908,
       "createdAt": "2024-06-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "age": 34
     },
     {
       "id": "cli-910",
@@ -1837,10 +1923,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 910 · Horário 15:00 · Cartão: N TEM CARTÃO · Idade 28 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 910,
       "createdAt": "2024-07-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "nao",
+      "age": 28
     },
     {
       "id": "cli-912",
@@ -1864,10 +1953,11 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 912 · Cartão: norton.liz@hotmail.com · Idade 32 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 912,
       "createdAt": "2025-05-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 32
     },
     {
       "id": "cli-923",
@@ -1885,10 +1975,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 923 · Horário 16:00 · Idade 33 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 923,
       "createdAt": "2024-02-24T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "age": 33
     },
     {
       "id": "cli-928",
@@ -1962,10 +2054,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 928 · Horário 18:00 · Cartão: SIM · Idade 29 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 928,
       "createdAt": "2024-03-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 29
     },
     {
       "id": "cli-934",
@@ -2019,10 +2114,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 934 · Horário Atl. Indepe · Cartão: tolfoioso.ao · Idade 43 · Import Excel (16 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 934,
       "createdAt": "2024-07-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 43
     },
     {
       "id": "cli-942",
@@ -2061,10 +2157,11 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 942 · Horário 6600 · Cartão: edsononde@gmail.com · Idade 24 · Import Excel (9 meses)",
+      "notes": "",
       "memberNumber": 942,
       "createdAt": "2024-09-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 24
     },
     {
       "id": "cli-945",
@@ -2103,10 +2200,11 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 945 · Cartão: polibiaurelio@gmail.com · Idade 45 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 945,
       "createdAt": "2024-08-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 45
     },
     {
       "id": "cli-948",
@@ -2145,10 +2243,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 948 · Horário 07:00 · Cartão: SIM · Idade 24 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 948,
       "createdAt": "2024-11-20T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-957",
@@ -2202,10 +2303,13 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 957 · Horário 17:00 · Cartão: SIM · Idade 22 · Import Excel (17 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 957,
       "createdAt": "2024-08-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 22
     },
     {
       "id": "cli-964",
@@ -2284,10 +2388,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 964 · Horário 08:00 · Cartão: N TEM CARTÃO · Idade 33 · Import Excel (16 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 964,
       "createdAt": "2024-09-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "nao",
+      "age": 33
     },
     {
       "id": "cli-968",
@@ -2321,10 +2428,11 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 968 · Horário Atl. Indepe · Cartão: fredesjose@gmail.com · Idade 24 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 968,
       "createdAt": "2024-08-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 24
     },
     {
       "id": "cli-979",
@@ -2353,10 +2461,11 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 979 · Cartão: justinasilva69@gmail.com · Idade 65 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 979,
       "createdAt": "2025-04-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 65
     },
     {
       "id": "cli-983",
@@ -2380,10 +2489,12 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 983 · Horário 17:00 · Cartão: erickonmatos516@hotmail.com · Idade 27 · Import Excel (15 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 983,
       "createdAt": "2022-12-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 27
     },
     {
       "id": "cli-991",
@@ -2407,10 +2518,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 991 · Horário 6600 · Cartão: defsilvac3@gmail.com · Idade 28 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 991,
       "createdAt": "2025-01-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 28
     },
     {
       "id": "cli-995",
@@ -2434,10 +2546,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 995 · Horário 14:00 · Cartão: SEM FOTO · Idade 31 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "FOTO",
       "memberNumber": 995,
       "createdAt": "2023-01-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "nao",
+      "age": 31
     },
     {
       "id": "cli-1006",
@@ -2461,10 +2576,13 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 1006 · Horário 19:00 · Cartão: SIM · Idade 34 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1006,
       "createdAt": "2024-07-16T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "sim",
+      "age": 34
     },
     {
       "id": "cli-1016",
@@ -2488,10 +2606,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1016 · Horário 08:00 · Cartão: SIM · Idade 34 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1016,
       "createdAt": "2024-06-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 34
     },
     {
       "id": "cli-1021",
@@ -2509,10 +2630,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1021 · Horário 18:00 · Idade 20 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1021,
       "createdAt": "2023-03-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 20
     },
     {
       "id": "cli-1030",
@@ -2606,10 +2729,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1030 · Horário 19:00 · Cartão: SEM FOTO · Idade 19 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "FOTO",
       "memberNumber": 1030,
       "createdAt": "2024-05-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 19
     },
     {
       "id": "cli-1031",
@@ -2627,10 +2753,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1031 · Horário 08:00 · Cartão: SIM · Idade 31 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1031,
       "createdAt": "2024-02-09T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 31
     },
     {
       "id": "cli-1032",
@@ -2659,10 +2788,12 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1032 · Horário 14:00 · Cartão: delciochris101@gmail.com · Idade 20 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1032,
       "createdAt": "2023-03-31T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "age": 20
     },
     {
       "id": "cli-1033",
@@ -2726,10 +2857,12 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1033 · Horário 06:00 · Cartão: 2mr6971@gmail.com · Idade 56 · Import Excel (15 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1033,
       "createdAt": "2024-05-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "age": 56
     },
     {
       "id": "cli-1039",
@@ -2753,10 +2886,12 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1039 · Horário 17:00 · Cartão: islaluena@hotmail.com · Idade 36 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1039,
       "createdAt": "2025-06-23T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 36
     },
     {
       "id": "cli-1051",
@@ -2774,10 +2909,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1051 · Horário 18:00 · Idade 23 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1051,
       "createdAt": "2024-06-24T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 23
     },
     {
       "id": "cli-1054",
@@ -2795,10 +2932,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1054 · Horário 18:00 · Cartão: lukeniabrunhoso@gmail.com · Idade 19 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1054,
       "createdAt": "2023-05-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 19
     },
     {
       "id": "cli-1055",
@@ -2816,10 +2955,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1055 · Horário 18:00 · Cartão: SIM · Idade 21 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1055,
       "createdAt": "2023-05-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 21
     },
     {
       "id": "cli-1065",
@@ -2888,10 +3030,11 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1065 · Horário 6600 · Cartão: belziraanabela88@gmail.com · Idade 27 · Import Excel (12 meses)",
+      "notes": "",
       "memberNumber": 1065,
       "createdAt": "2024-07-24T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 27
     },
     {
       "id": "cli-1084",
@@ -2920,10 +3063,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1084 · Horário 08:00 · Cartão: SIM · Idade 21 · Import Excel (7 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1084,
       "createdAt": "2024-02-21T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 21
     },
     {
       "id": "cli-1086",
@@ -2962,10 +3108,12 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1086 · Horário 6600 · Cartão: N TEM EMAIL · Idade 18 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1086,
       "createdAt": "2023-08-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 18
     },
     {
       "id": "cli-1088",
@@ -2989,10 +3137,13 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1088 · Horário 06:00 · Cartão: SIM · Idade 24 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1088,
       "createdAt": "2024-08-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-1090",
@@ -3031,10 +3182,12 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1090 · Horário 18:00 · Cartão: natanieloliveira5678@gmail.com · Idade 20 · Import Excel (10 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1090,
       "createdAt": "2024-09-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 20
     },
     {
       "id": "cli-1092",
@@ -3063,10 +3216,11 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1092 · Horário 6600 · Cartão: cainma05@gmail.com · Idade 39 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1092,
       "createdAt": "2024-04-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 39
     },
     {
       "id": "cli-1093",
@@ -3090,10 +3244,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1093 · Horário 09:00 · Cartão: SIM · Idade 23 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1093,
       "createdAt": "2025-10-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "hasCard": "sim",
+      "age": 23
     },
     {
       "id": "cli-1095",
@@ -3177,10 +3334,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1095 · Horário 08:00 · Idade 45 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1095,
       "createdAt": "2023-09-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 45
     },
     {
       "id": "cli-1104",
@@ -3204,10 +3363,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1104 · Horário 19:00 · Cartão: N TEM EMAIL · Idade 31 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1104,
       "createdAt": "2023-09-18T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 31
     },
     {
       "id": "cli-1108",
@@ -3256,10 +3418,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1108 · Horário 18:00 · Cartão: SEM FOTO · Idade 44 · Import Excel (16 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "FOTO",
       "memberNumber": 1108,
       "createdAt": "2023-09-26T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 44
     },
     {
       "id": "cli-1112",
@@ -3343,10 +3508,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1112 · Horário 09:00 · Cartão: kquintero075@gmail.com · Idade 19 · Import Excel (13 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1112,
       "createdAt": "2023-10-10T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "age": 19
     },
     {
       "id": "cli-1119",
@@ -3385,10 +3552,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1119 · Horário 18:00 · Cartão: SEM FOTO · Idade 24 · Import Excel (6 meses)",
+      "notes": "FOTO",
       "memberNumber": 1119,
       "createdAt": "2025-04-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 24
     },
     {
       "id": "cli-1126",
@@ -3497,10 +3667,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1126 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 24 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1126,
       "createdAt": "2023-11-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 24
     },
     {
       "id": "cli-1127",
@@ -3544,10 +3717,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1127 · Horário 18:00 · Cartão: SEM FOTO · Idade 23 · Import Excel (9 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "FOTO",
       "memberNumber": 1127,
       "createdAt": "2024-09-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 23
     },
     {
       "id": "cli-1128",
@@ -3586,10 +3762,11 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1128 · Horário Plano ??? · Cartão: bibianacatarina@gmail.com · Idade 27 · Import Excel (9 meses)",
+      "notes": "",
       "memberNumber": 1128,
       "createdAt": "2023-12-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 27
     },
     {
       "id": "cli-1130",
@@ -3628,10 +3805,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 1130 · Horário 16:30 · Cartão: dircelenebrito06@gmail.com · Idade 18 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1130,
       "createdAt": "2024-01-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:30",
+      "age": 18
     },
     {
       "id": "cli-1132",
@@ -3649,10 +3828,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1132 · Horário 19:00 · Cartão: SEM FOTO · Idade 19 · Import Excel (1 meses)",
+      "notes": "FOTO",
       "memberNumber": 1132,
       "createdAt": "2024-01-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 19
     },
     {
       "id": "cli-1138",
@@ -3686,10 +3868,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1138 · Horário 09:00 · Cartão: daconceicao@gmail.com · Idade 41 · Import Excel (8 meses)",
+      "notes": "",
       "memberNumber": 1138,
       "createdAt": "2024-11-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "age": 41
     },
     {
       "id": "cli-1139",
@@ -3748,10 +3932,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1139 · Horário 17:00 · Cartão: SIM · Idade 33 · Import Excel (11 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1139,
       "createdAt": "2024-01-09T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 33
     },
     {
       "id": "cli-1142",
@@ -3775,10 +3962,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1142 · Horário 0 · Cartão: duskamassala@gmail.com · Idade 27 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1142,
       "createdAt": "2024-01-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 27
     },
     {
       "id": "cli-1145",
@@ -3796,10 +3984,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1145 · Horário 17:30 · Cartão: SIM · Idade 31 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1145,
       "createdAt": "2024-01-29T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:30",
+      "hasCard": "sim",
+      "age": 31
     },
     {
       "id": "cli-1146",
@@ -3823,10 +4014,13 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 1146 · Horário 14:00 · Cartão: SIM · Idade 18 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1146,
       "createdAt": "2024-01-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 18
     },
     {
       "id": "cli-1147",
@@ -3844,10 +4038,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1147 · Horário 17:00 · Idade 27 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1147,
       "createdAt": "2024-01-31T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 27
     },
     {
       "id": "cli-1151",
@@ -3901,10 +4097,12 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1151 · Horário 0 · Cartão: N TEM EMAIL · Idade 21 · Import Excel (11 meses)",
+      "notes": "",
       "memberNumber": 1151,
       "createdAt": "2024-02-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 21
     },
     {
       "id": "cli-1152",
@@ -3928,10 +4126,13 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1152 · Horário 07:30 · Cartão: SIM · Idade 17 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1152,
       "createdAt": "2024-08-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:30",
+      "hasCard": "sim",
+      "age": 17
     },
     {
       "id": "cli-1153",
@@ -3990,10 +4191,12 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1153 · Horário 0 · Cartão: N TEM EMAIL · Idade 53 · Import Excel (12 meses)",
+      "notes": "",
       "memberNumber": 1153,
       "createdAt": "2024-02-14T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 53
     },
     {
       "id": "cli-1156",
@@ -4022,10 +4225,13 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1156 · Horário 16:00 · Cartão: SIM · Idade 46 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1156,
       "createdAt": "2024-02-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "sim",
+      "age": 46
     },
     {
       "id": "cli-1157",
@@ -4043,10 +4249,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1157 · Horário 16:00 · Cartão: SEM FOTO · Idade 47 · Import Excel (1 meses)",
+      "notes": "FOTO",
       "memberNumber": 1157,
       "createdAt": "2024-02-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 47
     },
     {
       "id": "cli-1158",
@@ -4080,10 +4289,12 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1158 · Horário 17:00 · Cartão: filipe04@gmail.com · Idade 38 · Import Excel (9 meses)",
+      "notes": "",
       "memberNumber": 1158,
       "createdAt": "2024-01-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 38
     },
     {
       "id": "cli-1159",
@@ -4167,10 +4378,12 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1159 · Horário 08:00 · Cartão: indiracostamonteiro@gmail.com · Idade 33 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1159,
       "createdAt": "2024-02-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 33
     },
     {
       "id": "cli-1160",
@@ -4209,10 +4422,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1160 · Horário 06:30 · Cartão: N TEM EMAIL · Idade 32 · Import Excel (11 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1160,
       "createdAt": "2024-02-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:30",
+      "hasCard": "nao",
+      "age": 32
     },
     {
       "id": "cli-1164",
@@ -4236,10 +4452,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1164 · Horário 14:00 · Cartão: SEM FOTO · Idade 27 · Import Excel (4 meses)",
+      "notes": "FOTO",
       "memberNumber": 1164,
       "createdAt": "2024-03-05T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "nao",
+      "age": 27
     },
     {
       "id": "cli-1166",
@@ -4273,10 +4492,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1166 · Horário 08:00 · Cartão: SIM · Idade 28 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1166,
       "createdAt": "2025-08-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 28
     },
     {
       "id": "cli-1170",
@@ -4300,10 +4522,13 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1170 · Horário 16:00 · Cartão: SEM FOTO · Idade 18 · Import Excel (5 meses)",
+      "notes": "FOTO",
       "memberNumber": 1170,
       "createdAt": "2024-03-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 18
     },
     {
       "id": "cli-1172",
@@ -4321,10 +4546,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1172 · Horário 18:00 · Cartão: SIM · Idade 37 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1172,
       "createdAt": "2024-03-26T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 37
     },
     {
       "id": "cli-1174",
@@ -4342,10 +4570,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1174 · Horário 10:00 · Cartão: SIM · Idade 32 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1174,
       "createdAt": "2024-04-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "10:00",
+      "hasCard": "sim",
+      "age": 32
     },
     {
       "id": "cli-1176",
@@ -4384,10 +4615,11 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1176 · Horário 6600 · Cartão: cleusiam357@gmail.com · Idade 25 · Import Excel (11 meses)",
+      "notes": "",
       "memberNumber": 1176,
       "createdAt": "2024-04-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 25
     },
     {
       "id": "cli-1177",
@@ -4405,10 +4637,12 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1177 · Horário 08:00 · Idade 36 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1177,
       "createdAt": "2024-04-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 36
     },
     {
       "id": "cli-1178",
@@ -4432,10 +4666,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 1178 · Horário 08:00 · Cartão: delsatatiana@hotmail.com · Idade 37 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1178,
       "createdAt": "2024-04-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 37
     },
     {
       "id": "cli-1180",
@@ -4464,10 +4700,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 1180 · Horário 18:00 · Cartão: pintoirene1992@gmail.com · Idade 20 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1180,
       "createdAt": "2024-04-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 20
     },
     {
       "id": "cli-1182",
@@ -4485,10 +4723,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1182 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 49 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1182,
       "createdAt": "2024-04-24T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 49
     },
     {
       "id": "cli-1183",
@@ -4587,10 +4828,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1183 · Horário 07:00 · Cartão: SIM · Idade 33 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1183,
       "createdAt": "2024-04-29T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 33
     },
     {
       "id": "cli-1184",
@@ -4614,10 +4858,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1184 · Horário 14:00 · Cartão: N TEM CARTÃO · Idade 37 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1184,
       "createdAt": "2024-05-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "nao",
+      "age": 37
     },
     {
       "id": "cli-1185",
@@ -4635,10 +4882,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1185 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 32 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1185,
       "createdAt": "2024-05-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 32
     },
     {
       "id": "cli-1186",
@@ -4656,10 +4906,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1186 · Horário 07:00 · Cartão: SIM · Idade 45 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1186,
       "createdAt": "2024-05-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 45
     },
     {
       "id": "cli-1187",
@@ -4677,10 +4930,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1187 · Horário 15:00 · Cartão: N TEM CARTÃO · Idade 19 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1187,
       "createdAt": "2024-05-10T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "nao",
+      "age": 19
     },
     {
       "id": "cli-1188",
@@ -4698,10 +4954,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1188 · Horário 06:00 · Cartão: N TEM CARTÃO · Idade 18 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1188,
       "createdAt": "2024-05-14T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "nao",
+      "age": 18
     },
     {
       "id": "cli-1189",
@@ -4725,10 +4984,13 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1189 · Horário 10:00 · Cartão: N TEM EMAIL · Idade 18 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1189,
       "createdAt": "2024-05-20T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "10:00",
+      "hasCard": "nao",
+      "age": 18
     },
     {
       "id": "cli-1190",
@@ -4746,10 +5008,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1190 · Horário 14:00 · Cartão: SIM · Idade 25 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1190,
       "createdAt": "2024-05-21T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 25
     },
     {
       "id": "cli-1192",
@@ -4788,10 +5053,12 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1192 · Horário 9400 · Cartão: N TEM EMAIL · Idade 31 · Import Excel (11 meses)",
+      "notes": "",
       "memberNumber": 1192,
       "createdAt": "2024-05-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 31
     },
     {
       "id": "cli-1194",
@@ -4820,10 +5087,13 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1194 · Horário 14:00 · Cartão: SIM · Idade 32 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1194,
       "createdAt": "2024-05-23T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 32
     },
     {
       "id": "cli-1195",
@@ -4857,10 +5127,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 1195 · Horário 16:00 · Cartão: osmarmutange@gmail.com · Idade 27 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1195,
       "createdAt": "2024-06-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "age": 27
     },
     {
       "id": "cli-1197",
@@ -4944,10 +5216,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1197 · Horário 14:00 · Cartão: SIM · Idade 26 · Import Excel (18 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1197,
       "createdAt": "2024-06-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 26
     },
     {
       "id": "cli-1198",
@@ -5001,10 +5276,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1198 · Horário 9400 · Cartão: N TEM EMAIL · Idade 11 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1198,
       "createdAt": "2024-06-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 11
     },
     {
       "id": "cli-1199",
@@ -5038,10 +5315,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1199 · Horário 08:00 · Cartão: N TEM EMAIL · Idade 28 · Import Excel (7 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1199,
       "createdAt": "2025-06-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "nao",
+      "age": 28
     },
     {
       "id": "cli-1200",
@@ -5065,10 +5345,12 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1200 · Horário 08:00 · Cartão: txutxucostu@icloud.com · Idade 20 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1200,
       "createdAt": "2024-06-20T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 20
     },
     {
       "id": "cli-1201",
@@ -5086,10 +5368,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": "2024-07-26",
       "payments": [],
-      "notes": "Nº 1201 · Horário 06:00 · Cartão: SEM FOTO · Idade 19 · Import Excel (4 meses)",
+      "notes": "FOTO",
       "memberNumber": 1201,
       "createdAt": "2024-06-26T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "nao",
+      "age": 19
     },
     {
       "id": "cli-1202",
@@ -5133,10 +5418,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1202 · Horário 09:00 · Cartão: SEM FOTO · Idade 27 · Import Excel (11 meses)",
+      "notes": "FOTO",
       "memberNumber": 1202,
       "createdAt": "2024-06-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "hasCard": "nao",
+      "age": 27
     },
     {
       "id": "cli-1203",
@@ -5195,10 +5483,13 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1203 · Horário 14:30 · Cartão: SIM · Idade 55 · Import Excel (15 meses)",
+      "notes": "",
       "memberNumber": 1203,
       "createdAt": "2024-06-28T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:30",
+      "hasCard": "sim",
+      "age": 55
     },
     {
       "id": "cli-1204",
@@ -5222,10 +5513,13 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 1204 · Horário 07:00 · Cartão: SIM · Idade 26 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1204,
       "createdAt": "2024-07-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 26
     },
     {
       "id": "cli-1205",
@@ -5264,10 +5558,13 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1205 · Horário 18:00 · Cartão: SIM · Idade 50 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1205,
       "createdAt": "2024-07-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 50
     },
     {
       "id": "cli-1207",
@@ -5291,10 +5588,13 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 1207 · Horário 08:00 · Cartão: SIM · Idade 16 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1207,
       "createdAt": "2024-07-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 16
     },
     {
       "id": "cli-1208",
@@ -5348,10 +5648,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1208 · Horário 9400 · Cartão: heloisangolan@gmail.com · Idade 34 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1208,
       "createdAt": "2024-07-10T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 34
     },
     {
       "id": "cli-1209",
@@ -5375,10 +5676,13 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 1209 · Horário 16:00 · Cartão: SIM · Idade 27 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1209,
       "createdAt": "2024-07-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "sim",
+      "age": 27
     },
     {
       "id": "cli-1210",
@@ -5402,10 +5706,12 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 1210 · Horário 18:00 · Cartão: N TEM CARTÃO · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1210,
       "createdAt": "2024-07-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao"
     },
     {
       "id": "cli-1211",
@@ -5429,10 +5735,13 @@
           "note": "JULHO 2024"
         }
       ],
-      "notes": "Nº 1211 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 53 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1211,
       "createdAt": "2024-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 53
     },
     {
       "id": "cli-1212",
@@ -5466,10 +5775,13 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1212 · Horário 15:00 · Cartão: N TEM CARTÃO · Idade 32 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1212,
       "createdAt": "2024-07-29T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "nao",
+      "age": 32
     },
     {
       "id": "cli-1213",
@@ -5498,10 +5810,12 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1213 · Horário 07:00 · Cartão: pintonorieth@gmail.com · Idade 19 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1213,
       "createdAt": "2024-08-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "age": 19
     },
     {
       "id": "cli-1214",
@@ -5530,10 +5844,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1214 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 26 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1214,
       "createdAt": "2024-08-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 26
     },
     {
       "id": "cli-1215",
@@ -5562,10 +5879,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1215 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 20 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1215,
       "createdAt": "2024-08-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 20
     },
     {
       "id": "cli-1216",
@@ -5594,10 +5914,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1216 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 23 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1216,
       "createdAt": "2024-08-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 23
     },
     {
       "id": "cli-1217",
@@ -5626,10 +5949,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1217 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 33 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1217,
       "createdAt": "2024-08-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 33
     },
     {
       "id": "cli-1218",
@@ -5653,10 +5979,12 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1218 · Horário 19:00 · Cartão: N TEM CARTÃO · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1218,
       "createdAt": "2024-08-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao"
     },
     {
       "id": "cli-1219",
@@ -5685,10 +6013,13 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1219 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 34 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1219,
       "createdAt": "2024-08-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 34
     },
     {
       "id": "cli-1220",
@@ -5712,10 +6043,13 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1220 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 34 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1220,
       "createdAt": "2024-08-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 34
     },
     {
       "id": "cli-1221",
@@ -5744,10 +6078,13 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1221 · Horário 18:00 · Cartão: SIM · Idade 42 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1221,
       "createdAt": "2024-08-21T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 42
     },
     {
       "id": "cli-1222",
@@ -5771,10 +6108,12 @@
           "note": "AGOSTO 2024"
         }
       ],
-      "notes": "Nº 1222 · Horário 18:00 · Idade 25 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1222,
       "createdAt": "2024-08-22T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 25
     },
     {
       "id": "cli-1223",
@@ -5803,10 +6142,13 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1223 · Horário 18:00 · Cartão: SIM · Idade 24 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1223,
       "createdAt": "2024-08-29T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-1224",
@@ -5875,10 +6217,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1224 · Horário 17:00 · Cartão: SIM · Idade 26 · Import Excel (14 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1224,
       "createdAt": "2024-09-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 26
     },
     {
       "id": "cli-1225",
@@ -5896,10 +6241,13 @@
       "billingStatus": "em_divida",
       "lastPaymentAt": null,
       "payments": [],
-      "notes": "Nº 1225 · Horário 09:00 · Cartão: SIM · Idade 24 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1225,
       "createdAt": "2024-09-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-1226",
@@ -5928,10 +6276,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1226 · Horário 18:00 · Cartão: N TEM EMAIL · Idade 23 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1226,
       "createdAt": "2024-09-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 23
     },
     {
       "id": "cli-1227",
@@ -5955,10 +6306,12 @@
           "note": "SETEMBRO 2024"
         }
       ],
-      "notes": "Nº 1227 · Horário 16:00 · Cartão: isamarapereira@iclouid.com · Idade 17 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1227,
       "createdAt": "2024-09-05T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "age": 17
     },
     {
       "id": "cli-1228",
@@ -5992,10 +6345,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1228 · Horário 16:00 · Cartão: N TEM EMAIL · Idade 21 · Import Excel (12 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1228,
       "createdAt": "2024-09-09T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 21
     },
     {
       "id": "cli-1229",
@@ -6044,10 +6400,11 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1229 · Horário 18800 · Cartão: danielamota816@gmail.com · Idade 26 · Import Excel (9 meses)",
+      "notes": "",
       "memberNumber": 1229,
       "createdAt": "2024-09-25T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 26
     },
     {
       "id": "cli-1230",
@@ -6076,10 +6433,12 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 1230 · Horário 06:00 · Cartão: albinamiguel22@gmail.com · Idade 33 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1230,
       "createdAt": "2024-09-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "age": 33
     },
     {
       "id": "cli-1231",
@@ -6113,10 +6472,11 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1231 · Horário Plano Tre ??? · Idade 44 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1231,
       "createdAt": "2024-09-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 44
     },
     {
       "id": "cli-1232",
@@ -6140,10 +6500,12 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1232 · Horário 17:00 · Cartão: zinaide.995@hotmail.com · Idade 29 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1232,
       "createdAt": "2024-10-01T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 29
     },
     {
       "id": "cli-1233",
@@ -6217,10 +6579,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1233 · Horário 18:00 · Cartão: sim · Idade 26 · Import Excel (14 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1233,
       "createdAt": "2024-10-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 26
     },
     {
       "id": "cli-1234",
@@ -6244,10 +6609,12 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1234 · Horário 15:00 · Cartão: yolandam.manico@gmail.com · Idade 37 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1234,
       "createdAt": "2024-10-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "age": 37
     },
     {
       "id": "cli-1235",
@@ -6271,10 +6638,13 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1235 · Horário 15:00 · Cartão: N TEM EMAIL · Idade 21 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1235,
       "createdAt": "2024-10-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "nao",
+      "age": 21
     },
     {
       "id": "cli-1236",
@@ -6318,10 +6688,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1236 · Horário 16:00 · Cartão: N TEM CARTÃO · Idade 35 · Import Excel (10 meses)",
+      "notes": "",
       "memberNumber": 1236,
       "createdAt": "2024-10-18T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 35
     },
     {
       "id": "cli-1237",
@@ -6345,10 +6718,13 @@
           "note": "OUTUBRO 2024"
         }
       ],
-      "notes": "Nº 1237 · Horário 07:00 · Cartão: N TEM EMAIL · Idade 22 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1237,
       "createdAt": "2024-10-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "nao",
+      "age": 22
     },
     {
       "id": "cli-1238",
@@ -6377,10 +6753,12 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1238 · Horário 8800 · Cartão: N TEM EMAIL · Idade 26 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1238,
       "createdAt": "2024-10-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 26
     },
     {
       "id": "cli-1239",
@@ -6404,10 +6782,13 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 1239 · Horário 18:00 · Cartão: N TEM EMAIL · Idade 19 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1239,
       "createdAt": "2024-11-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 19
     },
     {
       "id": "cli-1240",
@@ -6446,10 +6827,11 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1240 · Horário 9400 · Cartão: vilvanytito.53@gamil.com · Idade 32 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1240,
       "createdAt": "2024-11-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 32
     },
     {
       "id": "cli-1241",
@@ -6478,10 +6860,11 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1241 · Horário 6600 · Cartão: cardosoplinio43@g,mail.com · Idade 19 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1241,
       "createdAt": "2024-11-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 19
     },
     {
       "id": "cli-1242",
@@ -6510,10 +6893,11 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1242 · Horário 0 · Cartão: marciasalmira@icloud.com · Idade 22 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1242,
       "createdAt": "2024-11-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 22
     },
     {
       "id": "cli-1243",
@@ -6542,10 +6926,11 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1243 · Horário 0 · Cartão: engac2017@gmail.com · Idade 25 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1243,
       "createdAt": "2024-11-13T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 25
     },
     {
       "id": "cli-1244",
@@ -6574,10 +6959,11 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1244 · Horário 6600 · Cartão: marlonkeny@gmail.com · Idade 19 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1244,
       "createdAt": "2024-11-14T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 19
     },
     {
       "id": "cli-1245",
@@ -6656,10 +7042,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1245 · Horário 14:00 · Cartão: N TEM CARTÃO · Idade 21 · Import Excel (14 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1245,
       "createdAt": "2024-11-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "nao",
+      "age": 21
     },
     {
       "id": "cli-1246",
@@ -6693,10 +7082,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1246 · Horário Pagar Devedor · Cartão: adrianotchiloya10@gmail.com · Idade 23 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1246,
       "createdAt": "2024-11-25T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 23
     },
     {
       "id": "cli-1247",
@@ -6765,10 +7155,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1247 · Horário 06:00 · Cartão: sim · Idade 22 · Import Excel (14 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1247,
       "createdAt": "2024-11-25T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "sim",
+      "age": 22
     },
     {
       "id": "cli-1248",
@@ -6807,10 +7200,11 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1248 · Horário 6600 · Cartão: neusajulio82@gmail.com · Idade 43 · Import Excel (8 meses)",
+      "notes": "",
       "memberNumber": 1248,
       "createdAt": "2024-11-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 43
     },
     {
       "id": "cli-1249",
@@ -6834,10 +7228,13 @@
           "note": "NOVEMBRO 2024"
         }
       ],
-      "notes": "Nº 1249 · Horário 15:00 · Cartão: N TEM EMAIL · Idade 28 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1249,
       "createdAt": "2024-11-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "nao",
+      "age": 28
     },
     {
       "id": "cli-1250",
@@ -6866,10 +7263,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1250 · Horário 9000 · Cartão: marinelacarina3@gmail.com · Idade 22 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1250,
       "createdAt": "2024-12-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 22
     },
     {
       "id": "cli-1251",
@@ -6918,10 +7316,11 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1251 · Horário 9400 · Cartão: marianapina2023@gamil.com · Idade 24 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1251,
       "createdAt": "2024-12-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 24
     },
     {
       "id": "cli-1252",
@@ -6945,10 +7344,11 @@
           "note": "DEZEMBRO 2024"
         }
       ],
-      "notes": "Nº 1252 · Horário 6600 · Cartão: anapaulo7777@gmail.com · Idade 21 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1252,
       "createdAt": "2024-12-14T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 21
     },
     {
       "id": "cli-1253",
@@ -6982,10 +7382,11 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1253 · Cartão: cotsonfan@gmail.com · Idade 27 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1253,
       "createdAt": "2024-12-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 27
     },
     {
       "id": "cli-1254",
@@ -7009,10 +7410,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1254 · Horário 6600 · Cartão: tenilsongamen@gmail.com · Idade 17 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1254,
       "createdAt": "2025-01-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 17
     },
     {
       "id": "cli-1255",
@@ -7036,10 +7438,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1255 · Cartão: N TEM EMAIL · Idade 48 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1255,
       "createdAt": "2025-01-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 48
     },
     {
       "id": "cli-1256",
@@ -7063,10 +7467,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1256 · Horário 9400 · Cartão: N TEM EMAIL · Idade 16 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1256,
       "createdAt": "2025-01-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 16
     },
     {
       "id": "cli-1257",
@@ -7090,10 +7496,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1257 · Horário 9400 · Cartão: N TEM EMAIL · Idade 18 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1257,
       "createdAt": "2025-01-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 18
     },
     {
       "id": "cli-1258",
@@ -7117,10 +7525,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1258 · Idade 18 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1258,
       "createdAt": "2025-01-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 18
     },
     {
       "id": "cli-1259",
@@ -7144,10 +7553,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1259 · Cartão: N TEM EMAIL · Idade 22 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1259,
       "createdAt": "2025-01-09T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 22
     },
     {
       "id": "cli-1260",
@@ -7171,10 +7582,11 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1260 · Cartão: paulozage@gmail.com · Idade 54 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1260,
       "createdAt": "2025-01-20T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 54
     },
     {
       "id": "cli-1261",
@@ -7223,10 +7635,12 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1261 · Horário 17:00 · Cartão: agrombacafaz@gmail.com · Idade 41 · Import Excel (11 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1261,
       "createdAt": "2024-10-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 41
     },
     {
       "id": "cli-1262",
@@ -7250,10 +7664,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1262 · Cartão: N TEM EMAIL · Idade 28 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1262,
       "createdAt": "2025-01-28T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 28
     },
     {
       "id": "cli-1263",
@@ -7277,10 +7693,12 @@
           "note": "JANEIRO 2025"
         }
       ],
-      "notes": "Nº 1263 · Cartão: N TEM EMAIL · Idade 16 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1263,
       "createdAt": "2025-01-31T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 16
     },
     {
       "id": "cli-1264",
@@ -7304,10 +7722,12 @@
           "note": "FEVEREIRO 2025"
         }
       ],
-      "notes": "Nº 1264 · Cartão: N TEM EMAIL · Idade 45 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1264,
       "createdAt": "2025-02-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 45
     },
     {
       "id": "cli-1265",
@@ -7331,10 +7751,12 @@
           "note": "FEVEREIRO 2025"
         }
       ],
-      "notes": "Nº 1265 · Cartão: N TEM EMAIL · Idade 31 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1265,
       "createdAt": "2025-02-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "hasCard": "nao",
+      "age": 31
     },
     {
       "id": "cli-1266",
@@ -7363,10 +7785,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1266 · Horário 15:00 · Cartão: SIM · Idade 29 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1266,
       "createdAt": "2025-02-05T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "sim",
+      "age": 29
     },
     {
       "id": "cli-1267",
@@ -7435,10 +7860,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1267 · Horário 17:00 · Cartão: SIM · Idade 27 · Import Excel (11 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1267,
       "createdAt": "2025-02-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 27
     },
     {
       "id": "cli-1268",
@@ -7502,10 +7930,12 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1268 · Horário 08:00 · Cartão: santosmario0000@gmail.com · Idade 28 · Import Excel (11 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1268,
       "createdAt": "2025-02-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "age": 28
     },
     {
       "id": "cli-1269",
@@ -7534,10 +7964,11 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1269 · Idade 27 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1269,
       "createdAt": "2025-02-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 27
     },
     {
       "id": "cli-1270",
@@ -7571,10 +8002,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1270 · Horário 18:00 · Cartão: lucrecioknoll@gmail.com · Idade 32 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1270,
       "createdAt": "2025-02-26T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 32
     },
     {
       "id": "cli-1271",
@@ -7598,10 +8031,11 @@
           "note": "FEVEREIRO 2025"
         }
       ],
-      "notes": "Nº 1271 · Cartão: priscilaleitão@gmail.com · Idade 20 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1271,
       "createdAt": "2025-02-28T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 20
     },
     {
       "id": "cli-1272",
@@ -7625,10 +8059,11 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1272 · Cartão: rossanajosej@gmail.com · Idade 20 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1272,
       "createdAt": "2025-03-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 20
     },
     {
       "id": "cli-1273",
@@ -7692,10 +8127,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1273 · Horário 08:00 · Cartão: N TEM CARTÃO · Idade 32 · Import Excel (10 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1273,
       "createdAt": "2025-03-18T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "nao",
+      "age": 32
     },
     {
       "id": "cli-1274",
@@ -7719,10 +8157,11 @@
           "note": "MARÇO 2025"
         }
       ],
-      "notes": "Nº 1274 · Cartão: suzanaeduardo845@gmail.com · Idade 25 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1274,
       "createdAt": "2025-03-19T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 25
     },
     {
       "id": "cli-1275",
@@ -7771,10 +8210,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1275 · Horário 08:00 · Cartão: N TEM EMAIL · Idade 29 · Import Excel (9 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1275,
       "createdAt": "2025-03-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "nao",
+      "age": 29
     },
     {
       "id": "cli-1276",
@@ -7808,10 +8250,13 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1276 · Horário 12:00 · Cartão: N TEM CARTÃO · Idade 42 · Import Excel (7 meses)",
+      "notes": "",
       "memberNumber": 1276,
       "createdAt": "2025-03-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "12:00",
+      "hasCard": "nao",
+      "age": 42
     },
     {
       "id": "cli-1277",
@@ -7855,10 +8300,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1277 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 36 · Import Excel (10 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1277,
       "createdAt": "2025-03-31T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 36
     },
     {
       "id": "cli-1278",
@@ -7897,10 +8345,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1278 · Horário 14:00 · Cartão: SIM · Idade 31 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1278,
       "createdAt": "2025-04-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 31
     },
     {
       "id": "cli-1279",
@@ -7944,10 +8395,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1279 · Horário 07:00 · Cartão: N TEM CARTÃO · Idade 57 · Import Excel (9 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1279,
       "createdAt": "2025-04-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "nao",
+      "age": 57
     },
     {
       "id": "cli-1280",
@@ -7976,10 +8430,13 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1280 · Horário 07:00 · Cartão: SIM · Idade 50 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1280,
       "createdAt": "2025-04-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 50
     },
     {
       "id": "cli-1281",
@@ -8003,10 +8460,13 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1281 · Horário 17:00 · Cartão: N TEM CARTÃO · Idade 52 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1281,
       "createdAt": "2025-04-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "nao",
+      "age": 52
     },
     {
       "id": "cli-1282",
@@ -8030,10 +8490,11 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1282 · Cartão: sandelldoroteia@gmail.com · Idade 32 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1282,
       "createdAt": "2025-04-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 32
     },
     {
       "id": "cli-1283",
@@ -8057,10 +8518,13 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1283 · Horário 18:00 · Cartão: SIM · Idade 28 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1283,
       "createdAt": "2025-04-16T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 28
     },
     {
       "id": "cli-1284",
@@ -8084,10 +8548,13 @@
           "note": "ABRIL 2025"
         }
       ],
-      "notes": "Nº 1284 · Horário 18:00 · Cartão: SIM · Idade 28 · Import Excel (6 meses)",
+      "notes": "",
       "memberNumber": 1284,
       "createdAt": "2025-04-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 28
     },
     {
       "id": "cli-1285",
@@ -8111,10 +8578,11 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1285 · Cartão: maritacosta5256@gmail.com · Idade 20 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1285,
       "createdAt": "2025-05-05T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 20
     },
     {
       "id": "cli-1286",
@@ -8163,10 +8631,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1286 · Horário 09:00 · Cartão: SIM · Idade 37 · Import Excel (8 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1286,
       "createdAt": "2025-05-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "09:00",
+      "hasCard": "sim",
+      "age": 37
     },
     {
       "id": "cli-1287",
@@ -8190,10 +8661,13 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1287 · Horário 07:00 · Cartão: SIM · Idade 37 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1287,
       "createdAt": "2025-05-06T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 37
     },
     {
       "id": "cli-1288",
@@ -8222,10 +8696,12 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1288 · Horário 18:00 · Cartão: celiowillliz@gmail.com · Idade 29 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1288,
       "createdAt": "2025-05-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 29
     },
     {
       "id": "cli-1289",
@@ -8259,10 +8735,12 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1289 · Horário 17:00 · Cartão: edgar.paulo@siac.gv.ao · Idade 36 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1289,
       "createdAt": "2025-05-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 36
     },
     {
       "id": "cli-1290",
@@ -8296,10 +8774,12 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1290 · Horário 17:00 · Idade 32 · Import Excel (5 meses)",
+      "notes": "",
       "memberNumber": 1290,
       "createdAt": "2025-05-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "age": 32
     },
     {
       "id": "cli-1291",
@@ -8348,10 +8828,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1291 · Horário 14:00 · Cartão: SIM · Idade 17 · Import Excel (8 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1291,
       "createdAt": "2025-05-14T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 17
     },
     {
       "id": "cli-1292",
@@ -8385,10 +8868,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1292 · Horário 08:00 · Cartão: SIM · Idade 28 · Import Excel (7 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1292,
       "createdAt": "2025-05-21T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 28
     },
     {
       "id": "cli-1293",
@@ -8427,10 +8913,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1293 · Horário 16:00 · Cartão: N TEM CARTÃO · Idade 41 · Import Excel (7 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1293,
       "createdAt": "2025-05-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 41
     },
     {
       "id": "cli-1294",
@@ -8454,10 +8943,13 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1294 · Horário 17:00 · Cartão: N TEM CARTÃO · Idade 20 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1294,
       "createdAt": "2025-05-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "nao",
+      "age": 20
     },
     {
       "id": "cli-1295",
@@ -8481,10 +8973,13 @@
           "note": "MAIO 2025"
         }
       ],
-      "notes": "Nº 1295 · Horário 15:00 · Cartão: sim · Idade 24 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1295,
       "createdAt": "2025-05-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-1296",
@@ -8513,10 +9008,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1296 · Horário 16:00 · Cartão: N TEM CARTÃO · Idade 29 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1296,
       "createdAt": "2025-06-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 29
     },
     {
       "id": "cli-1297",
@@ -8545,10 +9043,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1297 · Horário 19:00 · Cartão: N TEM CARTÃO · Idade 22 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1297,
       "createdAt": "2025-06-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "nao",
+      "age": 22
     },
     {
       "id": "cli-1298",
@@ -8572,10 +9073,13 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1298 · Horário 17:00 · Cartão: N TEM CARTÃO · Idade 35 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1298,
       "createdAt": "2025-06-02T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "nao",
+      "age": 35
     },
     {
       "id": "cli-1299",
@@ -8599,10 +9103,13 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1299 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 34 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1299,
       "createdAt": "2025-06-05T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 34
     },
     {
       "id": "cli-1300",
@@ -8626,10 +9133,13 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1300 · Horário 17:00 · Cartão: SIM · Idade 22 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1300,
       "createdAt": "2025-06-09T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 22
     },
     {
       "id": "cli-1301",
@@ -8663,10 +9173,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1301 · Horário 17:00 · Cartão: N TEM CARTÃO · Idade 27 · Import Excel (6 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1301,
       "createdAt": "2025-06-10T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "nao",
+      "age": 27
     },
     {
       "id": "cli-1302",
@@ -8695,10 +9208,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1302 · Horário 17:00 · Cartão: N TEM CARTÃO · Idade 41 · Import Excel (6 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1302,
       "createdAt": "2025-06-10T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "nao",
+      "age": 41
     },
     {
       "id": "cli-1303",
@@ -8742,10 +9258,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1303 · Horário 08:00 · Cartão: SIM · Idade 45 · Import Excel (7 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1303,
       "createdAt": "2025-06-16T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "08:00",
+      "hasCard": "sim",
+      "age": 45
     },
     {
       "id": "cli-1304",
@@ -8789,10 +9308,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1304 · Horário 07:00 · Cartão: SIM · Idade 50 · Import Excel (7 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1304,
       "createdAt": "2025-06-23T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "sim",
+      "age": 50
     },
     {
       "id": "cli-1305",
@@ -8816,10 +9338,12 @@
           "note": "JUNHO 2025"
         }
       ],
-      "notes": "Nº 1305 · Horário 15:00 · Cartão: manuelacalufelemanuel@gmail.com · Idade 20 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1305,
       "createdAt": "2025-06-24T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "15:00",
+      "age": 20
     },
     {
       "id": "cli-1306",
@@ -8858,10 +9382,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1306 · Horário 10:00 · Cartão: SIM · Idade 39 · Import Excel (7 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1306,
       "createdAt": "2025-06-25T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "10:00",
+      "hasCard": "sim",
+      "age": 39
     },
     {
       "id": "cli-1307",
@@ -8890,10 +9417,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1307 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 23 · Import Excel (4 meses)",
+      "notes": "",
       "memberNumber": 1307,
       "createdAt": "2025-06-25T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 23
     },
     {
       "id": "cli-1308",
@@ -8917,10 +9447,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1308 · Horário 06:00 · Cartão: SIM · Idade 29 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1308,
       "createdAt": "2025-07-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "sim",
+      "age": 29
     },
     {
       "id": "cli-1309",
@@ -8944,10 +9477,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1309 · Horário 16:00 · Cartão: N TEM CARTÃO · Idade 41 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1309,
       "createdAt": "2025-07-07T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "nao",
+      "age": 41
     },
     {
       "id": "cli-1310",
@@ -8971,10 +9507,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1310 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 38 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1310,
       "createdAt": "2025-07-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 38
     },
     {
       "id": "cli-1311",
@@ -9008,10 +9547,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1311 · Horário 07:00 · Cartão: N TEM CARTÃO · Idade 49 · Import Excel (6 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1311,
       "createdAt": "2025-07-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "nao",
+      "age": 49
     },
     {
       "id": "cli-1312",
@@ -9035,10 +9577,11 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1312 · Idade 50 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1312,
       "createdAt": "2025-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 50
     },
     {
       "id": "cli-1313",
@@ -9062,10 +9605,11 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1313 · Idade 15 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1313,
       "createdAt": "2025-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 15
     },
     {
       "id": "cli-1314",
@@ -9089,10 +9633,11 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1314 · Idade 16 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1314,
       "createdAt": "2025-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "age": 16
     },
     {
       "id": "cli-1315",
@@ -9121,10 +9666,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1315 · Horário 10:00 · Cartão: SIM · Idade 14 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1315,
       "createdAt": "2025-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "10:00",
+      "hasCard": "sim",
+      "age": 14
     },
     {
       "id": "cli-1316",
@@ -9148,10 +9696,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1316 · Horário 06:00 · Cartão: SIM · Idade 20 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1316,
       "createdAt": "2025-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "sim",
+      "age": 20
     },
     {
       "id": "cli-1317",
@@ -9175,10 +9726,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1317 · Horário 06:00 · Cartão: SIM · Idade 35 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1317,
       "createdAt": "2025-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "sim",
+      "age": 35
     },
     {
       "id": "cli-1318",
@@ -9202,10 +9756,13 @@
           "note": "JULHO 2025"
         }
       ],
-      "notes": "Nº 1318 · Horário 06:00 · Cartão: SIM · Idade 24 · Import Excel (3 meses)",
+      "notes": "",
       "memberNumber": 1318,
       "createdAt": "2025-07-17T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-1319",
@@ -9234,10 +9791,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1319 · Horário 22:00 · Cartão: N TEM CARTÃO · Idade 42 · Import Excel (6 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1319,
       "createdAt": "2025-07-31T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "22:00",
+      "hasCard": "nao",
+      "age": 42
     },
     {
       "id": "cli-1320",
@@ -9271,10 +9831,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1320 · Horário 18:00 · Cartão: SIM · Idade 30 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1320,
       "createdAt": "2025-08-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 30
     },
     {
       "id": "cli-1321",
@@ -9298,10 +9861,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1321 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 30 · Import Excel (2 meses)",
+      "notes": "",
       "memberNumber": 1321,
       "createdAt": "2025-08-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 30
     },
     {
       "id": "cli-1322",
@@ -9340,10 +9906,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1322 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 33 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1322,
       "createdAt": "2025-08-04T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 33
     },
     {
       "id": "cli-1323",
@@ -9377,10 +9946,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1323 · Horário 07:00 · Cartão: N TEM CARTÃO · Idade 44 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1323,
       "createdAt": "2025-08-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "07:00",
+      "hasCard": "nao",
+      "age": 44
     },
     {
       "id": "cli-1324",
@@ -9404,10 +9976,13 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1324 · Horário 20:00 · Cartão: N TEM CARTÃO · Idade 20 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1324,
       "createdAt": "2025-08-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "20:00",
+      "hasCard": "nao",
+      "age": 20
     },
     {
       "id": "cli-1325",
@@ -9446,10 +10021,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1325 · Horário 20:00 · Cartão: N TEM CARTÃO · Idade 21 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1325,
       "createdAt": "2025-08-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "20:00",
+      "hasCard": "nao",
+      "age": 21
     },
     {
       "id": "cli-1326",
@@ -9478,10 +10056,13 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1326 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 33 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1326,
       "createdAt": "2025-08-12T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 33
     },
     {
       "id": "cli-1327",
@@ -9505,10 +10086,12 @@
           "note": "AGOSTO 2025"
         }
       ],
-      "notes": "Nº 1327 · Horário 18:00 · Idade 22 · Import Excel (1 meses)",
+      "notes": "",
       "memberNumber": 1327,
       "createdAt": "2025-08-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 22
     },
     {
       "id": "cli-1328",
@@ -9542,10 +10125,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1328 · Horário 12:00 · Cartão: N TEM CARTÃO · Idade 20 · Import Excel (5 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1328,
       "createdAt": "2025-08-25T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "12:00",
+      "hasCard": "nao",
+      "age": 20
     },
     {
       "id": "cli-1329",
@@ -9574,10 +10160,12 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1329 · Horário 18:00 · Idade 25 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1329,
       "createdAt": "2025-09-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 25
     },
     {
       "id": "cli-1330",
@@ -9606,10 +10194,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1330 · Horário 14:00 · Cartão: SIM · Idade 26 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1330,
       "createdAt": "2025-09-11T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "14:00",
+      "hasCard": "sim",
+      "age": 26
     },
     {
       "id": "cli-1331",
@@ -9638,10 +10229,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1331 · Horário 18:00 · Cartão: SIM · Idade 25 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1331,
       "createdAt": "2025-09-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 25
     },
     {
       "id": "cli-1332",
@@ -9665,10 +10259,12 @@
           "note": "SETEMBRO 2025"
         }
       ],
-      "notes": "Nº 1332 · Horário 18:00 · Idade 33 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1332,
       "createdAt": "2025-09-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "age": 33
     },
     {
       "id": "cli-1333",
@@ -9702,10 +10298,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1333 · Horário 17:00 · Cartão: SIM · Idade 16 · Import Excel (4 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1333,
       "createdAt": "2025-09-30T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 16
     },
     {
       "id": "cli-1334",
@@ -9739,10 +10338,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1334 · Horário 06:00 · Cartão: N TEM CARTÃO · Idade 27 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1334,
       "createdAt": "2025-10-15T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "nao",
+      "age": 27
     },
     {
       "id": "cli-1335",
@@ -9766,10 +10368,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1335 · Horário 06:00 · Cartão: SIM · Idade 57 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1335,
       "createdAt": "2025-10-21T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "sim",
+      "age": 57
     },
     {
       "id": "cli-1336",
@@ -9793,10 +10398,13 @@
           "note": "OUTUBRO 2025"
         }
       ],
-      "notes": "Nº 1336 · Horário 19:00 · Cartão: SIM · Idade 24 · Import Excel (3 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1336,
       "createdAt": "2025-10-29T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "19:00",
+      "hasCard": "sim",
+      "age": 24
     },
     {
       "id": "cli-1337",
@@ -9820,10 +10428,13 @@
           "note": "NOVEMBRO 2025"
         }
       ],
-      "notes": "Nº 1337 · Horário 18:00 · Cartão: N TEM CARTÃO · Idade 32 · Import Excel (2 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1337,
       "createdAt": "2025-11-10T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "nao",
+      "age": 32
     },
     {
       "id": "cli-1338",
@@ -9852,10 +10463,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1338 · Horário 10:00 · Cartão: N TEM CARTÃO · Idade 17 · Import Excel (2 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1338,
       "createdAt": "2025-11-27T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "10:00",
+      "hasCard": "nao",
+      "age": 17
     },
     {
       "id": "cli-1339",
@@ -9879,10 +10493,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1339 · Horário 06:00 · Cartão: N TEM CARTÃO · Idade 39 · Import Excel (1 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1339,
       "createdAt": "2025-12-03T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "06:00",
+      "hasCard": "nao",
+      "age": 39
     },
     {
       "id": "cli-1340",
@@ -9906,10 +10523,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1340 · Horário 18:00 · Cartão: SIM · Idade 22 · Import Excel (1 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1340,
       "createdAt": "2025-12-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 22
     },
     {
       "id": "cli-1341",
@@ -9933,10 +10553,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1341 · Horário 16:00 · Cartão: SIM · Idade 20 · Import Excel (1 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1341,
       "createdAt": "2025-12-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "16:00",
+      "hasCard": "sim",
+      "age": 20
     },
     {
       "id": "cli-1342",
@@ -9960,10 +10583,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1342 · Horário 17:00 · Cartão: N TEM CARTÃO · Idade 26 · Import Excel (1 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1342,
       "createdAt": "2025-12-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "nao",
+      "age": 26
     },
     {
       "id": "cli-1343",
@@ -9987,10 +10613,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1343 · Horário 17:00 · Cartão: SIM · Idade 20 · Import Excel (1 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1343,
       "createdAt": "2025-12-08T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "17:00",
+      "hasCard": "sim",
+      "age": 20
     },
     {
       "id": "cli-1344",
@@ -10014,10 +10643,13 @@
           "note": "DEZEMBRO 2025"
         }
       ],
-      "notes": "Nº 1344 · Horário 18:00 · Cartão: SIM · Idade 23 · Import Excel (1 meses) · planEnd provisório — confirmar/renovar no admin",
+      "notes": "",
       "memberNumber": 1344,
       "createdAt": "2025-12-23T00:00:00.000Z",
-      "fromImport": true
+      "fromImport": true,
+      "schedule": "18:00",
+      "hasCard": "sim",
+      "age": 23
     }
   ]
 }

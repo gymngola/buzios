@@ -50,8 +50,9 @@ Para os **activos**, `planEnd` é **provisório** (para o painel não marcar tod
 - Em dia → `2026-12-04` (~30 dias a partir de 2026-11-04)
 - Em dívida → `2026-11-11` (~7 dias, para aparecer nas alertas)
 
-Notas do cliente: `planEnd provisório — confirmar/renovar no admin`.  
 **A staff deve confirmar e usar Renovar** com as datas reais.
+
+> **Cleanup 2026-11-05:** as notas `Import Excel (X meses) · planEnd provisório — confirmar/renovar no admin` foram removidas de todos os 264 clientes. Os campos estruturados (horário, cartão, idade) foram passados para `schedule` / `hasCard` / `age`. O `planEnd` provisório em si **mantém-se** até a staff renovar.
 
 ## Carregar no admin
 

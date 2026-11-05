@@ -336,17 +336,72 @@
   }
 
   // —— Inbox (enrollments only) ——
+  let inboxFilter = 'all';
+  const SUB_STATUS_LABEL = {
+    novo: 'novo',
+    contactado: 'contactado',
+    pendente_docs: 'aguarda docs',
+    inscrito: 'inscrito',
+    arquivado: 'arquivado'
+  };
+  const SUB_STATUS_ORDER = { novo: 0, contactado: 1, pendente_docs: 2, inscrito: 3, arquivado: 4 };
+
+  function enrollmentActionButtons(s) {
+    const status = s.status || 'novo';
+    const id = s.id;
+    const btns = [];
+    // Always allow moving to any operational status (reversible)
+    if (status !== 'novo') {
+      btns.push(`<button type="button" data-st="${id}" data-v="novo">Reabrir (novo)</button>`);
+    }
+    if (status !== 'contactado') {
+      btns.push(`<button type="button" data-st="${id}" data-v="contactado">Contactado</button>`);
+    }
+    if (status !== 'pendente_docs') {
+      btns.push(`<button type="button" data-st="${id}" data-v="pendente_docs">Aguarda docs</button>`);
+    }
+    if (status !== 'inscrito') {
+      btns.push(`<button type="button" data-st="${id}" data-v="inscrito">Inscrito</button>`);
+    }
+    // Create / open client
+    if (s.fromClientId) {
+      btns.push(`<button type="button" data-open-cli="${escapeHtml(s.fromClientId)}">Ver cliente</button>`);
+    } else {
+      btns.push(`<button type="button" data-promote-cli="${id}">Criar cliente</button>`);
+      btns.push(`<button type="button" data-promote-cli-pend="${id}">Criar pendente (docs)</button>`);
+    }
+    if (status !== 'arquivado') {
+      btns.push(`<button type="button" data-st="${id}" data-v="arquivado">Arquivar</button>`);
+    }
+    btns.push(`<button type="button" class="danger" data-del-sub="${id}">Apagar</button>`);
+    return btns.join('');
+  }
+
   function renderInbox() {
     const list = $('#inboxList');
     if (!list) return;
-    const items = (store.submissions || []).filter(s => s.type === 'enrollment');
+    let items = (store.submissions || []).filter(s => s.type === 'enrollment');
+    if (inboxFilter && inboxFilter !== 'all') {
+      items = items.filter(s => (s.status || 'novo') === inboxFilter);
+    }
+    items = items.slice().sort((a, b) => {
+      const sa = SUB_STATUS_ORDER[a.status || 'novo'] ?? 9;
+      const sb = SUB_STATUS_ORDER[b.status || 'novo'] ?? 9;
+      if (sa !== sb) return sa - sb;
+      return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+    });
     if (!items.length) {
-      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma inscrição ainda. Aparecem quando alguém preenche o formulário de inscrição.</p>';
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">' +
+        (inboxFilter && inboxFilter !== 'all'
+          ? 'Nenhuma inscrição neste filtro.'
+          : 'Nenhuma inscrição ainda. Aparecem quando alguém preenche o formulário de inscrição.') +
+        '</p>';
       updateBulkBar('inbox');
       return;
     }
     list.innerHTML = items.map(s => {
       const status = s.status || 'novo';
+      const statusLabel = SUB_STATUS_LABEL[status] || status;
       const when = s.createdAt ? new Date(s.createdAt).toLocaleString('pt') : '';
       const schedule = Array.isArray(s.schedule) && s.schedule.length
         ? '<div class="meta">Horário: ' + s.schedule.join(', ') + '</div>'
@@ -354,7 +409,7 @@
       return `
         <div class="prod-card">
           <label class="card-check"><input type="checkbox" class="bulk-item" data-list="inbox" data-id="${escapeHtml(s.id)}"></label>
-          <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${status}</span></h3>
+          <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${escapeHtml(statusLabel)}</span></h3>
           <div class="meta">Inscrição · ${escapeHtml(s.phone || '')} · ${when}</div>
           <div class="meta" style="margin-top:0.35rem">
             ${s.area ? 'Área: ' + escapeHtml(s.area) + ' · ' : ''}
@@ -371,19 +426,25 @@
           ${schedule}
           ${s.notes ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + escapeHtml(s.notes) + '</p>' : ''}
           ${s.attachments && s.attachments.length ? '<div class="meta">Anexos (' + s.attachments.length + '): ' + s.attachments.map((u,i) => '<a href="'+escapeHtml(fixAttachmentUrl(u))+'" target="_blank" rel="noopener">doc'+(i+1)+'</a>').join(', ') + '</div>' : ''}
+          ${s.fromClientId ? '<div class="meta">Cliente ligado: <code>' + escapeHtml(s.fromClientId) + '</code></div>' : ''}
           <div class="actions" style="margin-top:0.65rem">
-            <button type="button" data-st="${s.id}" data-v="contactado">Contactado</button>
-            <button type="button" data-st="${s.id}" data-v="inscrito">Inscrito</button>
-            <button type="button" data-promote-cli="${s.id}">Criar cliente</button>
-            <button type="button" data-st="${s.id}" data-v="arquivado">Arquivar</button>
-            <button type="button" class="danger" data-del-sub="${s.id}">Apagar</button>
+            ${enrollmentActionButtons(s)}
           </div>
         </div>`;
     }).join('');
 
     bindSubmissionActions(list);
     list.querySelectorAll('[data-promote-cli]').forEach(btn => {
-      btn.addEventListener('click', () => promoteSubmissionToClient(btn.dataset.promoteCli));
+      btn.addEventListener('click', () => promoteSubmissionToClient(btn.dataset.promoteCli, { asPending: false }));
+    });
+    list.querySelectorAll('[data-promote-cli-pend]').forEach(btn => {
+      btn.addEventListener('click', () => promoteSubmissionToClient(btn.dataset.promoteCliPend, { asPending: true }));
+    });
+    list.querySelectorAll('[data-open-cli]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activatePanel('clients');
+        openClientModal(btn.dataset.openCli);
+      });
     });
     bindBulkItemChecks('inbox');
     updateBulkBar('inbox');
@@ -755,7 +816,13 @@
     out._expiringSoon = days !== null && days >= 0 && days <= 7;
     out._expired = days !== null && days < 0;
 
-    if (out.membershipStatus === 'suspenso' || out.membershipStatus === 'cancelado' || out.membershipStatus === 'arquivado') {
+    // Manual overrides that must not be auto-flipped by planEnd
+    if (
+      out.membershipStatus === 'suspenso' ||
+      out.membershipStatus === 'cancelado' ||
+      out.membershipStatus === 'arquivado' ||
+      out.membershipStatus === 'pendente'
+    ) {
       return out;
     }
     if (out.billingStatus === 'isento') {
@@ -1288,7 +1355,8 @@
   }
 
   /** Create or update client from an enrollment submission. */
-  async function promoteSubmissionToClient(subId) {
+  async function promoteSubmissionToClient(subId, opts) {
+    const asPending = !!(opts && opts.asPending);
     const s = (store.submissions || []).find(x => x.id === subId);
     if (!s) return toast('Inscrição não encontrada');
     const phone = s.phone || '';
@@ -1301,6 +1369,9 @@
     }
     const base = existing || {};
     const scheduleFromSub = Array.isArray(s.schedule) ? (s.schedule[0] || '') : (s.schedule || '');
+    const pendingNote = asPending
+      ? 'Aguarda documentos completos — activar quando a documentação estiver completa.'
+      : '';
     const data = enrichClient({
       id: base.id || ('cli-' + Date.now()),
       name: s.name || base.name || '',
@@ -1317,20 +1388,27 @@
       billingCycle: base.billingCycle || 'mensal',
       planStart: base.planStart || todayISO(),
       planEnd: base.planEnd || addMonthsISO(todayISO(), 1),
-      membershipStatus: 'activo',
-      billingStatus: base.billingStatus || 'em_dia',
+      // Pending until all documents are provided; otherwise active
+      membershipStatus: asPending ? 'pendente' : 'activo',
+      billingStatus: asPending ? (base.billingStatus || 'em_dia') : (base.billingStatus || 'em_dia'),
       emergencyName: s.emergencyName || base.emergencyName || '',
       emergencyPhone: s.emergencyPhone || base.emergencyPhone || '',
-      notes: [base.notes, s.notes].filter(Boolean).join('\n').trim(),
+      notes: [base.notes, s.notes, pendingNote].filter(Boolean).join('\n').trim(),
       payments: base.payments || [],
       lastPaymentAt: base.lastPaymentAt || null,
       createdAt: base.createdAt || new Date().toISOString(),
       fromSubmission: s.id
     });
-    await adminAction('update_client', data);
-    // Mark submission as inscrito
-    await adminAction('update_submission', { id: s.id, status: 'inscrito', fromClientId: data.id });
-    toast(existing ? 'Cliente actualizado a partir da inscrição' : 'Cliente criado a partir da inscrição');
+    const ok = await adminAction('update_client', data);
+    if (!ok) return;
+    // Link submission; status depends on docs
+    const subStatus = asPending ? 'pendente_docs' : 'inscrito';
+    await adminAction('update_submission', { id: s.id, status: subStatus, fromClientId: data.id });
+    toast(
+      existing
+        ? (asPending ? 'Cliente actualizado como pendente (docs)' : 'Cliente actualizado a partir da inscrição')
+        : (asPending ? 'Cliente criado como pendente — aguarda documentos' : 'Cliente criado a partir da inscrição')
+    );
     activatePanel('clients');
     openClientModal(data.id);
   }
@@ -1446,6 +1524,16 @@
     });
   });
 
+  $('#inboxFilters')?.querySelectorAll('[data-inbox-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inboxFilter = btn.dataset.inboxFilter;
+      $('#inboxFilters').querySelectorAll('[data-inbox-filter]').forEach(b => {
+        b.classList.toggle('active', b.dataset.inboxFilter === inboxFilter);
+      });
+      renderInbox();
+    });
+  });
+
   $('#saveClientBtn')?.addEventListener('click', async () => {
     const existing = editingClientId
       ? (store.clients || []).find(x => x.id === editingClientId)
@@ -1456,9 +1544,15 @@
     if (dup && !confirm('Já existe cliente com este telefone (' + (dup.name || dup.phone) + '). Guardar na mesma?')) {
       return;
     }
-    await adminAction('update_client', data);
-    $('#clientModal').classList.remove('open');
-    toast('Cliente guardado');
+    const btn = $('#saveClientBtn');
+    if (btn) btn.disabled = true;
+    const ok = await adminAction('update_client', data);
+    if (btn) btn.disabled = false;
+    if (ok) {
+      $('#clientModal').classList.remove('open');
+      toast('Cliente guardado');
+    }
+    // On failure adminAction already toasts "Erro ao actualizar"
   });
 
   $('#archiveClientBtn')?.addEventListener('click', async () => {

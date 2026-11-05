@@ -1,9 +1,9 @@
 /**
  * Búzios Health Club — Service Worker
  * Caches the app shell for installable / offline-capable experience.
- * Network-first for catalog & API; cache-first for static assets.
+ * Network-first for HTML + JS (admin must get updates); cache-first for static assets.
  */
-const CACHE = 'buzios-v1';
+const CACHE = 'buzios-v2';
 const SHELL = [
   '/',
   '/index.html',
@@ -51,22 +51,30 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML pages & catalog-like: network first, fall back to cache
-  const isHTML = event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/';
-  if (isHTML) {
+  // HTML + JS: network first so admin/panel fixes deploy immediately
+  const isHTML =
+    event.request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname === '/';
+  const isJS = url.pathname.endsWith('.js');
+  if (isHTML || isJS) {
     event.respondWith(
       fetch(event.request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(event.request, copy));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(event.request, copy));
+          }
           return res;
         })
-        .catch(() => caches.match(event.request).then((r) => r || caches.match('/index.html')))
+        .catch(() =>
+          caches.match(event.request).then((r) => r || (isHTML ? caches.match('/index.html') : undefined))
+        )
     );
     return;
   }
 
-  // Static assets: cache first
+  // Static assets (css, icons, manifests): cache first
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

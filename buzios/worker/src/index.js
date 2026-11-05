@@ -313,12 +313,15 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'update_client' && data && data.id) {
-    store.clients = store.clients || [];
     // Strip UI-only fields; never accept a full clients array from the client
     const clean = Object.assign({}, data);
     delete clean._daysLeft;
     delete clean._expiringSoon;
     delete clean._expired;
+    // Re-load right before write to shrink multi-staff race (last-write still wins
+    // on the same client, but concurrent edits to *other* clients are kept).
+    store = await loadStore(env);
+    store.clients = store.clients || [];
     const idx = store.clients.findIndex(c => c.id === data.id);
     if (idx >= 0) {
       store.clients[idx] = Object.assign({}, store.clients[idx], clean, { id: data.id });

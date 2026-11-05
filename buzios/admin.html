@@ -23,6 +23,7 @@
     }
     .status-novo { background: #fde8d8; color: #a34a1c; }
     .status-contactado { background: #e3f0ff; color: #1a5a9c; }
+    .status-pendente_docs { background: #fff3cd; color: #856404; }
     .status-inscrito { background: #e3f5e8; color: #1a6b3a; }
     .status-arquivado { background: #eef2f4; color: #5a6f78; }
     .status-activo { background: #e3f5e8; color: #1a6b3a; }
@@ -84,11 +85,22 @@
 
       <!-- Inbox / Enrollments -->
       <div id="panel-inbox" class="panel active">
-        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Pedidos de inscrição (formulário de inscrição). Marque o estado após contactar o cliente.</p>
+        <p style="font-size:0.85rem;color:#666;margin-bottom:0.65rem">Pedidos de inscrição. Fluxo: <strong>Novo → Contactado → Aguarda docs → Inscrito</strong>. Os estados podem ser alterados em qualquer sentido.</p>
+        <div class="client-filters" id="inboxFilters" style="margin-bottom:0.85rem">
+          <button type="button" data-inbox-filter="all" class="active">Todos</button>
+          <button type="button" data-inbox-filter="novo">Novos</button>
+          <button type="button" data-inbox-filter="contactado">Contactados</button>
+          <button type="button" data-inbox-filter="pendente_docs">Aguarda docs</button>
+          <button type="button" data-inbox-filter="inscrito">Inscritos</button>
+          <button type="button" data-inbox-filter="arquivado">Arquivados</button>
+        </div>
         <div class="bulk-bar" id="inboxBulkBar" data-list="inbox" style="display:none">
           <label><input type="checkbox" class="bulk-select-all" data-list="inbox"> Seleccionar todos</label>
           <span class="bulk-count" data-list="inbox">0</span>
-          <button type="button" class="bulk-action" data-list="inbox" data-action="contactado">Marcar contactado</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="contactado">Contactado</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="pendente_docs">Aguarda docs</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="inscrito">Inscrito</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="novo">Reabrir (novo)</button>
           <button type="button" class="bulk-action" data-list="inbox" data-action="arquivado">Arquivar</button>
           <button type="button" class="bulk-action danger" data-list="inbox" data-action="delete">Apagar</button>
         </div>
@@ -221,7 +233,7 @@
       <div id="panel-guide" class="panel">
         <div class="guide">
           <h3>Como funciona</h3>
-          <p><strong>Inscrições</strong> — pedidos do formulário de inscrição. Marque: Novo → Contactado → Inscrito.</p>
+          <p><strong>Inscrições</strong> — pedidos do formulário. Fluxo sugerido: Novo → Contactado → Aguarda docs → Inscrito. Estados são reversíveis (pode voltar atrás). Use «Criar pendente (docs)» para criar o cliente em estado <em>pendente</em> até entregar documentos; «Criar cliente» cria já como activo. Filtros e acções em massa disponíveis.</p>
           <p><strong>Contactos</strong> — mensagens da página Contacto (nome, telefone, assunto, mensagem). Marque: Novo → Respondido → Arquivar.</p>
           <p><strong>Clientes</strong> — base a partir de inscrições (botão “Criar cliente” na inscrição) ou manual. Lista densa com prioridade (dívida / a expirar), filtros, ordenação e barra de resumo fixa. Atalhos: <code>/</code> pesquisa, <code>N</code> novo cliente. Seleccione vários para WhatsApp em massa, suspender, arquivar ou exportar. Exportar CSV e copiar telefones usam a selecção se houver. Estados actualizam-se pelas datas. Use “Renovar” ou “Pagar e renovar”. Badge no menu se houver dívidas ou expirados.</p>
           <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar no website</strong>.</p>
@@ -409,11 +421,11 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/admin.js?v=20261105c"></script>
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(function () {});
+      navigator.serviceWorker.register('/sw.js?v=2').catch(function () {});
     }
   </script>
 </body>

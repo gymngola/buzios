@@ -142,7 +142,9 @@ Closes on **outside click** or **Escape**.
 
 ### Client data (store)
 
-Typical fields: `id`, `name`, `phone`, `email`, `area`, `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus`, `emergencyName`, `emergencyPhone`, `notes`, `payments[]`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `archivedAt`.
+Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus`, `emergencyName`, `emergencyPhone`, `notes`, `payments[]`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.
+
+Edit modal exposes Nº sócio, idade, horário (select) and cartão as first-class fields. Legacy notes dumps (`Nº · Horário · Cartão · Idade`) are parsed on open when structured keys are missing; cleaned remainder stays in Notas.
 
 ---
 
@@ -216,6 +218,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Store durability fix:** Cloudinary-first writes; delivery-URL reads as source of truth; admin dual-read fallback; `debug_store` action for ops
 - **Backup** button on Clientes — full JSON export (store + catalog)
 - **replace_store** does not wipe lists with `[]` unless `_forceReplace: true`
+- Client edit: structured **Nº sócio**, **Idade**, **Horário**, **Cartão** fields; legacy notes parse on open; list shows Nº / horário / cartão; CSV columns updated
 
 ---
 

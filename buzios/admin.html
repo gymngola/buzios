@@ -317,6 +317,33 @@
       <div class="form-row"><label>Área</label>
         <select id="cArea"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option><option value="ambos">Ambos</option></select>
       </div>
+      <div class="form-row"><label>Nº sócio</label><input type="number" id="cMemberNumber" inputmode="numeric" min="1" step="1" placeholder="ex. 1344"></div>
+      <div class="form-row"><label>Idade</label><input type="number" id="cAge" inputmode="numeric" min="1" max="120" step="1" placeholder="ex. 23"></div>
+      <div class="form-row"><label>Horário</label>
+        <select id="cSchedule">
+          <option value="">—</option>
+          <option value="06:00">06:00</option>
+          <option value="07:00">07:00</option>
+          <option value="08:00">08:00</option>
+          <option value="09:00">09:00</option>
+          <option value="10:00">10:00</option>
+          <option value="11:00">11:00</option>
+          <option value="14:00">14:00</option>
+          <option value="15:00">15:00</option>
+          <option value="16:00">16:00</option>
+          <option value="17:00">17:00</option>
+          <option value="18:00">18:00</option>
+          <option value="19:00">19:00</option>
+          <option value="20:00">20:00</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Cartão de acesso</label>
+        <select id="cHasCard">
+          <option value="">—</option>
+          <option value="sim">Sim</option>
+          <option value="nao">Não</option>
+        </select>
+      </div>
       <div class="form-row"><label>Plano</label><input type="text" id="cPlan" placeholder="ex. Mensal ginásio"></div>
       <div class="form-row"><label>Preço do período (Kz)</label><input type="number" id="cPrice" inputmode="decimal" min="0" step="100" placeholder="0"></div>
       <div class="form-row"><label>Ciclo de faturação</label>

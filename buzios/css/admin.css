@@ -951,6 +951,12 @@ a { color: var(--admin-accent); }
   display: inline;
 }
 .client-row .row-name:hover { color: var(--admin-accent); text-decoration: underline; }
+.client-row .member-n {
+  font-weight: 500;
+  color: var(--admin-muted);
+  font-size: 0.82rem;
+  margin-right: 0.15rem;
+}
 .client-row .row-badges {
   display: inline-flex;
   flex-wrap: wrap;
@@ -1293,6 +1299,7 @@ a { color: var(--admin-accent); }
 
 .status-arquivado { background: #eef2f4; color: #5a6f78; }
 .status-suspenso { background: #eef2f4; color: #5a6f78; }
+.status-card { background: #e8f5e9; color: #2e7d32; }
 
 .prod-card .actions a.wa-btn {
   padding: 0.4rem 0.75rem;

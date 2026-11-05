@@ -552,9 +552,10 @@
     if (listName === 'clients' && action === 'export') {
       const items = getVisibleClients().filter(c => ids.includes(c.id));
       if (!items.length) return toast('Nada para exportar');
-      const headers = ['Nome', 'Telefone', 'Email', 'Área', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
+      const headers = ['Nº', 'Nome', 'Telefone', 'Email', 'Área', 'Idade', 'Horário', 'Cartão', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
       const rows = items.map(c => [
-        c.name, c.phone, c.email, c.area, c.planName || c.planId, c.price,
+        c.memberNumber, c.name, c.phone, c.email, c.area, c.age, c.schedule, c.hasCard,
+        c.planName || c.planId, c.price,
         c.billingCycle, c.planStart, c.planEnd, c.membershipStatus, c.billingStatus,
         c.emergencyName, c.emergencyPhone, c.notes
       ].map(v => {
@@ -785,11 +786,15 @@
 
   function clientMatchesSearch(c, q) {
     if (!q) return true;
-    const hay = [c.name, c.phone, c.email, c.planName, c.notes, c.emergencyName, c.emergencyPhone]
+    const hay = [
+      c.name, c.phone, c.email, c.planName, c.notes,
+      c.emergencyName, c.emergencyPhone, c.memberNumber, c.schedule, c.age, c.hasCard
+    ]
       .map(x => String(x || '').toLowerCase())
       .join(' ');
     const digits = normalizePhone(q);
     if (digits && normalizePhone(c.phone).includes(digits)) return true;
+    if (/^\d+$/.test(q.trim()) && String(c.memberNumber || '') === q.trim()) return true;
     return hay.includes(q.toLowerCase());
   }
 
@@ -958,13 +963,14 @@
             <input type="checkbox" class="bulk-item" data-list="clients" data-id="${escapeHtml(c.id)}" aria-label="Seleccionar ${escapeHtml(c.name || '')}">
           </div>
           <div class="row-main">
-            <span class="row-name" data-edit-cli="${c.id}" title="Editar">${escapeHtml(c.name || '—')}</span>
+            <span class="row-name" data-edit-cli="${c.id}" title="Editar">${c.memberNumber != null ? '<span class="member-n">Nº ' + escapeHtml(String(c.memberNumber)) + '</span> ' : ''}${escapeHtml(c.name || '—')}</span>
             <span class="row-badges">
               <span class="status-badge status-${mem}">${mem}</span>
               <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
               ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
+              ${c.hasCard === 'sim' ? '<span class="status-badge status-card">cartão</span>' : ''}
             </span>
-            <div class="row-contact">${contactBits || '—'}</div>
+            <div class="row-contact">${[contactBits, c.schedule ? 'Horário ' + escapeHtml(c.schedule) : '', c.age != null ? 'Idade ' + escapeHtml(String(c.age)) : ''].filter(Boolean).join(' · ') || '—'}</div>
           </div>
           <div class="row-plan">
             <div class="plan-name">${escapeHtml(c.planName || c.planId || 'Sem plano')}</div>
@@ -1079,6 +1085,55 @@
     }
   }
 
+  /** Parse legacy notes dump: "Nº 1344 · Horário 18:00 · Cartão: SIM · Idade 23 · …" */
+  function parseClientNotesMeta(notes) {
+    const out = { memberNumber: null, schedule: '', hasCard: '', age: null, cleanedNotes: notes || '' };
+    if (!notes) return out;
+    let rest = String(notes);
+
+    const nMatch = rest.match(/(?:^|[·|]\s*)N[ºo°.]?\s*(\d+)/i);
+    if (nMatch) out.memberNumber = Number(nMatch[1]);
+
+    const hMatch = rest.match(/(?:^|[·|]\s*)Hor[aá]rio\s+([0-2]?\d:[0-5]\d)/i);
+    if (hMatch) out.schedule = hMatch[1].length === 4 ? '0' + hMatch[1] : hMatch[1];
+
+    const cMatch = rest.match(/(?:^|[·|]\s*)Cart[aã]o:\s*([^\s·|]+)/i);
+    if (cMatch) {
+      const v = cMatch[1].toLowerCase();
+      if (v === 'sim' || v === 's' || v === 'yes') out.hasCard = 'sim';
+      else if (v === 'n' || v === 'nao' || v === 'não' || v === 'sem' || v === 'no') out.hasCard = 'nao';
+    }
+
+    const aMatch = rest.match(/(?:^|[·|]\s*)Idade\s+(\d{1,3})/i);
+    if (aMatch) out.age = Number(aMatch[1]);
+
+    // Strip structured segments so notes stay free-text only
+    rest = rest
+      .replace(/(?:^|[·|]\s*)N[ºo°.]?\s*\d+/gi, '')
+      .replace(/(?:^|[·|]\s*)Hor[aá]rio\s+[0-2]?\d:[0-5]\d/gi, '')
+      .replace(/(?:^|[·|]\s*)Cart[aã]o:\s*[^\s·|]+/gi, '')
+      .replace(/(?:^|[·|]\s*)Idade\s+\d{1,3}/gi, '')
+      .replace(/^[·|\s]+|[·|\s]+$/g, '')
+      .replace(/\s*[·|]\s*[·|]\s*/g, ' · ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    out.cleanedNotes = rest;
+    return out;
+  }
+
+  function setScheduleSelect(value) {
+    const sel = $('#cSchedule');
+    if (!sel) return;
+    const v = value || '';
+    if (v && !Array.from(sel.options).some(o => o.value === v)) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      sel.appendChild(opt);
+    }
+    sel.value = v;
+  }
+
   function openClientModal(id) {
     editingClientId = id || null;
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
@@ -1088,6 +1143,30 @@
     $('#cPhone').value = c?.phone || '';
     $('#cEmail').value = c?.email || '';
     $('#cArea').value = c?.area || 'ginasio';
+
+    // Structured fields — prefer real keys; fallback-parse legacy notes once
+    const meta = parseClientNotesMeta(c?.notes);
+    const memberNum = c?.memberNumber != null ? c.memberNumber : meta.memberNumber;
+    const age = c?.age != null ? c.age : meta.age;
+    let schedule = c?.schedule || meta.schedule || '';
+    let hasCard = c?.hasCard || meta.hasCard || '';
+    if (hasCard === true || hasCard === 'SIM' || hasCard === 'Sim') hasCard = 'sim';
+    if (hasCard === false || hasCard === 'N' || hasCard === 'SEM' || hasCard === 'Não' || hasCard === 'Nao') hasCard = 'nao';
+
+    $('#cMemberNumber').value = memberNum != null && memberNum !== '' ? memberNum : '';
+    $('#cAge').value = age != null && age !== '' ? age : '';
+    setScheduleSelect(schedule);
+    $('#cHasCard').value = hasCard === 'sim' || hasCard === 'nao' ? hasCard : '';
+
+    // If structured keys were missing and we parsed them, show cleaned notes
+    const usedNotesFallback = c && (
+      (c.memberNumber == null && meta.memberNumber != null) ||
+      (c.age == null && meta.age != null) ||
+      (!c.schedule && meta.schedule) ||
+      (!c.hasCard && meta.hasCard)
+    );
+    $('#cNotes').value = usedNotesFallback ? meta.cleanedNotes : (c?.notes || '');
+
     $('#cPlan').value = c?.planName || c?.planId || '';
     $('#cPrice').value = c?.price != null ? c.price : '';
     $('#cCycle').value = c?.billingCycle || 'mensal';
@@ -1097,7 +1176,6 @@
     $('#cBilling').value = (c?.billingStatus === 'atrasado' ? 'em_divida' : (c?.billingStatus || 'em_dia'));
     $('#cEmergencyName').value = c?.emergencyName || '';
     $('#cEmergencyPhone').value = c?.emergencyPhone || '';
-    $('#cNotes').value = c?.notes || '';
     $('#cPayAmount').value = c?.price != null ? c.price : '';
     $('#cPayMethod').value = 'cash';
     $('#cPayNote').value = '';
@@ -1124,12 +1202,20 @@
 
   function readClientForm(existing) {
     const priceVal = $('#cPrice').value;
+    const memberRaw = $('#cMemberNumber') && $('#cMemberNumber').value;
+    const ageRaw = $('#cAge') && $('#cAge').value;
+    const scheduleVal = ($('#cSchedule') && $('#cSchedule').value) || '';
+    const hasCardVal = ($('#cHasCard') && $('#cHasCard').value) || '';
     const data = {
       id: editingClientId || ('cli-' + Date.now()),
       name: $('#cName').value.trim(),
       phone: $('#cPhone').value.trim(),
       email: $('#cEmail').value.trim(),
       area: $('#cArea').value,
+      memberNumber: memberRaw === '' || memberRaw == null ? null : Number(memberRaw),
+      age: ageRaw === '' || ageRaw == null ? null : Number(ageRaw),
+      schedule: scheduleVal || '',
+      hasCard: hasCardVal || '',
       planName: $('#cPlan').value.trim(),
       planId: existing?.planId || '',
       price: priceVal === '' ? null : Number(priceVal),
@@ -1145,6 +1231,7 @@
       lastPaymentAt: existing?.lastPaymentAt || null,
       createdAt: existing?.createdAt || new Date().toISOString(),
       fromSubmission: existing?.fromSubmission || null,
+      fromImport: existing?.fromImport || null,
       archivedAt: existing?.archivedAt || null
     };
     return enrichClient(data);
@@ -1199,12 +1286,17 @@
       existing = findDuplicatePhone(phone, null);
     }
     const base = existing || {};
+    const scheduleFromSub = Array.isArray(s.schedule) ? (s.schedule[0] || '') : (s.schedule || '');
     const data = enrichClient({
       id: base.id || ('cli-' + Date.now()),
       name: s.name || base.name || '',
       phone: phone || base.phone || '',
       email: s.email || base.email || '',
       area: s.area || base.area || 'ginasio',
+      memberNumber: base.memberNumber != null ? base.memberNumber : null,
+      age: s.age != null ? Number(s.age) : (base.age != null ? base.age : null),
+      schedule: scheduleFromSub || base.schedule || '',
+      hasCard: base.hasCard || '',
       planName: s.planName || base.planName || '',
       planId: s.planId || s.planIdGym || s.planIdSwim || base.planId || '',
       price: s.estimatedTotal != null ? s.estimatedTotal : (base.price != null ? base.price : null),
@@ -1234,9 +1326,10 @@
     let items = getVisibleClients();
     if (selected.length) items = items.filter(c => selected.includes(c.id));
     if (!items.length) return toast('Nada para exportar');
-    const headers = ['Nome', 'Telefone', 'Email', 'Área', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
+    const headers = ['Nº', 'Nome', 'Telefone', 'Email', 'Área', 'Idade', 'Horário', 'Cartão', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
     const rows = items.map(c => [
-      c.name, c.phone, c.email, c.area, c.planName || c.planId, c.price,
+      c.memberNumber, c.name, c.phone, c.email, c.area, c.age, c.schedule, c.hasCard,
+      c.planName || c.planId, c.price,
       c.billingCycle, c.planStart, c.planEnd, c.membershipStatus, c.billingStatus,
       c.emergencyName, c.emergencyPhone, c.notes
     ].map(v => {

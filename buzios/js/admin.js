@@ -750,7 +750,7 @@
   /** Derive membership/billing from planEnd (respect suspenso/cancelado/arquivado/isento). */
   function enrichClient(c) {
     const out = Object.assign({}, c);
-    const days = daysUntil(out.planEnd);
+    let days = daysUntil(out.planEnd);
     out._daysLeft = days;
     out._expiringSoon = days !== null && days >= 0 && days <= 7;
     out._expired = days !== null && days < 0;
@@ -762,12 +762,26 @@
       if (out._expired) out.membershipStatus = out.membershipStatus || 'activo';
       return out;
     }
+    // Explicit "expirado" from the form: keep it. If planEnd is still in the future
+    // (or missing), backdate planEnd to yesterday so derived state matches.
+    if (out.membershipStatus === 'expirado') {
+      if (days === null || days >= 0) {
+        const y = new Date();
+        y.setDate(y.getDate() - 1);
+        out.planEnd = y.toISOString().slice(0, 10);
+        days = -1;
+        out._daysLeft = -1;
+        out._expiringSoon = false;
+        out._expired = true;
+      }
+      if (out.billingStatus !== 'isento') out.billingStatus = 'em_divida';
+      return out;
+    }
     if (out._expired) {
       out.membershipStatus = 'expirado';
       if (out.billingStatus !== 'isento') out.billingStatus = 'em_divida';
-    } else if (out.membershipStatus === 'expirado' && days !== null && days >= 0) {
-      out.membershipStatus = 'activo';
     }
+    // Do NOT force expirado → activo when planEnd is still valid; respect explicit choice.
     if (out.billingStatus === 'atrasado') out.billingStatus = 'em_divida';
     return out;
   }

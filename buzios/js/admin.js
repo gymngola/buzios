@@ -89,9 +89,22 @@
     $('#adminApp').classList.remove('hidden');
     toast('A carregar catálogo…');
     await loadState();
-    loadStore();
+    await loadStore();
     renderAll();
+    startStoreSync();
   }
+
+  // When staff switches back to this tab/device, pull latest immediately
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && $('#adminApp') && !$('#adminApp').classList.contains('hidden')) {
+      refreshStoreIfChanged();
+    }
+  });
+  window.addEventListener('focus', () => {
+    if ($('#adminApp') && !$('#adminApp').classList.contains('hidden')) {
+      refreshStoreIfChanged();
+    }
+  });
   $('#loginBtn').addEventListener('click', () => {
     if ($('#adminPass').value === ADMIN_PASSWORD) {
       const stay = $('#stayLoggedIn') && $('#stayLoggedIn').checked;
@@ -265,54 +278,111 @@
     return data;
   }
 
-  async function loadStore() {
-    let fromWorker = null;
-    try {
-      const res = await fetch(ADMIN_DATA_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'get' })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.store) fromWorker = data.store;
-      }
-    } catch (e) {
-      console.warn('Store load (worker) failed', e);
-    }
+  /** Multi-device sync: poll store while admin is open. */
+  let lastKnownUpdatedAt = null;
+  let storeFetchInFlight = false;
+  let localWriteInFlight = 0;
+  let storeSyncTimer = null;
+  const STORE_SYNC_MS = 7000;
 
-    // Prefer richer snapshot: Worker cache can lag behind Cloudinary on some colos
-    let fromCloud = null;
-    try {
-      fromCloud = await loadStoreFromCloudinaryDirect();
-    } catch (e) {
-      console.warn('Store load (cloudinary) failed', e);
-    }
+  function storeTimestamp(s) {
+    if (!s || !s.updatedAt) return 0;
+    const t = Date.parse(s.updatedAt);
+    return Number.isFinite(t) ? t : 0;
+  }
 
-    const score = (s) =>
-      s
-        ? (s.clients || []).length +
-          (s.submissions || []).length +
-          (s.newsletters || []).length
-        : -1;
-    if (score(fromCloud) > score(fromWorker)) {
-      store = fromCloud;
-      console.info(
-        'Store: using Cloudinary direct (' +
-          (fromCloud.clients || []).length +
-          ' clients); worker had ' +
-          score(fromWorker)
-      );
-    } else if (fromWorker) {
-      store = fromWorker;
-    } else if (fromCloud) {
-      store = fromCloud;
-    }
+  function storeScore(s) {
+    if (!s) return -1;
+    return (
+      (s.clients || []).length +
+      (s.submissions || []).length +
+      (s.newsletters || []).length
+    );
+  }
 
+  /** Prefer newer updatedAt; fall back to richer snapshot if timestamps equal/missing. */
+  function preferStoreSnapshot(a, b) {
+    if (!a) return b;
+    if (!b) return a;
+    const ta = storeTimestamp(a);
+    const tb = storeTimestamp(b);
+    if (ta !== tb) return ta > tb ? a : b;
+    return storeScore(a) >= storeScore(b) ? a : b;
+  }
+
+  function applyStore(next, opts) {
+    const silent = opts && opts.silent;
+    const prevAt = lastKnownUpdatedAt;
+    const nextAt = next && next.updatedAt ? next.updatedAt : null;
+    const changed = nextAt && nextAt !== prevAt;
+    store = next || store;
+    if (nextAt) lastKnownUpdatedAt = nextAt;
     renderInbox();
     renderContacts();
     renderNewsletters();
     renderClients();
+    if (silent && changed && prevAt) {
+      toast('Actualizado noutro dispositivo');
+    }
+    return changed;
+  }
+
+  async function loadStore(opts) {
+    const silent = !!(opts && opts.silent);
+    if (storeFetchInFlight) return false;
+    storeFetchInFlight = true;
+    try {
+      let fromWorker = null;
+      try {
+        const res = await fetch(ADMIN_DATA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'get' })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.store) fromWorker = data.store;
+        }
+      } catch (e) {
+        console.warn('Store load (worker) failed', e);
+      }
+
+      let fromCloud = null;
+      try {
+        fromCloud = await loadStoreFromCloudinaryDirect();
+      } catch (e) {
+        console.warn('Store load (cloudinary) failed', e);
+      }
+
+      const chosen = preferStoreSnapshot(fromWorker, fromCloud);
+      if (!chosen) return false;
+
+      // Silent poll: skip re-render if nothing changed
+      if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
+        return false;
+      }
+
+      return applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
+    } finally {
+      storeFetchInFlight = false;
+    }
+  }
+
+  async function refreshStoreIfChanged() {
+    if (document.hidden || localWriteInFlight > 0 || storeFetchInFlight) return;
+    await loadStore({ silent: true });
+  }
+
+  function startStoreSync() {
+    stopStoreSync();
+    storeSyncTimer = setInterval(refreshStoreIfChanged, STORE_SYNC_MS);
+  }
+
+  function stopStoreSync() {
+    if (storeSyncTimer) {
+      clearInterval(storeSyncTimer);
+      storeSyncTimer = null;
+    }
   }
 
   /** Auto-save catalog edits to this browser (no manual “Guardar rascunho”). */
@@ -523,6 +593,7 @@
 
   async function adminAction(action, data, opts) {
     const silent = opts && opts.silent;
+    localWriteInFlight++;
     try {
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
@@ -531,8 +602,9 @@
       });
       if (res.ok) {
         const json = await res.json();
-        if (json.store) store = json.store;
-        if (!silent) {
+        if (json.store) {
+          applyStore(json.store, { silent: true });
+        } else if (!silent) {
           renderInbox();
           renderContacts();
           renderNewsletters();
@@ -546,6 +618,8 @@
     } catch (e) {
       if (!silent) toast('Erro de rede');
       return false;
+    } finally {
+      localWriteInFlight = Math.max(0, localWriteInFlight - 1);
     }
   }
 

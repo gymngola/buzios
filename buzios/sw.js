@@ -1,9 +1,9 @@
 /**
  * Búzios Health Club — Service Worker
  * Caches the app shell for installable / offline-capable experience.
- * Network-first for HTML + JS (admin must get updates); cache-first for static assets.
+ * Network-first for HTML + JS + CSS; cache-first for icons and other static assets.
  */
-const CACHE = 'buzios-v2';
+const CACHE = 'buzios-v3';
 const SHELL = [
   '/',
   '/index.html',
@@ -51,13 +51,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML + JS: network first so admin/panel fixes deploy immediately
+  // HTML + JS + CSS: network first so design/admin fixes deploy immediately
   const isHTML =
     event.request.mode === 'navigate' ||
     url.pathname.endsWith('.html') ||
     url.pathname === '/';
   const isJS = url.pathname.endsWith('.js');
-  if (isHTML || isJS) {
+  const isCSS = url.pathname.endsWith('.css');
+  if (isHTML || isJS || isCSS) {
     event.respondWith(
       fetch(event.request)
         .then((res) => {

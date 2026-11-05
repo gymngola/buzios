@@ -110,25 +110,23 @@
       </div>
     </section>
 
-    <section class="section section-plans-swim" id="planos-ferias">
+    <!-- ===== Escola de Natação ===== -->
+    <section class="section" id="planos-natacao" style="padding-bottom:0">
       <div class="container">
         <div class="section-header reveal">
-          <p class="section-eyebrow">Planos de férias</p>
-          <h2 class="section-title">Aulas seguidas</h2>
-          <p class="section-desc">Pacotes de 10, 15 ou 25 aulas seguidas na piscina aquecida. Ideal para férias. Inscrição natação: 10.500 Kz.</p>
-        </div>
-        <div class="grid-3" id="plansGridSwim">
-          <!-- Populated by app.js -->
+          <p class="section-eyebrow">Escola de Natação</p>
+          <h2 class="section-title">Piscina aquecida · Kifica</h2>
+          <p class="section-desc">Inscrição na escola: <strong>10.500 Kz</strong> (única). Mensalidades por módulo e frequência, ou pacotes de aulas seguidas para férias.</p>
         </div>
       </div>
     </section>
 
-    <section class="section" style="background: var(--color-surface-soft);" id="mensalidades-natacao">
+    <section class="section" style="background: var(--color-surface-soft); padding-top:1.5rem" id="mensalidades-natacao">
       <div class="container">
         <div class="section-header">
-          <p class="section-eyebrow">Natação · Mensalidades</p>
-          <h2 class="section-title">Módulos por frequência semanal</h2>
-          <p class="section-desc">Valores mensais conforme o número de aulas por semana. Inscrição na escola: <strong>10.500 Kz</strong>.</p>
+          <p class="section-eyebrow">Mensalidades</p>
+          <h2 class="section-title">Planos mensais por módulo</h2>
+          <p class="section-desc">Escolha o módulo e quantas vezes por semana. Valores em Kz / mês.</p>
         </div>
         <div class="grid-2" style="gap:1.25rem">
           <article class="card">
@@ -190,6 +188,22 @@
             </div>
           </article>
         </div>
+        <p style="text-align:center;margin-top:1.5rem">
+          <a href="inscricao.html?area=natacao" class="btn btn-primary">Inscrever-me na natação</a>
+        </p>
+      </div>
+    </section>
+
+    <section class="section section-plans-swim" id="planos-ferias">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-eyebrow">Planos de férias</p>
+          <h2 class="section-title">Aulas seguidas</h2>
+          <p class="section-desc">Pacotes avulsos de 10, 15 ou 25 aulas seguidas — ideais para férias ou intensivo. Não substituem a mensalidade.</p>
+        </div>
+        <div class="grid-3" id="plansGridSwim">
+          <!-- Pacotes de férias only — populated by app.js -->
+        </div>
       </div>
     </section>
 
@@ -244,7 +258,7 @@
   
 
   <script src="js/products.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20261105g"></script>
   <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 
   <script>

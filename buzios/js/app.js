@@ -427,8 +427,15 @@
       .filter(p => p.active !== false)
       .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    const gym = active.filter(p => p.category === 'ginasio');
-    const swim = active.filter(p => p.category === 'natacao');
+    // Gym: membership plans only (hide one-off fees / extras from the main grid)
+    const gym = active.filter(p =>
+      p.category === 'ginasio' &&
+      ['plano-bronze', 'plano-prata', 'plano-platina'].includes(p.id)
+    );
+    // Swim grid on planos page = holiday packages only (mensalidades are static below)
+    const swim = active.filter(p =>
+      p.category === 'natacao' && p.period === 'pacote'
+    );
 
     if (gymEl) {
       gymEl.innerHTML = gym.length
@@ -440,10 +447,10 @@
     if (swimEl) {
       swimEl.innerHTML = swim.length
         ? swim.map(p => planCardHtml(p, {
-            badge: (lang === 'en' ? 'Swimming' : 'Natação') + (p.period ? ' · ' + p.period : ''),
+            badge: lang === 'en' ? 'Holiday package' : 'Plano de férias',
             extraClass: 'plan-card--swim'
           })).join('')
-        : '<p class="muted text-center">Sem pacotes de natação activos.</p>';
+        : '<p class="muted text-center">Sem pacotes de férias activos.</p>';
     }
     if (legacy && !gymEl && !swimEl) {
       legacy.innerHTML = active.map(p => planCardHtml(p, {

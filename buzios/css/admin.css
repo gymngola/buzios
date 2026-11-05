@@ -581,11 +581,23 @@ a { color: var(--admin-accent); }
 
 .sticky-actions button:active { transform: scale(0.98); }
 
+.btn-discard-draft {
+  background: #fff;
+  color: var(--admin-muted);
+  border: 1px solid var(--admin-border) !important;
+  margin-left: auto;
+  min-width: 140px !important;
+  flex: 0 1 160px !important;
+}
+.btn-discard-draft:hover {
+  color: var(--admin-text, #1c1917);
+  border-color: #ccc !important;
+}
+
 .btn-publish {
   background: var(--admin-accent);
   color: #fff;
   box-shadow: 0 2px 8px rgba(196, 92, 38, 0.3);
-  margin-left: auto;
 }
 
 .btn-publish:hover { opacity: 0.95; }

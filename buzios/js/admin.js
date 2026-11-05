@@ -272,7 +272,7 @@
         if (i) images = Object.assign({}, images, JSON.parse(i));
       } catch (e) {}
       if (hasDirtyDraft) {
-        toast('Rascunho local (ainda não publicado)');
+        toast('Rascunho local neste browser (Produtos/Imagens/Textos). Publique ou ignore.');
       }
     } else {
       // Clean browser → match live catalog
@@ -1501,21 +1501,21 @@
     });
     list.querySelectorAll('[data-archive-cli]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const existing = (store.clients || []).find(x => x.id === btn.dataset.archiveCli);
+        const existing = (store.clients || []).find(x => String(x.id) === String(btn.dataset.archiveCli));
         if (!existing) return;
         if (!confirm('Arquivar ' + (existing.name || 'este cliente') + '? Pode reactivar depois no filtro Arquivados.')) return;
-        await adminAction('delete_client', { id: existing.id, hard: false });
-        toast('Cliente arquivado');
+        const ok = await adminAction('delete_client', { id: existing.id, hard: false });
+        if (ok) toast('Cliente arquivado');
       });
     });
     list.querySelectorAll('[data-del-cli]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const existing = (store.clients || []).find(x => x.id === btn.dataset.delCli);
+        const existing = (store.clients || []).find(x => String(x.id) === String(btn.dataset.delCli));
         if (!existing) return;
         if (!confirm('APAGAR definitivamente ' + (existing.name || 'este cliente') + '?\n\nPrefira Arquivar se quiser manter histórico.')) return;
         if (!confirm('Confirma apagar para sempre?')) return;
-        await adminAction('delete_client', { id: existing.id, hard: true });
-        toast('Cliente apagado');
+        const ok = await adminAction('delete_client', { id: existing.id, hard: true });
+        if (ok) toast('Cliente apagado');
       });
     });
     // Close "Mais" menus when clicking outside
@@ -2036,23 +2036,27 @@
 
   $('#archiveClientBtn')?.addEventListener('click', async () => {
     if (!editingClientId) return;
-    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    const existing = (store.clients || []).find(x => String(x.id) === String(editingClientId));
     if (!existing) return;
     if (!confirm('Arquivar ' + (existing.name || 'este cliente') + '?')) return;
-    await adminAction('delete_client', { id: editingClientId, hard: false });
-    $('#clientModal').classList.remove('open');
-    toast('Cliente arquivado');
+    const ok = await adminAction('delete_client', { id: editingClientId, hard: false });
+    if (ok) {
+      $('#clientModal').classList.remove('open');
+      toast('Cliente arquivado');
+    }
   });
 
   $('#deleteClientBtn')?.addEventListener('click', async () => {
     if (!editingClientId) return;
-    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    const existing = (store.clients || []).find(x => String(x.id) === String(editingClientId));
     if (!existing) return;
     if (!confirm('APAGAR definitivamente ' + (existing.name || 'este cliente') + '?\n\nIsto não pode ser desfeito. Prefira Arquivar se quiser manter histórico.')) return;
     if (!confirm('Confirma apagar para sempre?')) return;
-    await adminAction('delete_client', { id: editingClientId, hard: true });
-    $('#clientModal').classList.remove('open');
-    toast('Cliente apagado');
+    const ok = await adminAction('delete_client', { id: editingClientId, hard: true });
+    if (ok) {
+      $('#clientModal').classList.remove('open');
+      toast('Cliente apagado');
+    }
   });
 
   $('#payRenewBtn')?.addEventListener('click', async () => {
@@ -2542,7 +2546,27 @@
     }
   }
 
+  /** Drop unpublished local catalog edits and reload what is live on the site. */
+  async function discardLocalDraft() {
+    const dirty = localStorage.getItem(LS.dirty) === '1';
+    if (!dirty) {
+      toast('Não há rascunho local neste browser');
+      return;
+    }
+    if (!confirm('Descartar rascunho local?\n\nAs alterações de planos, imagens ou textos deste browser (ainda não publicadas) serão apagadas. O site continua como está.')) return;
+    try {
+      localStorage.removeItem(LS.dirty);
+      localStorage.removeItem(LS.products);
+      localStorage.removeItem(LS.texts);
+      localStorage.removeItem(LS.images);
+    } catch (e) {}
+    await loadState();
+    renderAll();
+    toast('Rascunho descartado — a mostrar o que está no site');
+  }
+
   $('#publishBtn')?.addEventListener('click', publish);
+  $('#discardDraftBtn')?.addEventListener('click', discardLocalDraft);
 
   function renderAll() {
     renderProducts();

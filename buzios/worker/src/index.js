@@ -338,15 +338,16 @@ async function handleAdminData(request, env) {
     delete clean._daysLeft;
     delete clean._expiringSoon;
     delete clean._expired;
+    const clientId = String(data.id);
     // Re-load right before write to shrink multi-staff race (last-write still wins
     // on the same client, but concurrent edits to *other* clients are kept).
     store = await loadStore(env);
     store.clients = store.clients || [];
-    const idx = store.clients.findIndex(c => c.id === data.id);
+    const idx = store.clients.findIndex(c => String(c.id) === clientId);
     if (idx >= 0) {
-      store.clients[idx] = Object.assign({}, store.clients[idx], clean, { id: data.id });
+      store.clients[idx] = Object.assign({}, store.clients[idx], clean, { id: clientId });
     } else {
-      store.clients.unshift(Object.assign({}, clean, { id: data.id }));
+      store.clients.unshift(Object.assign({}, clean, { id: clientId }));
     }
     if (store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
     store.updatedAt = new Date().toISOString();
@@ -357,12 +358,13 @@ async function handleAdminData(request, env) {
   if (action === 'delete_client' && data && data.id) {
     store = await loadStore(env);
     store.clients = store.clients || [];
+    const clientId = String(data.id);
     const hard = !!data.hard;
     if (hard) {
-      store.clients = store.clients.filter(c => c.id !== data.id);
+      store.clients = store.clients.filter(c => String(c.id) !== clientId);
     } else {
       // Soft delete → archive (keeps history)
-      const idx = store.clients.findIndex(c => c.id === data.id);
+      const idx = store.clients.findIndex(c => String(c.id) === clientId);
       if (idx >= 0) {
         store.clients[idx] = Object.assign({}, store.clients[idx], {
           membershipStatus: 'arquivado',

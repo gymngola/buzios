@@ -48,7 +48,7 @@
   --header-h: 72px;
   --announce-h: 36px;
   --max-w: 1180px;
-  --drawer-w: 300px;
+  --drawer-w: 260px;
 
   /* Transitions */
   --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -340,7 +340,7 @@ button { cursor: pointer; }
     padding: 0.35rem 0.75rem;
     cursor: pointer;
     white-space: nowrap;
-    transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast), opacity var(--t-fast);
+    transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast), opacity var(--t-fast), box-shadow var(--t-fast);
   }
   .nav-install-btn:hover {
     border-color: currentColor;
@@ -359,6 +359,24 @@ button { cursor: pointer; }
     opacity: 0.55;
     cursor: default;
   }
+  /* Native install available — make CTA stand out */
+  .nav-install-btn.can-install {
+    border-color: var(--color-accent);
+    color: var(--color-hero-text);
+    background: rgba(196, 92, 38, 0.22);
+    box-shadow: 0 0 0 0 rgba(196, 92, 38, 0.35);
+    animation: installPulse 2.4s ease-in-out infinite;
+  }
+  .site-header.scrolled .nav-install-btn.can-install {
+    color: var(--color-accent);
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+  }
+}
+
+@keyframes installPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 92, 38, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(196, 92, 38, 0); }
 }
 
 /* Hamburger */
@@ -409,7 +427,7 @@ button { cursor: pointer; }
 .drawer {
   position: fixed;
   top: 0; left: 0;
-  width: 85%;
+  width: 78%;
   max-width: var(--drawer-w);
   height: 100%;
   background: var(--color-surface);
@@ -418,94 +436,105 @@ button { cursor: pointer; }
   transition: transform var(--t-med);
   display: flex;
   flex-direction: column;
-  padding: 1.75rem 1.5rem;
+  padding: 1.1rem 1.15rem 1.2rem;
   overflow-y: auto;
 }
 .drawer.open { transform: translateX(0); }
 .drawer-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2.5rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--color-border);
 }
 .drawer-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.5rem;
 }
 .drawer-brand .brand-logo {
-  width: 48px;
-  height: 48px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  width: 36px;
+  height: 36px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 .drawer-brand .brand-name {
   color: var(--color-text);
-  font-size: 1.25rem;
+  font-size: 1.05rem;
 }
 .drawer-brand .brand-tag {
   color: var(--color-text-muted);
+  font-size: 0.65rem;
 }
 .drawer-close {
-  width: 36px; height: 36px;
+  width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   color: var(--color-text-muted);
   line-height: 1;
+  flex-shrink: 0;
 }
 .drawer-nav {
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 0.15rem;
 }
 .drawer-nav a {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: var(--fw-medium);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text);
+  padding: 0.55rem 0.15rem;
   transition: color var(--t-fast);
 }
 .drawer-nav a:hover { color: var(--color-accent); }
 .drawer-install-btn {
-  margin-top: 0.35rem;
+  margin-top: 0.65rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
   width: fit-content;
   max-width: 100%;
-  padding: 0.65rem 0.9rem;
+  padding: 0.5rem 0.8rem;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface-soft, #f6f4f1);
   color: var(--color-text);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
 }
 .drawer-install-btn:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
 .drawer-install-btn.is-installed { opacity: 0.65; cursor: default; }
+.drawer-install-btn.can-install {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  animation: installPulse 2.4s ease-in-out infinite;
+}
 .drawer-install-icon {
   display: inline-flex;
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1rem;
+  height: 1rem;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   line-height: 1;
 }
 .drawer-footer {
   margin-top: auto;
-  padding-top: 2rem;
+  padding-top: 1.1rem;
   border-top: 1px solid var(--color-border);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-text-muted);
-  line-height: 1.7;
+  line-height: 1.55;
 }
 
 /* Install site app modal */

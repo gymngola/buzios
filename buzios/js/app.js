@@ -525,6 +525,7 @@
 
   // —— Install website PWA ——
   let deferredSiteInstall = null;
+  const INSTALL_DISMISS_KEY = 'buzios_install_dismissed';
 
   function isSiteAppInstalled() {
     try {
@@ -539,17 +540,35 @@
     return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
 
+  function wasInstallDismissed() {
+    try { return sessionStorage.getItem(INSTALL_DISMISS_KEY) === '1'; } catch (e) { return false; }
+  }
+
+  function markInstallDismissed() {
+    try { sessionStorage.setItem(INSTALL_DISMISS_KEY, '1'); } catch (e) {}
+  }
+
   function updateSiteInstallButtons() {
     const installed = isSiteAppInstalled();
+    const canInstall = !installed && !!deferredSiteInstall;
+
     ['#installSiteAppBtn', '#installSiteAppBtnDrawer'].forEach(sel => {
       const btn = $(sel);
       if (!btn) return;
       btn.classList.toggle('is-installed', installed);
+      btn.classList.toggle('can-install', canInstall);
+
       if (installed) {
         if (btn.id === 'installSiteAppBtnDrawer') {
           btn.innerHTML = '<span class="drawer-install-icon" aria-hidden="true">✓</span> App instalada';
         } else {
           btn.textContent = 'App instalada';
+        }
+      } else if (canInstall) {
+        if (btn.id === 'installSiteAppBtnDrawer') {
+          btn.innerHTML = '<span class="drawer-install-icon" aria-hidden="true">↓</span> Instalar app agora';
+        } else {
+          btn.textContent = 'Instalar app';
         }
       }
     });
@@ -603,6 +622,17 @@
     if (!modal) return;
     modal.hidden = true;
     modal.setAttribute('hidden', '');
+    markInstallDismissed();
+  }
+
+  function scheduleSoftInstallPrompt() {
+    // Once per session: if browser offers native install, gently show modal after short delay
+    if (wasInstallDismissed() || isSiteAppInstalled() || !deferredSiteInstall) return;
+    setTimeout(() => {
+      if (!deferredSiteInstall || wasInstallDismissed() || isSiteAppInstalled()) return;
+      const modal = $('#installSiteModal');
+      if (modal && modal.hidden) openSiteInstallModal();
+    }, 9000);
   }
 
   function initInstallSite() {
@@ -612,6 +642,7 @@
       e.preventDefault();
       deferredSiteInstall = e;
       updateSiteInstallButtons();
+      scheduleSoftInstallPrompt();
     });
     window.addEventListener('appinstalled', () => {
       deferredSiteInstall = null;

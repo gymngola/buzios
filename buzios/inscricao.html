@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261105m">
+  <link rel="stylesheet" href="css/styles.css?v=20261105p">
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180">
   <link rel="icon" href="/favicon.ico" sizes="any">
@@ -91,11 +91,15 @@
   <link rel="shortcut icon" href="/favicon.ico">
 </head>
 <body>
-  <div class="announce-bar" id="announceBar">
-    <span>Inscrição anual <span class="accent">6.500 Kz</span> · Documentos: BI, atestado médico, 2 fotos</span>
+    <div class="announce-bar" id="announceBar">
+    <div class="announce-inner">
+      <span class="announce-item">Inscrição anual <span class="accent">6.500 Kz</span></span>
+      <span class="announce-sep" aria-hidden="true"></span>
+      <span class="announce-item">Docs: BI · atestado · 2 fotos</span>
+    </div>
   </div>
 
-  <header class="site-header scrolled" id="siteHeader">
+<header class="site-header scrolled" id="siteHeader">
     <div class="header-inner">
       <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false">
         <span></span><span></span><span></span>
@@ -114,6 +118,7 @@
         <a href="planos.html" class="nav-link">Planos</a>
         <a href="inscricao.html" class="nav-link">Inscrição</a>
         <a href="contacto.html" class="nav-link">Contacto</a>
+        <button type="button" class="nav-link nav-install-btn" id="installSiteAppBtn" title="Instalar app no dispositivo">Instalar app</button>
       </nav>
     </div>
   </header>
@@ -137,6 +142,10 @@
       <a href="planos.html">Planos & Preços</a>
       <a href="inscricao.html">Inscrição</a>
       <a href="contacto.html">Contacto</a>
+      <button type="button" class="drawer-install-btn" id="installSiteAppBtnDrawer" title="Instalar app no dispositivo">
+        <span class="drawer-install-icon" aria-hidden="true">↓</span>
+        Instalar app no telemóvel
+      </button>
     </nav>
     <div class="drawer-footer">
       <p>Rua 21-c, travessa 5, Benfica, Kifica<br>Luanda · Angola</p>
@@ -369,12 +378,12 @@
                 <span id="ibanValue" style="font-family:ui-monospace,monospace">A006 0040 0000 6810 2585 1017 3</span>
                 <button type="button" id="copyIban" class="btn" style="margin-left:0.5rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--color-border);background:transparent;cursor:pointer">Copiar</button>
               </p>
-              <p class="muted" style="font-size:0.75rem;margin:0.65rem 0 0">Após a transferência, anexe o comprovativo abaixo.</p>
+              <p class="muted" style="font-size:0.75rem;margin:0.65rem 0 0">Se já pagou, pode anexar o comprovativo abaixo (opcional).</p>
             </div>
             <div class="form-group">
-              <label>Comprovativo de pagamento <span class="req">*</span></label>
-              <input type="file" id="ePaymentProof" accept="image/*,.pdf" required>
-              <p class="file-hint muted" id="hintPaymentProof" style="font-size:0.75rem;margin-top:0.35rem">Imagem do recibo, captura do multibanco ou PDF da transferência.</p>
+              <label>Comprovativo de pagamento <span class="muted" style="font-weight:400">(opcional)</span></label>
+              <input type="file" id="ePaymentProof" accept="image/*,.pdf">
+              <p class="file-hint muted" id="hintPaymentProof" style="font-size:0.75rem;margin-top:0.35rem">Pode anexar agora ou entregar mais tarde. Imagem do recibo, captura do multibanco ou PDF.</p>
             </div>
           </div>
 
@@ -408,7 +417,7 @@
   </footer>
 
   <script src="js/products.js"></script>
-  <script src="js/app.js?v=20261105g"></script>
+  <script src="js/app.js?v=20261105p"></script>
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -838,14 +847,6 @@
         return;
       }
 
-      const paymentInput = document.getElementById('ePaymentProof');
-      if (!paymentInput.files || !paymentInput.files[0]) {
-        alert('Anexe o comprovativo de pagamento.');
-        btn.disabled = false;
-        btn.textContent = 'Enviar inscrição';
-        return;
-      }
-
       if (!docsLater) {
         for (const f of DOC_FIELDS) {
           if (f.key === 'paymentProof') continue;
@@ -931,5 +932,19 @@
       navigator.serviceWorker.register('/sw.js').catch(function () {});
     }
   </script>
+
+  <div class="modal-backdrop" id="installSiteModal" hidden>
+    <div class="install-modal" role="dialog" aria-modal="true" aria-labelledby="installSiteTitle">
+      <button type="button" class="install-modal-close" id="closeInstallSiteModal" aria-label="Fechar">×</button>
+      <h2 id="installSiteTitle">Instalar Búzios</h2>
+      <p id="installSiteBody" class="install-modal-body">Adicione o site ao ecrã inicial para abrir como aplicação.</p>
+      <ol id="installSiteSteps" class="install-modal-steps"></ol>
+      <div class="install-modal-actions">
+        <button type="button" class="btn btn-primary" id="installSiteConfirmBtn" hidden>Instalar agora</button>
+        <button type="button" class="btn btn-ghost" id="installSiteDismissBtn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

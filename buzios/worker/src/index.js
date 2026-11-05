@@ -320,6 +320,8 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'update_submission' && data && data.id) {
+    // Re-load before write so concurrent edits on other devices are kept
+    store = await loadStore(env);
     store.submissions = store.submissions || [];
     const idx = store.submissions.findIndex(s => s.id === data.id);
     if (idx >= 0) {
@@ -353,6 +355,7 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'delete_client' && data && data.id) {
+    store = await loadStore(env);
     store.clients = store.clients || [];
     const hard = !!data.hard;
     if (hard) {
@@ -373,6 +376,7 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'delete_submission' && data && data.id) {
+    store = await loadStore(env);
     store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
@@ -380,6 +384,7 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'delete_newsletter' && data && data.id) {
+    store = await loadStore(env);
     store.newsletters = (store.newsletters || []).filter(n => n.id !== data.id);
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
@@ -426,16 +431,20 @@ function isEmptyStore(s) {
   return storeScore(s) <= 0 && !s.updatedAt;
 }
 
-/** Prefer the richer / newer of two store snapshots. Never prefer empty over real data. */
+/**
+ * Prefer newer updatedAt first (multi-device correctness).
+ * Only use richness (score) as a tie-breaker when timestamps match/missing.
+ * Never prefer empty over real data.
+ */
 function preferStore(a, b) {
   if (!a || isEmptyStore(a)) return b && !isEmptyStore(b) ? b : (b || a || emptyStore());
   if (!b || isEmptyStore(b)) return a;
-  const sa = storeScore(a);
-  const sb = storeScore(b);
-  if (sa !== sb) return sa > sb ? a : b;
   const ta = Date.parse(a.updatedAt || 0) || 0;
   const tb = Date.parse(b.updatedAt || 0) || 0;
-  return ta >= tb ? a : b;
+  if (ta !== tb) return ta > tb ? a : b;
+  const sa = storeScore(a);
+  const sb = storeScore(b);
+  return sa >= sb ? a : b;
 }
 
 async function putStoreCache(store) {
@@ -496,12 +505,62 @@ let _cloudLoadDebug = null;
 async function loadStoreFromCloudinary(env) {
   _cloudLoadDebug = { step: 'start' };
   const cloudName = String(env.CLOUDINARY_CLOUD_NAME || '').trim();
+  const apiKey = String(env.CLOUDINARY_API_KEY || '').trim();
+  const apiSecret = String(env.CLOUDINARY_API_SECRET || '').trim();
   if (!cloudName) {
     _cloudLoadDebug = { step: 'no_cloud_name' };
     return null;
   }
 
   const publicId = FOLDER + '/store.json';
+
+  // Prefer Admin API versioned URL (bypasses CDN 30-day raw cache)
+  if (apiKey && apiSecret) {
+    try {
+      const auth = btoa(apiKey + ':' + apiSecret);
+      const metaRes = await fetch(
+        'https://api.cloudinary.com/v1_1/' +
+          cloudName +
+          '/resources/raw/upload/' +
+          encodeURIComponent(publicId),
+        { headers: { Authorization: 'Basic ' + auth } }
+      );
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        const version = meta.version;
+        if (version) {
+          const versioned =
+            'https://res.cloudinary.com/' +
+            cloudName +
+            '/raw/upload/v' +
+            version +
+            '/' +
+            publicId;
+          _cloudLoadDebug = { step: 'admin_versioned', version: version };
+          const fileRes = await fetch(versioned, { cache: 'no-store' });
+          if (fileRes.ok) {
+            const text = await fileRes.text();
+            const data = JSON.parse(text);
+            if (looksLikeStore(data)) {
+              _cloudLoadDebug.step = 'ok_admin';
+              _cloudLoadDebug.updatedAt = data.updatedAt;
+              _cloudLoadDebug.clientLen = Array.isArray(data.clients) ? data.clients.length : null;
+              return data;
+            }
+          }
+        }
+      } else {
+        _cloudLoadDebug = { step: 'admin_meta_fail', status: metaRes.status };
+      }
+    } catch (e) {
+      _cloudLoadDebug = {
+        step: 'admin_exception',
+        error: (e && e.message) || String(e)
+      };
+    }
+  }
+
+  // Fallback: delivery URL with cache-bust (may still be CDN-stale)
   const url =
     'https://res.cloudinary.com/' +
     cloudName +
@@ -512,22 +571,19 @@ async function loadStoreFromCloudinary(env) {
     '&cb=' +
     Math.random().toString(36).slice(2, 8);
 
-  _cloudLoadDebug = { step: 'fetch', url: url.slice(0, 120) };
+  _cloudLoadDebug = Object.assign({}, _cloudLoadDebug || {}, {
+    step: 'delivery_fetch',
+    url: url.slice(0, 120)
+  });
 
   try {
-    const res = await fetch(url);
-    _cloudLoadDebug = {
-      step: 'response',
-      status: res.status,
-      ok: res.ok,
-      url: url.slice(0, 120)
-    };
+    const res = await fetch(url, { cache: 'no-store' });
+    _cloudLoadDebug.status = res.status;
+    _cloudLoadDebug.ok = res.ok;
     if (!res.ok) return null;
 
     const text = await res.text();
     _cloudLoadDebug.bytes = text ? text.length : 0;
-    _cloudLoadDebug.head = text ? text.slice(0, 60) : null;
-
     if (!text || text.length < 2) {
       _cloudLoadDebug.step = 'empty_body';
       return null;
@@ -542,17 +598,14 @@ async function loadStoreFromCloudinary(env) {
       return null;
     }
 
-    _cloudLoadDebug.step = 'parsed';
-    _cloudLoadDebug.looksLike = looksLikeStore(data);
-    _cloudLoadDebug.clientLen = data && Array.isArray(data.clients) ? data.clients.length : null;
-    _cloudLoadDebug.updatedAt = data && data.updatedAt;
-
     if (!looksLikeStore(data)) {
       _cloudLoadDebug.step = 'looksLikeStore_false';
       return null;
     }
 
-    _cloudLoadDebug.step = 'ok';
+    _cloudLoadDebug.step = 'ok_delivery';
+    _cloudLoadDebug.updatedAt = data.updatedAt;
+    _cloudLoadDebug.clientLen = Array.isArray(data.clients) ? data.clients.length : null;
     return data;
   } catch (e) {
     _cloudLoadDebug = {

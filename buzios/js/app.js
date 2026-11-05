@@ -42,30 +42,37 @@
 
     let lastY = 0;
     let ticking = false;
-    const ANNOUNCE_H = 36;
+
+    function announceHeight() {
+      if (!announce || announce.classList.contains('hide')) return 0;
+      return Math.ceil(announce.getBoundingClientRect().height) || 36;
+    }
+
+    function syncHeaderOffset() {
+      const h = announceHeight();
+      header.style.top = h + 'px';
+      document.documentElement.style.setProperty('--announce-h', h + 'px');
+    }
 
     function setAnnounceVisible(visible) {
       if (!announce) return;
       if (visible) {
         announce.classList.remove('hide');
-        header.style.top = ANNOUNCE_H + 'px';
       } else {
         announce.classList.add('hide');
-        header.style.top = '0';
       }
+      syncHeaderOffset();
     }
 
     function onScroll() {
       const y = window.scrollY || window.pageYOffset;
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          // Header solid after any scroll
           if (y > 20) {
             header.classList.add('scrolled');
           } else {
             header.classList.remove('scrolled');
           }
-          // Announce: hide on scroll down, show near top or on scroll up
           if (announce) {
             if (y < 40) {
               setAnnounceVisible(true);
@@ -82,6 +89,11 @@
       }
     }
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => {
+      if (!announce || announce.classList.contains('hide')) return;
+      syncHeaderOffset();
+    }, { passive: true });
+    syncHeaderOffset();
     onScroll();
   }
 
@@ -118,6 +130,7 @@
     if (overlay) overlay.addEventListener('click', close);
     // Close on nav link
     $$('.drawer-nav a').forEach(a => a.addEventListener('click', close));
+    $('#installSiteAppBtnDrawer')?.addEventListener('click', close);
   }
 
   // —— i18n ——
@@ -510,10 +523,125 @@
     els.forEach(el => io.observe(el));
   }
 
+  // —— Install website PWA ——
+  let deferredSiteInstall = null;
+
+  function isSiteAppInstalled() {
+    try {
+      if (window.matchMedia('(display-mode: standalone)').matches) return true;
+      if (window.navigator.standalone === true) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function isIosDevice() {
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function updateSiteInstallButtons() {
+    const installed = isSiteAppInstalled();
+    ['#installSiteAppBtn', '#installSiteAppBtnDrawer'].forEach(sel => {
+      const btn = $(sel);
+      if (!btn) return;
+      btn.classList.toggle('is-installed', installed);
+      if (installed) {
+        if (btn.id === 'installSiteAppBtnDrawer') {
+          btn.innerHTML = '<span class="drawer-install-icon" aria-hidden="true">✓</span> App instalada';
+        } else {
+          btn.textContent = 'App instalada';
+        }
+      }
+    });
+  }
+
+  function openSiteInstallModal() {
+    const modal = $('#installSiteModal');
+    if (!modal) return;
+    const body = $('#installSiteBody');
+    const steps = $('#installSiteSteps');
+    const confirmBtn = $('#installSiteConfirmBtn');
+
+    modal.hidden = false;
+    modal.removeAttribute('hidden');
+
+    if (isSiteAppInstalled()) {
+      if (body) body.textContent = 'O site já está a correr como aplicação neste dispositivo.';
+      if (steps) steps.innerHTML = '';
+      if (confirmBtn) confirmBtn.hidden = true;
+      return;
+    }
+
+    if (deferredSiteInstall) {
+      if (body) body.textContent = 'Instale o Búzios no ecrã inicial para abrir mais rápido, como uma app.';
+      if (steps) steps.innerHTML = '<li>Toque em <strong>Instalar agora</strong> e confirme no diálogo do browser.</li>';
+      if (confirmBtn) confirmBtn.hidden = false;
+      return;
+    }
+
+    if (isIosDevice()) {
+      if (body) body.textContent = 'No iPhone ou iPad, use o Safari:';
+      if (steps) steps.innerHTML = [
+        '<li>Abra o site no <strong>Safari</strong>.</li>',
+        '<li>Toque em <strong>Partilhar</strong> (quadrado com seta).</li>',
+        '<li>Escolha <strong>Adicionar ao Ecrã Principal</strong>.</li>',
+        '<li>Confirme o nome <strong>Búzios</strong> e toque em Adicionar.</li>'
+      ].join('');
+    } else {
+      if (body) body.textContent = 'Para instalar no telemóvel ou computador:';
+      if (steps) steps.innerHTML = [
+        '<li>Chrome / Edge: menu (⋮) → <strong>Instalar aplicação</strong> ou <strong>Adicionar ao ecrã inicial</strong>.</li>',
+        '<li>Android: menu → <strong>Instalar app</strong>.</li>',
+        '<li>É necessário HTTPS. Se a opção não aparecer, visite o site algumas vezes e tente de novo.</li>'
+      ].join('');
+    }
+    if (confirmBtn) confirmBtn.hidden = true;
+  }
+
+  function closeSiteInstallModal() {
+    const modal = $('#installSiteModal');
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute('hidden', '');
+  }
+
+  function initInstallSite() {
+    updateSiteInstallButtons();
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredSiteInstall = e;
+      updateSiteInstallButtons();
+    });
+    window.addEventListener('appinstalled', () => {
+      deferredSiteInstall = null;
+      updateSiteInstallButtons();
+      closeSiteInstallModal();
+    });
+
+    ['#installSiteAppBtn', '#installSiteAppBtnDrawer'].forEach(sel => {
+      $(sel)?.addEventListener('click', openSiteInstallModal);
+    });
+    $('#installSiteConfirmBtn')?.addEventListener('click', async () => {
+      if (!deferredSiteInstall) return;
+      deferredSiteInstall.prompt();
+      try { await deferredSiteInstall.userChoice; } catch (e) {}
+      deferredSiteInstall = null;
+      closeSiteInstallModal();
+      updateSiteInstallButtons();
+    });
+    $('#closeInstallSiteModal')?.addEventListener('click', closeSiteInstallModal);
+    $('#installSiteDismissBtn')?.addEventListener('click', closeSiteInstallModal);
+    $('#installSiteModal')?.addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeSiteInstallModal();
+    });
+  }
+
   // —— Init ——
   document.addEventListener('DOMContentLoaded', () => {
     initHeader();
     initDrawer();
+    initInstallSite();
     initNewsletter();
     initReveal();
     loadCatalog();

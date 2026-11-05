@@ -104,12 +104,21 @@
 
   // When staff switches back to this tab/device, pull latest immediately
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && $('#adminApp') && !$('#adminApp').classList.contains('hidden')) {
+    if (!$('#adminApp') || $('#adminApp').classList.contains('hidden')) return;
+    if (!document.hidden) {
+      // Restart interval at focus cadence and fetch now
+      startStoreSync();
       refreshStoreIfChanged();
     }
   });
   window.addEventListener('focus', () => {
     if ($('#adminApp') && !$('#adminApp').classList.contains('hidden')) {
+      refreshStoreIfChanged();
+    }
+  });
+  window.addEventListener('online', () => {
+    if ($('#adminApp') && !$('#adminApp').classList.contains('hidden')) {
+      setSyncStatus('syncing');
       refreshStoreIfChanged();
     }
   });
@@ -191,6 +200,10 @@
     try {
       sessionStorage.setItem('buzios_admin_panel', name);
     } catch (e) {}
+    // Live data panels: refresh when opened
+    if (name === 'inbox' || name === 'contacts' || name === 'clients' || name === 'newsletters') {
+      refreshStoreIfChanged();
+    }
   }
 
   $$('.admin-tabs button').forEach(btn => {
@@ -286,12 +299,30 @@
     return data;
   }
 
-  /** Multi-device sync: poll store while admin is open. */
+  /** Multi-device + multi-tab sync. */
   let lastKnownUpdatedAt = null;
   let storeFetchInFlight = false;
   let localWriteInFlight = 0;
+  let localWriteUntil = 0; // pause remote poll briefly after local write
   let storeSyncTimer = null;
-  const STORE_SYNC_MS = 7000;
+  const STORE_SYNC_FOCUS_MS = 3500;
+  const STORE_SYNC_HIDDEN_MS = 12000;
+  const LOCAL_WRITE_COOLDOWN_MS = 1800;
+  let syncChannel = null;
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      syncChannel = new BroadcastChannel('buzios-admin-store');
+      syncChannel.onmessage = (ev) => {
+        const msg = ev && ev.data;
+        if (!msg || msg.type !== 'store' || !msg.store) return;
+        // Ignore our own echoes shortly after a local write
+        if (Date.now() < localWriteUntil) return;
+        const remoteAt = msg.store.updatedAt || null;
+        if (remoteAt && remoteAt === lastKnownUpdatedAt) return;
+        applyStore(msg.store, { silent: true, source: 'tab' });
+      };
+    }
+  } catch (e) {}
 
   function storeTimestamp(s) {
     if (!s || !s.updatedAt) return 0;
@@ -308,7 +339,7 @@
     );
   }
 
-  /** Prefer newer updatedAt; fall back to richer snapshot if timestamps equal/missing. */
+  /** Prefer newer updatedAt; richness only as tie-breaker. */
   function preferStoreSnapshot(a, b) {
     if (!a) return b;
     if (!b) return a;
@@ -318,11 +349,34 @@
     return storeScore(a) >= storeScore(b) ? a : b;
   }
 
+  function setSyncStatus(kind, detail) {
+    const el = $('#syncStatus');
+    if (!el) return;
+    el.dataset.state = kind || 'idle';
+    if (kind === 'syncing') el.textContent = 'A sincronizar…';
+    else if (kind === 'ok') el.textContent = detail || 'Sincronizado';
+    else if (kind === 'remote') el.textContent = detail || 'Actualizado noutro dispositivo';
+    else if (kind === 'error') el.textContent = detail || 'Falha de sincronização';
+    else el.textContent = detail || 'Em sincronização';
+  }
+
+  function broadcastStore(next) {
+    if (!syncChannel || !next) return;
+    try {
+      syncChannel.postMessage({ type: 'store', store: next, at: Date.now() });
+    } catch (e) {}
+  }
+
   function applyStore(next, opts) {
     const silent = opts && opts.silent;
+    const source = (opts && opts.source) || 'server';
     const prevAt = lastKnownUpdatedAt;
     const nextAt = next && next.updatedAt ? next.updatedAt : null;
-    const changed = nextAt && nextAt !== prevAt;
+    const changed = !!(nextAt && nextAt !== prevAt);
+    // Don't clobber a newer local view with an older remote snapshot
+    if (nextAt && prevAt && storeTimestamp({ updatedAt: nextAt }) < storeTimestamp({ updatedAt: prevAt })) {
+      return false;
+    }
     store = next || store;
     if (nextAt) lastKnownUpdatedAt = nextAt;
     renderInbox();
@@ -330,22 +384,32 @@
     renderNewsletters();
     renderClients();
     if (silent && changed && prevAt) {
-      toast('Actualizado noutro dispositivo');
+      const label = source === 'tab'
+        ? 'Actualizado noutro separador'
+        : 'Actualizado noutro dispositivo';
+      toast(label);
+      setSyncStatus('remote', label);
+      setTimeout(() => setSyncStatus('ok', 'Sincronizado'), 2500);
+    } else if (!silent) {
+      setSyncStatus('ok', 'Sincronizado');
     }
     return changed;
   }
 
   async function loadStore(opts) {
     const silent = !!(opts && opts.silent);
+    const workerOnly = !!(opts && opts.workerOnly);
     if (storeFetchInFlight) return false;
     storeFetchInFlight = true;
+    if (!silent) setSyncStatus('syncing');
     try {
       let fromWorker = null;
       try {
         const res = await fetch(ADMIN_DATA_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'get' })
+          body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'get' }),
+          cache: 'no-store'
         });
         if (res.ok) {
           const data = await res.json();
@@ -355,18 +419,26 @@
         console.warn('Store load (worker) failed', e);
       }
 
-      let fromCloud = null;
-      try {
-        fromCloud = await loadStoreFromCloudinaryDirect();
-      } catch (e) {
-        console.warn('Store load (cloudinary) failed', e);
+      let chosen = fromWorker;
+      // Initial load may also consult Cloudinary; silent polls use worker only
+      // to avoid CDN-stale snapshots overwriting fresher worker data.
+      if (!workerOnly && !silent) {
+        let fromCloud = null;
+        try {
+          fromCloud = await loadStoreFromCloudinaryDirect();
+        } catch (e) {
+          console.warn('Store load (cloudinary) failed', e);
+        }
+        chosen = preferStoreSnapshot(fromWorker, fromCloud);
       }
 
-      const chosen = preferStoreSnapshot(fromWorker, fromCloud);
-      if (!chosen) return false;
+      if (!chosen) {
+        if (!silent) setSyncStatus('error');
+        return false;
+      }
 
-      // Silent poll: skip re-render if nothing changed
       if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
+        setSyncStatus('ok', 'Sincronizado');
         return false;
       }
 
@@ -377,18 +449,29 @@
   }
 
   async function refreshStoreIfChanged() {
-    if (document.hidden || localWriteInFlight > 0 || storeFetchInFlight) return;
-    await loadStore({ silent: true });
+    if (document.hidden) return;
+    if (storeFetchInFlight) return;
+    if (Date.now() < localWriteUntil) return;
+    await loadStore({ silent: true, workerOnly: true });
+  }
+
+  function currentSyncInterval() {
+    return document.hidden ? STORE_SYNC_HIDDEN_MS : STORE_SYNC_FOCUS_MS;
   }
 
   function startStoreSync() {
     stopStoreSync();
-    storeSyncTimer = setInterval(refreshStoreIfChanged, STORE_SYNC_MS);
+    const tick = async () => {
+      await refreshStoreIfChanged();
+      storeSyncTimer = setTimeout(tick, currentSyncInterval());
+    };
+    storeSyncTimer = setTimeout(tick, currentSyncInterval());
+    setSyncStatus('ok', 'Sincronizado');
   }
 
   function stopStoreSync() {
     if (storeSyncTimer) {
-      clearInterval(storeSyncTimer);
+      clearTimeout(storeSyncTimer);
       storeSyncTimer = null;
     }
   }
@@ -540,23 +623,75 @@
   }
 
   // —— Contact form messages ——
+  let contactsFilter = 'all';
+  const CONTACT_STATUS_LABEL = {
+    novo: 'novo',
+    contactado: 'respondido',
+    respondido: 'respondido',
+    arquivado: 'arquivado'
+  };
+  const CONTACT_STATUS_ORDER = { novo: 0, contactado: 1, respondido: 1, arquivado: 2 };
+
+  function contactActionButtons(s) {
+    const id = escapeHtml(s.id);
+    const status = s.status || 'novo';
+    const btns = [];
+    if (status !== 'novo') {
+      btns.push(`<button type="button" data-st="${id}" data-v="novo">Reabrir (novo)</button>`);
+    }
+    if (status !== 'contactado' && status !== 'respondido') {
+      btns.push(`<button type="button" data-st="${id}" data-v="contactado">Respondido</button>`);
+    }
+    if (status !== 'arquivado') {
+      btns.push(`<button type="button" data-st="${id}" data-v="arquivado">Arquivar</button>`);
+    }
+    const wa = whatsappUrl(s.phone);
+    if (wa) {
+      btns.push(`<a class="wa-btn" href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`);
+    }
+    btns.push(`<button type="button" class="danger" data-del-sub="${id}">Apagar</button>`);
+    return btns.join('');
+  }
+
   function renderContacts() {
     const list = $('#contactsList');
     if (!list) return;
-    const items = (store.submissions || []).filter(s => s.type === 'contact' || (!s.type && s.message));
+    let items = (store.submissions || []).filter(s => s.type === 'contact' || (!s.type && s.message));
+    if (contactsFilter && contactsFilter !== 'all') {
+      if (contactsFilter === 'contactado') {
+        items = items.filter(s => {
+          const st = s.status || 'novo';
+          return st === 'contactado' || st === 'respondido';
+        });
+      } else {
+        items = items.filter(s => (s.status || 'novo') === contactsFilter);
+      }
+    }
+    items = items.slice().sort((a, b) => {
+      const sa = CONTACT_STATUS_ORDER[a.status || 'novo'] ?? 9;
+      const sb = CONTACT_STATUS_ORDER[b.status || 'novo'] ?? 9;
+      if (sa !== sb) return sa - sb;
+      return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+    });
     if (!items.length) {
-      list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhuma mensagem de contacto ainda. Aparecem quando alguém envia o formulário na página Contacto.</p>';
+      list.innerHTML = '<p style="color:#666;font-size:0.9rem">' +
+        (contactsFilter && contactsFilter !== 'all'
+          ? 'Nenhuma mensagem neste filtro.'
+          : 'Nenhuma mensagem de contacto ainda. Aparecem quando alguém envia o formulário na página Contacto.') +
+        '</p>';
       updateBulkBar('contacts');
       return;
     }
     list.innerHTML = items.map(s => {
       const status = s.status || 'novo';
+      const statusLabel = CONTACT_STATUS_LABEL[status] || status;
+      const badgeClass = (status === 'respondido') ? 'contactado' : status;
       const when = s.createdAt ? new Date(s.createdAt).toLocaleString('pt') : '';
       const msg = s.message || s.notes || '';
       return `
         <div class="prod-card">
           <label class="card-check"><input type="checkbox" class="bulk-item" data-list="contacts" data-id="${escapeHtml(s.id)}"></label>
-          <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${status}</span></h3>
+          <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${badgeClass}">${escapeHtml(statusLabel)}</span></h3>
           <div class="meta">Contacto · ${escapeHtml(s.phone || '')} · ${when}</div>
           <div class="meta" style="margin-top:0.35rem">
             ${s.subject ? 'Assunto: ' + escapeHtml(s.subject) : ''}
@@ -565,9 +700,7 @@
           </div>
           ${msg ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444;white-space:pre-wrap">' + escapeHtml(msg) + '</p>' : ''}
           <div class="actions" style="margin-top:0.65rem">
-            <button type="button" data-st="${s.id}" data-v="contactado">Respondido</button>
-            <button type="button" data-st="${s.id}" data-v="arquivado">Arquivar</button>
-            <button type="button" class="danger" data-del-sub="${s.id}">Apagar</button>
+            ${contactActionButtons(s)}
           </div>
         </div>`;
     }).join('');
@@ -729,17 +862,37 @@
   }
 
   function bindSubmissionActions(list) {
+    if (!list) return;
     list.querySelectorAll('[data-st]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await adminAction('update_submission', { id: btn.dataset.st, status: btn.dataset.v });
-        toast('Estado actualizado');
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-st');
+        const status = btn.getAttribute('data-v');
+        if (!id || !status) return;
+        btn.disabled = true;
+        const ok = await adminAction('update_submission', { id, status });
+        if (ok) toast('Estado actualizado');
+        else {
+          btn.disabled = false;
+          toast('Não foi possível actualizar');
+        }
       });
     });
     list.querySelectorAll('[data-del-sub]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-del-sub');
+        if (!id) return;
         if (!confirm('Apagar esta entrada?')) return;
-        await adminAction('delete_submission', { id: btn.dataset.delSub });
-        toast('Apagado');
+        btn.disabled = true;
+        const ok = await adminAction('delete_submission', { id });
+        if (ok) toast('Apagado');
+        else {
+          btn.disabled = false;
+          toast('Não foi possível apagar');
+        }
       });
     });
   }
@@ -747,16 +900,29 @@
   async function adminAction(action, data, opts) {
     const silent = opts && opts.silent;
     localWriteInFlight++;
+    localWriteUntil = Date.now() + LOCAL_WRITE_COOLDOWN_MS;
     try {
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, action, data })
+        body: JSON.stringify({ password: ADMIN_PASSWORD, action, data }),
+        cache: 'no-store'
       });
       if (res.ok) {
         const json = await res.json();
         if (json.store) {
-          applyStore(json.store, { silent: true });
+          // Own write: apply without "outro dispositivo" toast, then notify other tabs
+          const prevAt = lastKnownUpdatedAt;
+          store = json.store;
+          if (json.store.updatedAt) lastKnownUpdatedAt = json.store.updatedAt;
+          renderInbox();
+          renderContacts();
+          renderNewsletters();
+          renderClients();
+          broadcastStore(json.store);
+          setSyncStatus('ok', 'Sincronizado');
+          // Keep prevAt reference to avoid unused lint; own writes never toast remote
+          void prevAt;
         } else if (!silent) {
           renderInbox();
           renderContacts();
@@ -766,10 +932,12 @@
         return true;
       } else {
         if (!silent) toast('Erro ao actualizar');
+        setSyncStatus('error', 'Erro ao gravar');
         return false;
       }
     } catch (e) {
       if (!silent) toast('Erro de rede');
+      setSyncStatus('error', 'Erro de rede');
       return false;
     } finally {
       localWriteInFlight = Math.max(0, localWriteInFlight - 1);
@@ -1835,6 +2003,16 @@
     });
   });
 
+  $('#contactsFilters')?.querySelectorAll('[data-contacts-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      contactsFilter = btn.dataset.contactsFilter || 'all';
+      $('#contactsFilters').querySelectorAll('[data-contacts-filter]').forEach(b => {
+        b.classList.toggle('active', b.dataset.contactsFilter === contactsFilter);
+      });
+      renderContacts();
+    });
+  });
+
   $('#saveClientBtn')?.addEventListener('click', async () => {
     const existing = editingClientId
       ? (store.clients || []).find(x => x.id === editingClientId)
@@ -2376,6 +2554,114 @@
     renderNewsletters();
     renderClients();
   }
+
+  // —— Install admin PWA ——
+  let deferredInstallPrompt = null;
+
+  function isAdminAppInstalled() {
+    try {
+      if (window.matchMedia('(display-mode: standalone)').matches) return true;
+      if (window.navigator.standalone === true) return true; // iOS Safari
+    } catch (e) {}
+    return false;
+  }
+
+  function isIosDevice() {
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function updateInstallButton() {
+    const btn = $('#installAdminAppBtn');
+    if (!btn) return;
+    if (isAdminAppInstalled()) {
+      btn.classList.add('is-installed');
+      const label = btn.querySelector('.nav-label');
+      if (label) label.textContent = 'App instalada';
+      btn.title = 'Búzios Admin já está instalado neste dispositivo';
+    } else {
+      btn.classList.remove('is-installed');
+      const label = btn.querySelector('.nav-label');
+      if (label) label.textContent = 'Instalar app';
+      btn.title = 'Instalar app no dispositivo';
+    }
+  }
+
+  function openInstallHelp() {
+    const modal = $('#installAppModal');
+    const steps = $('#installAppSteps');
+    const confirmBtn = $('#installAppConfirmBtn');
+    const body = $('#installAppBody');
+    if (!modal) return;
+
+    if (isAdminAppInstalled()) {
+      body.textContent = 'O painel já está a correr como aplicação neste dispositivo.';
+      steps.innerHTML = '';
+      if (confirmBtn) confirmBtn.style.display = 'none';
+      modal.classList.add('open');
+      return;
+    }
+
+    if (deferredInstallPrompt) {
+      body.textContent = 'Instale o Búzios Admin no ecrã inicial para abrir mais rápido, como uma app.';
+      steps.innerHTML = '<li>Toque em <strong>Instalar agora</strong> e confirme no diálogo do browser.</li>';
+      if (confirmBtn) confirmBtn.style.display = 'block';
+      modal.classList.add('open');
+      return;
+    }
+
+    if (isIosDevice()) {
+      body.textContent = 'No iPhone ou iPad, use o Safari:';
+      steps.innerHTML = [
+        '<li>Abra este painel no <strong>Safari</strong>.</li>',
+        '<li>Toque no botão <strong>Partilhar</strong> (quadrado com seta).</li>',
+        '<li>Escolha <strong>Adicionar ao Ecrã Principal</strong>.</li>',
+        '<li>Confirme o nome <strong>Búzios Admin</strong> e toque em Adicionar.</li>'
+      ].join('');
+      if (confirmBtn) confirmBtn.style.display = 'none';
+    } else {
+      body.textContent = 'Para instalar no telemóvel ou computador:';
+      steps.innerHTML = [
+        '<li>No Chrome / Edge: menu (⋮) → <strong>Instalar aplicação</strong> ou <strong>Adicionar ao ecrã inicial</strong>.</li>',
+        '<li>No Android Chrome: menu → <strong>Instalar app</strong> / <strong>Adicionar à página inicial</strong>.</li>',
+        '<li>Se o browser ainda não mostrar a opção, use este site algumas vezes e tente de novo (é necessário HTTPS).</li>'
+      ].join('');
+      if (confirmBtn) confirmBtn.style.display = 'none';
+    }
+    modal.classList.add('open');
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    updateInstallButton();
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    updateInstallButton();
+    toast('App instalada neste dispositivo');
+    $('#installAppModal')?.classList.remove('open');
+  });
+
+  $('#installAdminAppBtn')?.addEventListener('click', () => {
+    openInstallHelp();
+  });
+  $('#installAppConfirmBtn')?.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    try {
+      const choice = await deferredInstallPrompt.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        toast('A instalar…');
+      }
+    } catch (e) {}
+    deferredInstallPrompt = null;
+    $('#installAppModal')?.classList.remove('open');
+    updateInstallButton();
+  });
+  $('#closeInstallAppModal')?.addEventListener('click', () => $('#installAppModal')?.classList.remove('open'));
+  $('#installAppDismissBtn')?.addEventListener('click', () => $('#installAppModal')?.classList.remove('open'));
+  updateInstallButton();
 
   checkAuth();
 })();

@@ -1114,6 +1114,80 @@ a { color: var(--admin-accent); }
   border-top: 1px dashed var(--admin-border);
 }
 
+.client-row .row-docs {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+}
+.doc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--admin-border);
+  background: #f7f7f5;
+  font-size: 0.7rem;
+  color: #444;
+  text-decoration: none;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.doc-chip:hover {
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+  background: #fff;
+}
+.doc-chip.is-photo {
+  background: #eef6f4;
+  border-color: #c5ddd6;
+}
+.client-docs-block {
+  margin: 0.85rem 0 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: #fafaf8;
+}
+.client-docs-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.client-doc-thumb {
+  display: flex;
+  flex-direction: column;
+  width: 72px;
+  text-decoration: none;
+  color: #444;
+  font-size: 0.68rem;
+  text-align: center;
+}
+.client-doc-thumb img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #eee;
+}
+.client-doc-thumb span { margin-top: 0.25rem; line-height: 1.2; }
+.client-doc-file {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.75rem;
+  color: #444;
+  text-decoration: none;
+}
+.client-doc-file:hover,
+.client-doc-thumb:hover { border-color: var(--admin-accent); color: var(--admin-accent); }
+
 .clients-empty {
   text-align: center;
   padding: 2rem 1rem;
@@ -1147,7 +1221,8 @@ a { color: var(--admin-accent); }
   .client-row .row-plan { grid-area: plan; }
   .client-row .row-period { grid-area: period; }
   .client-row .row-actions { grid-area: actions; flex-direction: column; align-items: stretch; }
-  .client-row .row-notes { grid-column: 2 / -1; }
+  .client-row .row-notes,
+  .client-row .row-docs { grid-column: 2 / -1; }
 }
 
 @media (max-width: 520px) {

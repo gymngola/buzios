@@ -589,6 +589,28 @@
     return url;
   }
 
+  const DOC_KEY_LABELS = {
+    id: 'BI / Cédula',
+    medicalCert: 'Atestado',
+    photo1: 'Foto 1',
+    photo2: 'Foto 2',
+    paymentProof: 'Pagamento',
+    doc: 'Documento'
+  };
+
+  function shortDocLabel(a) {
+    if (!a) return 'Doc';
+    if (a.key && DOC_KEY_LABELS[a.key]) return DOC_KEY_LABELS[a.key];
+    const lab = String(a.label || '').trim();
+    if (/bi|c[eé]dula|passaporte/i.test(lab)) return 'BI / Cédula';
+    if (/atestado|m[eé]dic/i.test(lab)) return 'Atestado';
+    if (/foto.*1|passe\s*1/i.test(lab)) return 'Foto 1';
+    if (/foto.*2|passe\s*2/i.test(lab)) return 'Foto 2';
+    if (/comprova|pagament|recibo/i.test(lab)) return 'Pagamento';
+    if (/foto|photo|passe/i.test(lab)) return 'Foto';
+    return lab ? (lab.length > 18 ? lab.slice(0, 16) + '…' : lab) : 'Documento';
+  }
+
   function normalizeAttachments(s) {
     const list = [];
     const seen = new Set();
@@ -597,18 +619,23 @@
       const url = typeof item === 'string' ? item : (item.url || '');
       if (!url || seen.has(url)) return;
       seen.add(url);
+      const key = (typeof item === 'object' && item.key) ? item.key : 'doc';
+      const label = (typeof item === 'object' && item.label)
+        ? item.label
+        : (DOC_KEY_LABELS[key] || 'Documento');
       list.push({
         url,
-        label: (typeof item === 'object' && item.label) ? item.label : 'Documento',
-        key: (typeof item === 'object' && item.key) ? item.key : 'doc',
+        label,
+        key,
         name: (typeof item === 'object' && item.name) ? item.name : ''
       });
     }
+    if (!s) return list;
     if (s.documents && typeof s.documents === 'object') {
       Object.keys(s.documents).forEach(k => {
         const d = s.documents[k];
         if (!d) return;
-        push(typeof d === 'string' ? { url: d, key: k, label: k } : Object.assign({ key: k }, d));
+        push(typeof d === 'string' ? { url: d, key: k, label: DOC_KEY_LABELS[k] || k } : Object.assign({ key: k }, d));
       });
     }
     (s.attachments || []).forEach(push);
@@ -618,13 +645,39 @@
     return list;
   }
 
+  /** Client docs, or fall back to linked enrollment submission. */
+  function clientAttachments(c) {
+    if (!c) return [];
+    const own = normalizeAttachments(c);
+    if (own.length) return own;
+    if (c.fromSubmission) {
+      const sub = (store.submissions || []).find(s => s.id === c.fromSubmission);
+      if (sub) return normalizeAttachments(sub);
+    }
+    return [];
+  }
+
   function isImageUrl(url) {
     return /\.(jpe?g|png|gif|webp|bmp)($|\?)/i.test(url || '') ||
       (url || '').includes('/image/upload/');
   }
 
+  /** Compact chips for client list — icon + short label, click opens file. */
+  function renderDocChips(items) {
+    if (!items || !items.length) return '';
+    const chips = items.map(a => {
+      const href = escapeHtml(fixAttachmentUrl(a.url));
+      const label = escapeHtml(shortDocLabel(a));
+      const img = isImageUrl(a.url);
+      const icon = img ? '📷' : '📄';
+      const title = escapeHtml(a.label || a.name || label);
+      return `<a class="doc-chip ${img ? 'is-photo' : 'is-file'}" href="${href}" target="_blank" rel="noopener" title="${title}">${icon} ${label}</a>`;
+    }).join('');
+    return `<div class="row-docs">${chips}</div>`;
+  }
+
   function renderAttachmentGallery(s) {
-    const items = normalizeAttachments(s);
+    const items = Array.isArray(s) ? s : normalizeAttachments(s);
     if (!items.length) return '';
     const cards = items.map((a, i) => {
       const href = escapeHtml(fixAttachmentUrl(a.url));
@@ -641,6 +694,31 @@
     }).join('');
     return `<div class="meta" style="margin-top:0.65rem"><strong>Documentos (${items.length})</strong></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:0.65rem;margin-top:0.45rem">${cards}</div>`;
+  }
+
+  /** Compact gallery for client modal (small thumbs + links). */
+  function renderClientDocsBlock(c) {
+    const items = clientAttachments(c);
+    if (!items.length) {
+      return '<div id="cDocsBlock" class="client-docs-block" style="display:none"></div>';
+    }
+    const chips = items.map(a => {
+      const href = escapeHtml(fixAttachmentUrl(a.url));
+      const label = escapeHtml(shortDocLabel(a));
+      const full = escapeHtml(a.label || a.name || label);
+      const img = isImageUrl(a.url);
+      if (img) {
+        return `<a class="client-doc-thumb" href="${href}" target="_blank" rel="noopener" title="${full}">
+          <img src="${href}" alt="${label}" loading="lazy">
+          <span>${label}</span>
+        </a>`;
+      }
+      return `<a class="client-doc-file" href="${href}" target="_blank" rel="noopener" title="${full}">📄 ${label}</a>`;
+    }).join('');
+    return `<div id="cDocsBlock" class="client-docs-block">
+      <div class="meta" style="margin-bottom:0.4rem"><strong>Documentos da inscrição (${items.length})</strong></div>
+      <div class="client-docs-grid">${chips}</div>
+    </div>`;
   }
 
   function bindSubmissionActions(list) {
@@ -1220,6 +1298,7 @@
             </details>
           </div>
           ${c.notes ? '<div class="row-notes">' + escapeHtml(c.notes) + '</div>' : ''}
+          ${renderDocChips(clientAttachments(c))}
         </div>`;
     }).join('');
 
@@ -1419,6 +1498,20 @@
         subLink.innerHTML = '';
       }
     }
+    // Documents from client record or linked enrollment
+    let docsHost = $('#cDocsHost');
+    if (!docsHost) {
+      docsHost = document.createElement('div');
+      docsHost.id = 'cDocsHost';
+      const notesRow = $('#cNotes') && $('#cNotes').closest('.form-row');
+      if (notesRow && notesRow.parentNode) {
+        notesRow.parentNode.insertBefore(docsHost, notesRow.nextSibling);
+      } else {
+        const pay = $('#paymentBlock');
+        if (pay && pay.parentNode) pay.parentNode.insertBefore(docsHost, pay);
+      }
+    }
+    docsHost.innerHTML = renderClientDocsBlock(c);
     updateDupWarn(c?.phone || '', id);
     $('#clientModal').classList.add('open');
   }
@@ -1455,7 +1548,11 @@
       createdAt: existing?.createdAt || new Date().toISOString(),
       fromSubmission: existing?.fromSubmission || null,
       fromImport: existing?.fromImport || null,
-      archivedAt: existing?.archivedAt || null
+      archivedAt: existing?.archivedAt || null,
+      // Keep enrollment documents when editing
+      attachments: existing?.attachments || null,
+      documents: existing?.documents || null,
+      paymentProof: existing?.paymentProof || null
     };
     return enrichClient(data);
   }
@@ -1514,6 +1611,21 @@
     const pendingNote = asPending
       ? 'Aguarda documentos completos — activar quando a documentação estiver completa.'
       : '';
+    // Copy enrollment documents onto the client so they appear on Clientes
+    const subAttachments = normalizeAttachments(s);
+    const existingAttachments = normalizeAttachments(base);
+    const mergedAttachments = (() => {
+      const seen = new Set(existingAttachments.map(a => a.url));
+      const out = existingAttachments.slice();
+      subAttachments.forEach(a => {
+        if (a.url && !seen.has(a.url)) {
+          seen.add(a.url);
+          out.push(a);
+        }
+      });
+      return out;
+    })();
+
     const data = enrichClient({
       id: base.id || ('cli-' + Date.now()),
       name: s.name || base.name || '',
@@ -1545,7 +1657,10 @@
       payments: base.payments || [],
       lastPaymentAt: base.lastPaymentAt || null,
       createdAt: base.createdAt || new Date().toISOString(),
-      fromSubmission: s.id
+      fromSubmission: s.id,
+      attachments: mergedAttachments.length ? mergedAttachments : (base.attachments || null),
+      documents: base.documents || null,
+      paymentProof: s.paymentProof || base.paymentProof || null
     });
     const ok = await adminAction('update_client', data);
     if (!ok) return;

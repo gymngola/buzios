@@ -27,7 +27,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=20261105f">
+  <link rel="stylesheet" href="css/admin.css?v=20261105h">
   <style>
     html.admin-authed #loginScreen { display: none !important; }
     html.admin-authed #adminApp.hidden { display: block !important; }
@@ -208,9 +208,16 @@
 
       <!-- Products -->
       <div id="panel-products" class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-          <p style="font-size:0.85rem;color:#666">Edite preços e descrições. Clique <strong>Publicar no website</strong> para os visitantes verem.</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;gap:0.75rem;flex-wrap:wrap">
+          <p style="font-size:0.85rem;color:#666;margin:0;flex:1;min-width:200px">Preços do ginásio e da escola de natação. Depois de editar, clique <strong>Publicar no website</strong>.</p>
           <button type="button" id="addProductBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Novo</button>
+        </div>
+        <div class="client-filters" id="prodFilters" style="margin-bottom:1rem">
+          <button type="button" data-prod-filter="all" class="active">Todos</button>
+          <button type="button" data-prod-filter="ginasio">Ginásio</button>
+          <button type="button" data-prod-filter="natacao">Natação</button>
+          <button type="button" data-prod-filter="mensal">Mensalidades</button>
+          <button type="button" data-prod-filter="ferias">Férias</button>
         </div>
         <div class="prod-list" id="prodList"></div>
       </div>
@@ -253,6 +260,7 @@
           <p><strong>Contactos</strong> — mensagens da página Contacto (nome, telefone, assunto, mensagem). Marque: Novo → Respondido → Arquivar.</p>
           <p><strong>Clientes</strong> — base a partir de inscrições (botão “Criar cliente” na inscrição) ou manual. Lista densa com prioridade (dívida / a expirar), filtros, ordenação e barra de resumo fixa. Atalhos: <code>/</code> pesquisa, <code>N</code> novo cliente. Seleccione vários para WhatsApp em massa, suspender, arquivar ou exportar. Exportar CSV e copiar telefones usam a selecção se houver. Estados actualizam-se pelas datas. Use “Renovar” ou “Pagar e renovar”. Badge no menu se houver dívidas ou expirados.</p>
           <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar no website</strong>.</p>
+          <p><strong>Planos</strong> — organizados por ginásio e natação (mensalidades Bebés / Especial / Hidro / 6–99 anos e planos de férias). Edite preços aqui e publique. O formulário de inscrição e as páginas do site usam este catálogo.</p>
           <p><strong>Publicar no website</strong> — só em Planos, Imagens e Textos. Clientes, inscrições e contactos guardam-se sozinhos (não precisam de publicar).</p>
           <h3>Redeploy do Worker</h3>
           <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>
@@ -320,7 +328,14 @@
         <select id="fCategory"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option></select>
       </div>
       <div class="form-row"><label>Preço (Kz)</label><input type="number" id="fPrice" inputmode="decimal" min="0" step="100"></div>
-      <div class="form-row"><label>Período</label><input type="text" id="fPeriod" placeholder="mensal, única, pacote…"></div>
+      <div class="form-row"><label>Período</label>
+        <select id="fPeriod">
+          <option value="mensal">Mensal</option>
+          <option value="única">Única (taxa)</option>
+          <option value="pacote">Pacote / férias</option>
+          <option value="cartão">Cartão</option>
+        </select>
+      </div>
       <div class="form-row"><label>Descrição (PT)</label><textarea id="fDesc"></textarea></div>
       <div class="form-row"><label>Descrição (EN)</label><textarea id="fDescEn"></textarea></div>
       <div class="form-row"><label>Características (uma por linha)</label><textarea id="fFeatures" rows="4"></textarea></div>
@@ -437,7 +452,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261105f"></script>
+  <script src="js/admin.js?v=20261105h"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

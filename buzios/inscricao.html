@@ -174,50 +174,93 @@
               </select>
             </div>
 
-            <!-- Single-area plan -->
-            <div class="form-group" id="planGroupSingle">
+            <!-- Ginásio plan (single or dual) -->
+            <div class="form-group" id="planGroupGym" style="display:none">
+              <label>Plano de ginásio</label>
+              <select id="ePlanGym">
+                <option value="">Ainda não sei / a definir</option>
+              </select>
+            </div>
+
+            <!-- Natação: tipo + módulo/frequência ou férias -->
+            <div id="planGroupSwim" style="display:none">
+              <div class="form-group">
+                <label>Tipo de plano de natação</label>
+                <select id="eSwimType">
+                  <option value="">Ainda não sei / a definir</option>
+                  <option value="mensal">Mensalidade (aulas por semana)</option>
+                  <option value="ferias">Plano de férias (aulas seguidas)</option>
+                </select>
+              </div>
+              <div class="form-group" id="swimMensalFields" style="display:none">
+                <label>Módulo</label>
+                <select id="eSwimModule">
+                  <option value="">Seleccione o módulo…</option>
+                  <option value="bebes">Bebés (6 meses–5 anos · 45 min)</option>
+                  <option value="especial">Especial — Crianças (2–14 anos · 60 min)</option>
+                  <option value="hidro">Hidroginástica (adultos/adolescentes · 60 min)</option>
+                  <option value="mensal">Natação 6–99 anos (60 min)</option>
+                </select>
+                <label style="margin-top:0.75rem">Frequência semanal</label>
+                <select id="eSwimFreq">
+                  <option value="">Seleccione…</option>
+                  <option value="1x">1× por semana</option>
+                  <option value="2x">2× por semana</option>
+                  <option value="3x">3× por semana</option>
+                  <option value="5x">5× por semana</option>
+                  <option value="6x">6× por semana</option>
+                </select>
+              </div>
+              <div class="form-group" id="swimFeriasFields" style="display:none">
+                <label>Pacote de férias</label>
+                <select id="eSwimPackage">
+                  <option value="">Seleccione…</option>
+                  <option value="natacao-10">10 aulas seguidas — 20.000 Kz</option>
+                  <option value="natacao-15">15 aulas seguidas — 30.000 Kz</option>
+                  <option value="natacao-25">25 aulas seguidas — 50.000 Kz</option>
+                </select>
+              </div>
+              <p class="muted" style="font-size:0.8rem;margin-top:0.35rem;margin-bottom:0.85rem">
+                <a href="planos.html#mensalidades-natacao" style="color:inherit;text-decoration:underline">Ver mensalidades</a>
+                ·
+                <a href="planos.html#planos-ferias" style="color:inherit;text-decoration:underline">Ver planos de férias</a>
+              </p>
+            </div>
+
+            <!-- Legacy single select kept for gym-only compatibility, hidden when structured UI used -->
+            <div class="form-group" id="planGroupSingle" style="display:none">
               <label>Plano de interesse</label>
               <select id="ePlan">
                 <option value="">Ainda não sei / a definir</option>
               </select>
-              <p class="muted" style="font-size:0.8rem;margin-top:0.4rem">
-                <a href="planos.html" style="color:inherit;text-decoration:underline">Ver todos os planos e preços</a>
-              </p>
             </div>
+            <div id="planGroupDual" style="display:none"></div>
 
-            <!-- Dual plans when Ambos -->
-            <div id="planGroupDual" style="display:none">
-              <div class="form-group">
-                <label>Plano de ginásio</label>
-                <select id="ePlanGym">
-                  <option value="">Ainda não sei / a definir</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Pacote de natação</label>
-                <select id="ePlanSwim">
-                  <option value="">Ainda não sei / a definir</option>
-                </select>
-              </div>
-              <p class="muted" style="font-size:0.8rem;margin-top:-0.4rem;margin-bottom:0.85rem">
-                <a href="planos.html" style="color:inherit;text-decoration:underline">Ver todos os planos e preços</a>
-              </p>
-            </div>
-
-            <!-- Annual fee (gym / ambos) -->
+            <!-- Gym annual fee -->
             <div class="form-group" id="annualGroup" style="display:none">
               <label class="check-card">
                 <input type="checkbox" id="eAnnual" checked>
                 <span>
-                  <strong>Inscrição anual</strong> — <span class="accent">6.500 Kz</span><br>
+                  <strong>Inscrição anual (ginásio)</strong> — <span class="accent">6.500 Kz</span><br>
                   <span class="muted" style="font-size:0.8rem;font-weight:400">Obrigatória na 1ª visita ao ginásio. Desmarque se já for sócio activo.</span>
+                </span>
+              </label>
+            </div>
+
+            <!-- Swim school fee -->
+            <div class="form-group" id="swimInscrGroup" style="display:none">
+              <label class="check-card">
+                <input type="checkbox" id="eSwimInscr" checked>
+                <span>
+                  <strong>Inscrição Escola de Natação</strong> — <span class="accent">10.500 Kz</span><br>
+                  <span class="muted" style="font-size:0.8rem;font-weight:400">Taxa única na 1ª inscrição. Desmarque se já estiver inscrito na escola.</span>
                 </span>
               </label>
             </div>
 
             <!-- Gym extras -->
             <div class="form-group" id="extrasGroup" style="display:none">
-              <label>Extras (opcional)</label>
+              <label>Extras ginásio (opcional)</label>
               <div class="check-stack">
                 <label class="check-card">
                   <input type="checkbox" id="eExtraAvaliacao" data-product="avaliacao-fisica">
@@ -375,32 +418,56 @@
     const FOLDER = 'buzios';
 
     const GYM_PLAN_IDS = ['plano-bronze', 'plano-prata', 'plano-platina'];
-    const SWIM_PLAN_IDS = [
-      'natacao-mensal-1x', 'natacao-mensal-2x', 'natacao-mensal-3x', 'natacao-mensal-5x', 'natacao-mensal-6x',
-      'natacao-bebes-1x', 'natacao-bebes-2x', 'natacao-bebes-3x', 'natacao-bebes-5x', 'natacao-bebes-6x',
-      'natacao-especial-1x', 'natacao-especial-2x', 'natacao-especial-3x', 'natacao-especial-5x', 'natacao-especial-6x',
-      'natacao-hidro-1x', 'natacao-hidro-2x', 'natacao-hidro-3x', 'natacao-hidro-5x', 'natacao-hidro-6x',
-      'natacao-10', 'natacao-15', 'natacao-25'
-    ];
+    const SWIM_INSCR_ID = 'natacao-inscricao';
     const ANNUAL_ID = 'inscricao-anual';
     const EXTRA_IDS = ['avaliacao-fisica', 'aulas-avulsas'];
+    const FREQS = ['1x', '2x', '3x', '5x', '6x'];
+    const MODULE_PREFIX = {
+      bebes: 'natacao-bebes-',
+      especial: 'natacao-especial-',
+      hidro: 'natacao-hidro-',
+      mensal: 'natacao-mensal-'
+    };
+    const PACKAGE_IDS = ['natacao-10', 'natacao-15', 'natacao-25'];
 
     const areaSelect = document.getElementById('eArea');
     const planSelect = document.getElementById('ePlan');
     const planGym = document.getElementById('ePlanGym');
-    const planSwim = document.getElementById('ePlanSwim');
+    const planGroupGym = document.getElementById('planGroupGym');
+    const planGroupSwim = document.getElementById('planGroupSwim');
     const planGroupSingle = document.getElementById('planGroupSingle');
     const planGroupDual = document.getElementById('planGroupDual');
     const annualGroup = document.getElementById('annualGroup');
+    const swimInscrGroup = document.getElementById('swimInscrGroup');
     const extrasGroup = document.getElementById('extrasGroup');
     const ageGroup = document.getElementById('ageGroup');
     const docsCopy = document.getElementById('docsCopy');
     const annualCb = document.getElementById('eAnnual');
+    const swimInscrCb = document.getElementById('eSwimInscr');
     const extraAval = document.getElementById('eExtraAvaliacao');
     const extraAvul = document.getElementById('eExtraAvulsas');
+    const swimType = document.getElementById('eSwimType');
+    const swimModule = document.getElementById('eSwimModule');
+    const swimFreq = document.getElementById('eSwimFreq');
+    const swimPackage = document.getElementById('eSwimPackage');
+    const swimMensalFields = document.getElementById('swimMensalFields');
+    const swimFeriasFields = document.getElementById('swimFeriasFields');
 
-    const allProducts = (window.DEFAULT_PRODUCTS || []).filter(p => p.active !== false);
+    let allProducts = (window.DEFAULT_PRODUCTS || []).filter(p => p.active !== false);
     allProducts.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // Prefer live catalog prices when available
+    fetch('https://buzios-publish.gymngola.workers.dev/catalog')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.products) && data.products.length) {
+          allProducts = data.products.filter(p => p.active !== false)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+          refreshPackageLabels();
+          updateTotal();
+        }
+      })
+      .catch(() => {});
 
     function productById(id) {
       return allProducts.find(p => p.id === id);
@@ -411,6 +478,7 @@
     }
 
     function planLabel(p) {
+      if (!p) return '';
       const price = formatPrice(p.price);
       if (GYM_PLAN_IDS.includes(p.id)) {
         const hint = p.id === 'plano-bronze' ? 'musculação e cardio'
@@ -421,23 +489,22 @@
           ? `${p.name.replace(/^Plano\s+/i, '')} — ${price}/mês · ${hint}`
           : `${p.name} — ${price}/mês`;
       }
-      if (p.period === 'mensal') {
-        return `${p.name} — ${price}/mês`;
+      if (p.period === 'mensal') return `${p.name} — ${price}/mês`;
+      if (p.period === 'pacote') {
+        const aulas = (p.name.match(/(\d+)\s*Aulas/i) || [])[1];
+        return aulas ? `${aulas} aulas seguidas — ${price}` : `${p.name} — ${price}`;
       }
-      const aulas = (p.name.match(/(\d+)\s*Aulas/i) || [])[1];
-      return aulas
-        ? `${aulas} aulas seguidas — ${price} · natação`
-        : `${p.name} — ${price}`;
+      return `${p.name} — ${price}`;
     }
 
-    function fillSelect(sel, ids, preferredId) {
-      const prev = preferredId != null ? preferredId : sel.value;
+    function fillGymSelect(sel) {
+      const prev = sel.value;
       sel.innerHTML = '';
       const empty = document.createElement('option');
       empty.value = '';
       empty.textContent = 'Ainda não sei / a definir';
       sel.appendChild(empty);
-      ids.forEach(id => {
+      GYM_PLAN_IDS.forEach(id => {
         const p = productById(id);
         if (!p) return;
         const opt = document.createElement('option');
@@ -445,41 +512,65 @@
         opt.textContent = planLabel(p);
         sel.appendChild(opt);
       });
-      if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-        sel.value = prev;
-      } else {
-        sel.value = '';
+      if (prev && Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+    }
+
+    function refreshPackageLabels() {
+      if (!swimPackage) return;
+      const prev = swimPackage.value;
+      swimPackage.innerHTML = '';
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'Seleccione…';
+      swimPackage.appendChild(empty);
+      PACKAGE_IDS.forEach(id => {
+        const p = productById(id);
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = p ? planLabel(p) : id;
+        swimPackage.appendChild(opt);
+      });
+      if (prev) swimPackage.value = prev;
+    }
+
+    function resolveSwimPlanId() {
+      const type = swimType && swimType.value;
+      if (type === 'ferias') return swimPackage.value || null;
+      if (type === 'mensal') {
+        const mod = swimModule.value;
+        const freq = swimFreq.value;
+        if (!mod || !freq) return null;
+        const prefix = MODULE_PREFIX[mod];
+        return prefix ? prefix + freq : null;
       }
+      return null;
+    }
+
+    function syncSwimTypeUI() {
+      const t = swimType ? swimType.value : '';
+      if (swimMensalFields) swimMensalFields.style.display = t === 'mensal' ? 'block' : 'none';
+      if (swimFeriasFields) swimFeriasFields.style.display = t === 'ferias' ? 'block' : 'none';
+      updateTotal();
     }
 
     function syncAreaUI() {
       const area = areaSelect.value;
       const isGym = area === 'ginasio' || area === 'ambos';
       const isSwim = area === 'natacao' || area === 'ambos';
-      const isBoth = area === 'ambos';
 
       ageGroup.style.display = isSwim ? 'block' : 'none';
       annualGroup.style.display = isGym ? 'block' : 'none';
+      swimInscrGroup.style.display = isSwim ? 'block' : 'none';
       extrasGroup.style.display = isGym ? 'block' : 'none';
+      planGroupGym.style.display = isGym ? 'block' : 'none';
+      planGroupSwim.style.display = isSwim ? 'block' : 'none';
+      if (planGroupSingle) planGroupSingle.style.display = 'none';
+      if (planGroupDual) planGroupDual.style.display = 'none';
 
-      planGroupSingle.style.display = (!area || isBoth) ? 'none' : 'block';
-      planGroupDual.style.display = isBoth ? 'block' : 'none';
-
-      if (isBoth) {
-        fillSelect(planGym, GYM_PLAN_IDS);
-        fillSelect(planSwim, SWIM_PLAN_IDS);
-      } else if (area === 'ginasio') {
-        fillSelect(planSelect, GYM_PLAN_IDS);
-      } else if (area === 'natacao') {
-        fillSelect(planSelect, SWIM_PLAN_IDS);
-      } else {
-        fillSelect(planSelect, []);
-      }
+      if (isGym) fillGymSelect(planGym);
 
       if (area === 'natacao') {
-        docsCopy.textContent = 'Anexe cada documento em separado (BI, atestado, 2 fotos). Para natação a identificação é recomendada; pode entregar no local se preferir.';
-      } else if (area === 'ambos') {
-        docsCopy.textContent = 'Anexe cada documento em separado: BI/cédula/passaporte, atestado médico e 2 fotos tipo passe.';
+        docsCopy.textContent = 'Anexe cada documento em separado (BI, atestado, 2 fotos). Pode entregar no local se preferir.';
       } else {
         docsCopy.textContent = 'Anexe cada documento em separado: BI/cédula/passaporte, atestado médico e 2 fotos tipo passe.';
       }
@@ -488,9 +579,15 @@
         annualCb.checked = false;
         extraAval.checked = false;
         extraAvul.checked = false;
-      } else if (area === 'ginasio' || area === 'ambos') {
-        // First-time default: annual on when switching to gym
-        if (!annualCb.dataset.userTouched) annualCb.checked = true;
+      } else if (!annualCb.dataset.userTouched) {
+        annualCb.checked = true;
+      }
+      if (!isSwim) {
+        swimInscrCb.checked = false;
+        if (swimType) swimType.value = '';
+        syncSwimTypeUI();
+      } else if (!swimInscrCb.dataset.userTouched) {
+        swimInscrCb.checked = true;
       }
 
       updateTotal();
@@ -500,8 +597,15 @@
       annualCb.dataset.userTouched = '1';
       updateTotal();
     });
-    [planSelect, planGym, planSwim, extraAval, extraAvul].forEach(el => {
-      el.addEventListener('change', updateTotal);
+    swimInscrCb.addEventListener('change', () => {
+      swimInscrCb.dataset.userTouched = '1';
+      updateTotal();
+    });
+    [planGym, extraAval, extraAvul, swimType, swimModule, swimFreq, swimPackage].forEach(el => {
+      if (el) el.addEventListener('change', () => {
+        if (el === swimType) syncSwimTypeUI();
+        else updateTotal();
+      });
     });
     areaSelect.addEventListener('change', syncAreaUI);
 
@@ -515,25 +619,13 @@
         if (p) lines.push({ id: p.id, name: p.name, price: Number(p.price) || 0, period: p.period || '' });
       }
 
-      if (area === 'ambos') {
-        addPlan(planGym.value);
-        addPlan(planSwim.value);
-      } else {
-        addPlan(planSelect.value);
-      }
+      if (area === 'ginasio' || area === 'ambos') addPlan(planGym.value);
+      if (area === 'natacao' || area === 'ambos') addPlan(resolveSwimPlanId());
 
-      if ((area === 'ginasio' || area === 'ambos') && annualCb.checked) {
-        const p = productById(ANNUAL_ID);
-        if (p) lines.push({ id: p.id, name: p.name, price: Number(p.price) || 0, period: 'única' });
-      }
-      if ((area === 'ginasio' || area === 'ambos') && extraAval.checked) {
-        const p = productById('avaliacao-fisica');
-        if (p) lines.push({ id: p.id, name: p.name, price: Number(p.price) || 0, period: 'única' });
-      }
-      if ((area === 'ginasio' || area === 'ambos') && extraAvul.checked) {
-        const p = productById('aulas-avulsas');
-        if (p) lines.push({ id: p.id, name: p.name, price: Number(p.price) || 0, period: 'cartão' });
-      }
+      if ((area === 'ginasio' || area === 'ambos') && annualCb.checked) addPlan(ANNUAL_ID);
+      if ((area === 'natacao' || area === 'ambos') && swimInscrCb.checked) addPlan(SWIM_INSCR_ID);
+      if ((area === 'ginasio' || area === 'ambos') && extraAval.checked) addPlan('avaliacao-fisica');
+      if ((area === 'ginasio' || area === 'ambos') && extraAvul.checked) addPlan('aulas-avulsas');
 
       return lines;
     }
@@ -617,39 +709,64 @@
       }
     });
 
-    // Pre-select from URL ?plano=
-    const params = new URLSearchParams(location.search);
-    const prePlan = params.get('plano');
-    if (prePlan) {
+    function applyPrePlan(prePlan) {
       const p = productById(prePlan);
-      if (p) {
-        if (GYM_PLAN_IDS.includes(p.id)) {
-          areaSelect.value = 'ginasio';
-          syncAreaUI();
-          planSelect.value = prePlan;
-        } else if (SWIM_PLAN_IDS.includes(p.id)) {
-          areaSelect.value = 'natacao';
-          syncAreaUI();
-          planSelect.value = prePlan;
-        } else if (EXTRA_IDS.includes(p.id) || p.id === ANNUAL_ID) {
-          areaSelect.value = 'ginasio';
-          syncAreaUI();
-          if (p.id === ANNUAL_ID) annualCb.checked = true;
-          if (p.id === 'avaliacao-fisica') extraAval.checked = true;
-          if (p.id === 'aulas-avulsas') extraAvul.checked = true;
-        } else if (p.category === 'natacao') {
-          areaSelect.value = 'natacao';
-          syncAreaUI();
+      if (!p && !PACKAGE_IDS.includes(prePlan) && !Object.values(MODULE_PREFIX).some(pref => prePlan.startsWith(pref))) {
+        syncAreaUI();
+        return;
+      }
+      const isGym = GYM_PLAN_IDS.includes(prePlan) || (p && p.category === 'ginasio');
+      const isSwim = PACKAGE_IDS.includes(prePlan) ||
+        Object.values(MODULE_PREFIX).some(pref => prePlan.startsWith(pref)) ||
+        (p && p.category === 'natacao');
+
+      if (isGym && !isSwim) {
+        areaSelect.value = 'ginasio';
+        syncAreaUI();
+        planGym.value = prePlan;
+      } else if (isSwim) {
+        areaSelect.value = 'natacao';
+        syncAreaUI();
+        if (PACKAGE_IDS.includes(prePlan)) {
+          swimType.value = 'ferias';
+          syncSwimTypeUI();
+          swimPackage.value = prePlan;
         } else {
-          areaSelect.value = 'ginasio';
-          syncAreaUI();
+          swimType.value = 'mensal';
+          syncSwimTypeUI();
+          for (const [mod, pref] of Object.entries(MODULE_PREFIX)) {
+            if (prePlan.startsWith(pref)) {
+              swimModule.value = mod;
+              swimFreq.value = prePlan.slice(pref.length);
+              break;
+            }
+          }
         }
-        updateTotal();
+      } else if (EXTRA_IDS.includes(prePlan) || prePlan === ANNUAL_ID) {
+        areaSelect.value = 'ginasio';
+        syncAreaUI();
+        if (prePlan === ANNUAL_ID) annualCb.checked = true;
+        if (prePlan === 'avaliacao-fisica') extraAval.checked = true;
+        if (prePlan === 'aulas-avulsas') extraAvul.checked = true;
       } else {
         syncAreaUI();
       }
-    } else {
+      updateTotal();
+    }
+
+    const params = new URLSearchParams(location.search);
+    const prePlan = params.get('plano');
+    const preArea = params.get('area');
+    if (preArea && ['ginasio', 'natacao', 'ambos'].includes(preArea)) {
+      areaSelect.value = preArea;
       syncAreaUI();
+    }
+    if (prePlan) {
+      applyPrePlan(prePlan);
+    } else if (!preArea) {
+      syncAreaUI();
+    } else {
+      updateTotal();
     }
 
     async function uploadFile(file) {
@@ -688,18 +805,24 @@
       let planIdSwim = null;
       let planName = '';
 
-      if (area === 'ambos') {
+      if (area === 'ginasio' || area === 'ambos') {
         planIdGym = planGym.value || null;
-        planIdSwim = planSwim.value || null;
-        planId = planIdGym || planIdSwim;
-        const names = [];
-        if (planIdGym) names.push(planGym.options[planGym.selectedIndex]?.text || planIdGym);
-        if (planIdSwim) names.push(planSwim.options[planSwim.selectedIndex]?.text || planIdSwim);
-        planName = names.join(' + ');
-      } else {
-        planId = planSelect.value || null;
-        planName = planSelect.options[planSelect.selectedIndex]?.text || '';
       }
+      if (area === 'natacao' || area === 'ambos') {
+        planIdSwim = resolveSwimPlanId();
+      }
+      planId = planIdGym || planIdSwim;
+
+      const names = [];
+      if (planIdGym) {
+        const p = productById(planIdGym);
+        names.push(p ? planLabel(p) : planIdGym);
+      }
+      if (planIdSwim) {
+        const p = productById(planIdSwim);
+        names.push(p ? planLabel(p) : planIdSwim);
+      }
+      planName = names.join(' + ');
 
       const emergencyName = document.getElementById('eEmergencyName').value.trim();
       const emergencyPhone = document.getElementById('eEmergencyPhone').value.trim();

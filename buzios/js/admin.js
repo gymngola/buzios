@@ -490,13 +490,20 @@
           <h3>${escapeHtml(s.name || '—')} <span class="status-badge status-${status}">${escapeHtml(statusLabel)}</span></h3>
           <div class="meta">Inscrição · ${escapeHtml(s.phone || '')} · ${when}</div>
           <div class="meta" style="margin-top:0.35rem">
-            ${s.area ? 'Área: ' + escapeHtml(s.area) + ' · ' : ''}
-            ${escapeHtml(s.planName || s.planId || '')}
+            ${s.area ? 'Área: ' + escapeHtml(formatAreaLabel(s.area)) + (s.planName || s.planId ? ' · ' : '') : ''}
+            ${escapeHtml(s.planName || friendlyPlanName(s.planId) || s.planId || '')}
           </div>
-          ${s.planIdGym || s.planIdSwim ? '<div class="meta">Ginásio: ' + escapeHtml(s.planIdGym || '—') + ' · Natação: ' + escapeHtml(s.planIdSwim || '—') + '</div>' : ''}
-          ${s.annualFee ? '<div class="meta">Inscrição anual: sim</div>' : ''}
-          ${s.extras && s.extras.length ? '<div class="meta">Extras: ' + escapeHtml(s.extras.join(', ')) + '</div>' : ''}
-          ${s.estimatedTotal != null ? '<div class="meta">Total estimado: ' + Number(s.estimatedTotal).toLocaleString('pt') + ' Kz</div>' : ''}
+          ${s.planIdGym || s.planIdSwim
+            ? '<div class="meta">' +
+              (s.planIdGym ? 'Ginásio: ' + escapeHtml(friendlyPlanName(s.planIdGym) || s.planIdGym) : '') +
+              (s.planIdGym && s.planIdSwim ? ' · ' : '') +
+              (s.planIdSwim ? 'Natação: ' + escapeHtml(friendlyPlanName(s.planIdSwim) || s.planIdSwim) : '') +
+              '</div>'
+            : ''}
+          ${renderEnrollmentLines(s)}
+          ${s.annualFee ? '<div class="meta">Inscrição anual ginásio: sim</div>' : ''}
+          ${s.extras && s.extras.length ? '<div class="meta">Extras: ' + escapeHtml(s.extras.map(id => friendlyPlanName(id) || id).join(', ')) + '</div>' : ''}
+          ${s.estimatedTotal != null ? '<div class="meta"><strong>Total estimado:</strong> ' + Number(s.estimatedTotal).toLocaleString('pt') + ' Kz</div>' : ''}
           ${s.age ? '<div class="meta">Idade: ' + escapeHtml(String(s.age)) + '</div>' : ''}
           ${s.email ? '<div class="meta">Email: ' + escapeHtml(s.email) + '</div>' : ''}
           ${s.emergencyName || s.emergencyPhone
@@ -1636,10 +1643,30 @@
       age: s.age != null ? Number(s.age) : (base.age != null ? base.age : null),
       schedule: scheduleFromSub || base.schedule || '',
       hasCard: base.hasCard || '',
-      planName: s.planName || base.planName || '',
+      planName: s.planName || friendlyPlanName(s.planIdSwim || s.planIdGym || s.planId) || base.planName || '',
       planId: s.planId || s.planIdGym || s.planIdSwim || base.planId || '',
-      price: s.estimatedTotal != null ? s.estimatedTotal : (base.price != null ? base.price : null),
-      billingCycle: base.billingCycle || 'mensal',
+      price: (() => {
+        // Prefer monthly plan price (not total with one-off fees)
+        const lines = Array.isArray(s.lineItems) ? s.lineItems : [];
+        const monthly = lines.find(l => l.period === 'mensal');
+        if (monthly && monthly.price != null) return Number(monthly.price);
+        if (s.planIdSwim) {
+          const p = (products || []).find(x => x.id === s.planIdSwim);
+          if (p) return p.price;
+        }
+        if (s.planIdGym) {
+          const p = (products || []).find(x => x.id === s.planIdGym);
+          if (p) return p.price;
+        }
+        return s.estimatedTotal != null ? s.estimatedTotal : (base.price != null ? base.price : null);
+      })(),
+      billingCycle: (() => {
+        const pid = s.planIdSwim || s.planIdGym || s.planId;
+        const p = pid && (products || []).find(x => x.id === pid);
+        if (p && p.period === 'pacote') return 'pacote';
+        if (p && p.period === 'mensal') return 'mensal';
+        return base.billingCycle || 'mensal';
+      })(),
       planStart: base.planStart || todayISO(),
       planEnd: base.planEnd || addMonthsISO(todayISO(), 1),
       // Pending until all documents are provided; otherwise active
@@ -1797,6 +1824,17 @@
     });
   });
 
+  window._prodFilter = 'all';
+  $('#prodFilters')?.querySelectorAll('[data-prod-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      window._prodFilter = btn.dataset.prodFilter || 'all';
+      $('#prodFilters').querySelectorAll('[data-prod-filter]').forEach(b => {
+        b.classList.toggle('active', b.dataset.prodFilter === window._prodFilter);
+      });
+      renderProducts();
+    });
+  });
+
   $('#saveClientBtn')?.addEventListener('click', async () => {
     const existing = editingClientId
       ? (store.clients || []).find(x => x.id === editingClientId)
@@ -1881,21 +1919,99 @@
     openClientModal(editingClientId);
   });
 
-  // —— Products (same as before) ——
+  // —— Products ——
+  function formatAreaLabel(area) {
+    if (area === 'ginasio') return 'Ginásio';
+    if (area === 'natacao') return 'Natação';
+    if (area === 'ambos') return 'Ginásio + Natação';
+    return area || '';
+  }
+
+  function friendlyPlanName(id) {
+    if (!id) return '';
+    const p = (products || []).find(x => x.id === id);
+    if (p && p.name) return p.name;
+    return String(id);
+  }
+
+  function renderEnrollmentLines(s) {
+    const lines = Array.isArray(s.lineItems) ? s.lineItems : [];
+    if (!lines.length) return '';
+    const rows = lines.map(l => {
+      const name = escapeHtml(l.name || friendlyPlanName(l.id) || l.id || 'Item');
+      const price = l.price != null ? Number(l.price).toLocaleString('pt') + ' Kz' : '';
+      const suf = l.period === 'mensal' ? '/mês' : '';
+      return `<div class="meta" style="padding-left:0.35rem">• ${name}${price ? ' — ' + price + suf : ''}</div>`;
+    }).join('');
+    return `<div class="meta" style="margin-top:0.25rem"><strong>Itens</strong></div>${rows}`;
+  }
+
+  function productGroupKey(p) {
+    const id = p.id || '';
+    if (p.category === 'ginasio') {
+      if (id.startsWith('plano-')) return 'gym-plans';
+      return 'gym-fees';
+    }
+    if (p.category === 'natacao') {
+      if (p.period === 'pacote' || id === 'natacao-10' || id === 'natacao-15' || id === 'natacao-25') return 'swim-ferias';
+      if (id === 'natacao-inscricao') return 'swim-fee';
+      if (id.startsWith('natacao-bebes-')) return 'swim-bebes';
+      if (id.startsWith('natacao-especial-')) return 'swim-especial';
+      if (id.startsWith('natacao-hidro-')) return 'swim-hidro';
+      if (id.startsWith('natacao-mensal-')) return 'swim-adult';
+      return 'swim-other';
+    }
+    return 'other';
+  }
+
+  const PRODUCT_GROUPS = [
+    { key: 'gym-plans', title: 'Ginásio — Mensalidades' },
+    { key: 'gym-fees', title: 'Ginásio — Inscrição e extras' },
+    { key: 'swim-fee', title: 'Natação — Inscrição' },
+    { key: 'swim-adult', title: 'Natação — Mensalidades · 6–99 anos' },
+    { key: 'swim-bebes', title: 'Natação — Mensalidades · Bebés' },
+    { key: 'swim-especial', title: 'Natação — Mensalidades · Especial' },
+    { key: 'swim-hidro', title: 'Natação — Mensalidades · Hidroginástica' },
+    { key: 'swim-ferias', title: 'Natação — Planos de férias' },
+    { key: 'swim-other', title: 'Natação — Outros' },
+    { key: 'other', title: 'Outros' }
+  ];
+
   function renderProducts() {
     const list = $('#prodList');
     if (!list) return;
     const sorted = products.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-    list.innerHTML = sorted.map(p => `
-      <div class="prod-card">
-        <h3>${p.name} ${p.featured ? '★' : ''}</h3>
-        <div class="meta">${p.category} · ${Number(p.price).toLocaleString('pt')} Kz · ${p.period || ''} ${p.active === false ? '· <em>inactivo</em>' : ''}</div>
-        <div class="actions">
-          <button type="button" data-edit="${p.id}">Editar</button>
-          <button type="button" class="danger" data-del="${p.id}">Apagar</button>
+    const byGroup = {};
+    sorted.forEach(p => {
+      const g = productGroupKey(p);
+      (byGroup[g] = byGroup[g] || []).push(p);
+    });
+
+    const filter = (window._prodFilter || 'all');
+    let html = '';
+    PRODUCT_GROUPS.forEach(g => {
+      const items = byGroup[g.key] || [];
+      if (!items.length) return;
+      if (filter === 'ginasio' && !g.key.startsWith('gym')) return;
+      if (filter === 'natacao' && !g.key.startsWith('swim')) return;
+      if (filter === 'ferias' && g.key !== 'swim-ferias') return;
+      if (filter === 'mensal' && !['swim-adult', 'swim-bebes', 'swim-especial', 'swim-hidro', 'gym-plans'].includes(g.key)) return;
+
+      html += `<div class="prod-group"><h4 class="prod-group-title">${escapeHtml(g.title)} <span class="prod-group-count">${items.length}</span></h4>`;
+      html += items.map(p => `
+        <div class="prod-card ${p.active === false ? 'prod-inactive' : ''}">
+          <h3>${escapeHtml(p.name)} ${p.featured ? '★' : ''}</h3>
+          <div class="meta">${Number(p.price).toLocaleString('pt')} Kz · ${escapeHtml(p.period || '—')}${p.active === false ? ' · <em>inactivo</em>' : ''}</div>
+          <div class="actions">
+            <button type="button" data-edit="${escapeHtml(p.id)}">Editar</button>
+            <button type="button" class="danger" data-del="${escapeHtml(p.id)}">Apagar</button>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `).join('');
+      html += '</div>';
+    });
+
+    list.innerHTML = html || '<p style="color:#666;font-size:0.9rem">Nenhum plano neste filtro.</p>';
     list.querySelectorAll('[data-edit]').forEach(btn => {
       btn.addEventListener('click', () => openProductModal(btn.dataset.edit));
     });
@@ -1903,6 +2019,7 @@
       btn.addEventListener('click', () => {
         if (confirm('Apagar este plano?')) {
           products = products.filter(x => x.id !== btn.dataset.del);
+          markDirty();
           renderProducts();
         }
       });
@@ -1917,7 +2034,15 @@
     $('#fNameEn').value = p?.name_en || '';
     $('#fCategory').value = p?.category || 'ginasio';
     $('#fPrice').value = p?.price ?? '';
-    $('#fPeriod').value = p?.period || 'mensal';
+    const periodEl = $('#fPeriod');
+    if (periodEl) {
+      const per = p?.period || 'mensal';
+      if (periodEl.tagName === 'SELECT') {
+        periodEl.value = ['mensal', 'única', 'pacote', 'cartão'].includes(per) ? per : 'mensal';
+      } else {
+        periodEl.value = per;
+      }
+    }
     $('#fDesc').value = p?.description || '';
     $('#fDescEn').value = p?.description_en || '';
     $('#fFeatures').value = (p?.features || []).join('\n');
@@ -1949,13 +2074,14 @@
     };
     if (editingId) {
       const idx = products.findIndex(x => x.id === editingId);
-      if (idx >= 0) products[idx] = data;
+      if (idx >= 0) products[idx] = Object.assign({}, products[idx], data);
     } else {
       products.push(data);
     }
+    markDirty();
     $('#prodModal').classList.remove('open');
     renderProducts();
-    toast('Plano actualizado (ainda rascunho)');
+    toast('Plano actualizado (ainda rascunho — publique para o site)');
   });
 
   // —— Images ——

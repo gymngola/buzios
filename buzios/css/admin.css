@@ -378,6 +378,29 @@ a { color: var(--admin-accent); }
 
 /* —— Cards —— */
 .prod-list { display: grid; gap: 0.75rem; }
+.prod-group { margin-bottom: 1.25rem; }
+.prod-group-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--admin-border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.prod-group-count {
+  font-weight: 500;
+  font-size: 0.72rem;
+  background: #eee;
+  color: #555;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+}
+.prod-card.prod-inactive { opacity: 0.55; }
 
 .prod-card {
   background: var(--admin-surface);

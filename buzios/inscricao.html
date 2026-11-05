@@ -375,7 +375,11 @@
     const FOLDER = 'buzios';
 
     const GYM_PLAN_IDS = ['plano-bronze', 'plano-prata', 'plano-platina'];
-    const SWIM_PLAN_IDS = ['natacao-10', 'natacao-15', 'natacao-25'];
+    const SWIM_PLAN_IDS = [
+      'natacao-mensal-1x', 'natacao-mensal-2x',
+      'natacao-bebes-1x', 'natacao-bebes-2x',
+      'natacao-10', 'natacao-15', 'natacao-25'
+    ];
     const ANNUAL_ID = 'inscricao-anual';
     const EXTRA_IDS = ['avaliacao-fisica', 'aulas-avulsas'];
 
@@ -414,6 +418,9 @@
         return hint
           ? `${p.name.replace(/^Plano\s+/i, '')} — ${price}/mês · ${hint}`
           : `${p.name} — ${price}/mês`;
+      }
+      if (p.period === 'mensal') {
+        return `${p.name} — ${price}/mês`;
       }
       const aulas = (p.name.match(/(\d+)\s*Aulas/i) || [])[1];
       return aulas

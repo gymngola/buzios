@@ -146,7 +146,24 @@ const DEFAULT_PRODUCTS = [
     order: 5
   },
 
-  // —— Natação (packages) ——
+  // —— Natação ——
+  {
+    id: "natacao-inscricao",
+    name: "Inscrição Escola de Natação",
+    name_en: "Swimming School Registration",
+    category: "natacao",
+    price: 10500,
+    currency: "KZ",
+    period: "única",
+    description: "Inscrição na Escola de Natação Búzios. Documentos: BI/cédula, atestado médico e 2 fotos tipo passe.",
+    description_en: "Búzios Swimming School registration fee.",
+    features: ["Obrigatória na 1ª inscrição", "Documentos: BI, atestado, 2 fotos"],
+    features_en: ["Required on first enrollment"],
+    image: "",
+    featured: false,
+    active: true,
+    order: 9
+  },
   {
     id: "natacao-10",
     name: "Plano 10 Aulas Seguidas",
@@ -197,6 +214,74 @@ const DEFAULT_PRODUCTS = [
     featured: false,
     active: true,
     order: 12
+  },
+  {
+    id: "natacao-mensal-1x",
+    name: "Natação mensal 1× / semana",
+    name_en: "Monthly swimming 1× / week",
+    category: "natacao",
+    price: 15000,
+    currency: "KZ",
+    period: "mensal",
+    description: "Mensalidade natação (adultos / adolescentes / criança) — 1 aula por semana, 60 min.",
+    description_en: "Monthly swimming — 1 lesson per week, 60 min.",
+    features: ["60 minutos", "1× por semana"],
+    features_en: ["60 minutes", "1× per week"],
+    image: "",
+    featured: false,
+    active: true,
+    order: 13
+  },
+  {
+    id: "natacao-mensal-2x",
+    name: "Natação mensal 2× / semana",
+    name_en: "Monthly swimming 2× / week",
+    category: "natacao",
+    price: 25000,
+    currency: "KZ",
+    period: "mensal",
+    description: "Mensalidade natação — 2 aulas por semana, 60 min.",
+    description_en: "Monthly swimming — 2 lessons per week, 60 min.",
+    features: ["60 minutos", "2× por semana"],
+    features_en: ["60 minutes", "2× per week"],
+    image: "",
+    featured: false,
+    active: true,
+    order: 14
+  },
+  {
+    id: "natacao-bebes-1x",
+    name: "Bebés / Especial / Hidro — 1× / semana",
+    name_en: "Babies / Special / Hydro — 1× / week",
+    category: "natacao",
+    price: 20000,
+    currency: "KZ",
+    period: "mensal",
+    description: "Mensalidade módulos Bebés, Especial ou Hidroginástica — 1× por semana.",
+    description_en: "Monthly babies, special or aqua aerobics — 1× per week.",
+    features: ["1× por semana", "Bebés 45 min · outros 60 min"],
+    features_en: ["1× per week"],
+    image: "",
+    featured: false,
+    active: true,
+    order: 15
+  },
+  {
+    id: "natacao-bebes-2x",
+    name: "Bebés / Especial / Hidro — 2× / semana",
+    name_en: "Babies / Special / Hydro — 2× / week",
+    category: "natacao",
+    price: 30000,
+    currency: "KZ",
+    period: "mensal",
+    description: "Mensalidade módulos Bebés, Especial ou Hidroginástica — 2× por semana.",
+    description_en: "Monthly babies, special or aqua aerobics — 2× per week.",
+    features: ["2× por semana"],
+    features_en: ["2× per week"],
+    image: "",
+    featured: false,
+    active: true,
+    order: 16
   }
 ];
 

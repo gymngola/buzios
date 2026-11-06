@@ -63,8 +63,9 @@ npx wrangler d1 execute buzios-db --remote \
 
 - Import done (263 clients).
 - Admin **reads** clients from D1.
-- Admin **update_client / delete_client** dual-write Cloudinary + D1.
-- Public forms (`/submit`) and inbox still Cloudinary-only — next phase.
+- Admin client + submission + newsletter **writes** dual-write Cloudinary + D1.
+- Public `/submit` dual-writes to D1 (enrollment → submission + optional client).
+- Admin still **reads** inbox from Cloudinary — next phase.
 
 ## Rollback
 

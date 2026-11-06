@@ -122,16 +122,20 @@ async function handleSubmit(request, env) {
   const id = payload.id || (type.slice(0, 3) + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7));
 
   let store = await loadStore(env);
+  let newSubmission = null;
+  let newClient = null;
+  let newNewsletter = null;
 
   if (type === 'newsletter') {
     if (!payload.phone) return json({ error: 'Phone required' }, 400);
     store.newsletters = store.newsletters || [];
     if (!store.newsletters.some(n => n.phone === payload.phone)) {
-      store.newsletters.unshift({
+      newNewsletter = {
         id,
         phone: String(payload.phone).trim(),
         createdAt: payload.createdAt || new Date().toISOString()
-      });
+      };
+      store.newsletters.unshift(newNewsletter);
     }
   } else if (type === 'enrollment') {
     if (!payload.name || !payload.phone) return json({ error: 'Name and phone required' }, 400);
@@ -148,7 +152,7 @@ async function handleSubmit(request, env) {
         name: a.name || ''
       };
     }).filter(a => a.url);
-    store.submissions.unshift({
+    newSubmission = {
       id,
       type: 'enrollment',
       status: 'novo',
@@ -177,10 +181,11 @@ async function handleSubmit(request, env) {
       paymentProof: payload.paymentProof || null,
       attachments,
       createdAt: payload.createdAt || new Date().toISOString()
-    });
+    };
+    store.submissions.unshift(newSubmission);
     store.clients = store.clients || [];
     if (!store.clients.some(c => c.phone === payload.phone)) {
-      store.clients.unshift({
+      newClient = {
         id: 'cli-' + Date.now(),
         name: payload.name,
         phone: payload.phone,
@@ -201,12 +206,13 @@ async function handleSubmit(request, env) {
         emergencyPhone: payload.emergencyPhone || '',
         createdAt: new Date().toISOString(),
         fromSubmission: id
-      });
+      };
+      store.clients.unshift(newClient);
     }
   } else {
     if (!payload.name && !payload.phone) return json({ error: 'Name or phone required' }, 400);
     store.submissions = store.submissions || [];
-    store.submissions.unshift({
+    newSubmission = {
       id,
       type: type || 'contact',
       status: 'novo',
@@ -217,7 +223,8 @@ async function handleSubmit(request, env) {
       preferContact: payload.preferContact || '',
       message: payload.message || payload.notes || '',
       createdAt: payload.createdAt || new Date().toISOString()
-    });
+    };
+    store.submissions.unshift(newSubmission);
   }
 
   if (store.submissions && store.submissions.length > 500) store.submissions = store.submissions.slice(0, 500);
@@ -226,6 +233,18 @@ async function handleSubmit(request, env) {
 
   store.updatedAt = new Date().toISOString();
   await saveStore(env, store);
+
+  // Dual-write to D1 (row-level). Cloudinary remains backup until full cutover.
+  if (env.DB) {
+    try {
+      if (newSubmission) await d1UpsertSubmission(env, newSubmission);
+      if (newClient) await d1UpsertClient(env, newClient);
+      if (newNewsletter) await d1UpsertNewsletter(env, newNewsletter);
+    } catch (e) {
+      console.error('D1 dual-write on submit failed', e && e.message);
+    }
+  }
+
   return json({ ok: true, id, count: (store.submissions || []).length });
 }
 
@@ -327,11 +346,20 @@ async function handleAdminData(request, env) {
     store = await loadStore(env);
     store.submissions = store.submissions || [];
     const idx = store.submissions.findIndex(s => s.id === data.id);
+    let saved = null;
     if (idx >= 0) {
-      store.submissions[idx] = Object.assign({}, store.submissions[idx], data, { id: data.id });
+      saved = Object.assign({}, store.submissions[idx], data, { id: data.id });
+      store.submissions[idx] = saved;
     }
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
+    if (env.DB && saved) {
+      try {
+        await d1UpsertSubmission(env, saved);
+      } catch (e) {
+        console.error('D1 upsert submission failed', e && e.message);
+      }
+    }
     return json({ ok: true, store });
   }
 
@@ -409,6 +437,13 @@ async function handleAdminData(request, env) {
     store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
+    if (env.DB) {
+      try {
+        await d1DeleteSubmission(env, data.id);
+      } catch (e) {
+        console.error('D1 delete submission failed', e && e.message);
+      }
+    }
     return json({ ok: true, store });
   }
 
@@ -417,6 +452,13 @@ async function handleAdminData(request, env) {
     store.newsletters = (store.newsletters || []).filter(n => n.id !== data.id);
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
+    if (env.DB) {
+      try {
+        await d1DeleteNewsletter(env, data.id);
+      } catch (e) {
+        console.error('D1 delete newsletter failed', e && e.message);
+      }
+    }
     return json({ ok: true, store });
   }
 
@@ -948,6 +990,61 @@ async function d1HardDeleteClient(env, clientId) {
     .run();
 }
 
+async function d1UpsertSubmission(env, s) {
+  const now = new Date().toISOString();
+  const payload = JSON.stringify(s);
+  await env.DB.prepare(
+    `INSERT INTO submissions (
+      id, type, status, area, plan_id, plan_name, name, phone, email, message, subject,
+      prefer_contact, payload_json, from_client_id, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      type=excluded.type, status=excluded.status, area=excluded.area,
+      plan_id=excluded.plan_id, plan_name=excluded.plan_name, name=excluded.name,
+      phone=excluded.phone, email=excluded.email, message=excluded.message,
+      subject=excluded.subject, prefer_contact=excluded.prefer_contact,
+      payload_json=excluded.payload_json, from_client_id=excluded.from_client_id,
+      updated_at=excluded.updated_at`
+  )
+    .bind(
+      String(s.id),
+      s.type || null,
+      s.status || null,
+      s.area || null,
+      s.planId || null,
+      s.planName || null,
+      s.name || null,
+      s.phone || null,
+      s.email || null,
+      s.message || null,
+      s.subject || null,
+      s.preferContact || null,
+      payload,
+      s.fromClientId || null,
+      s.createdAt || now,
+      now
+    )
+    .run();
+}
+
+async function d1DeleteSubmission(env, id) {
+  await env.DB.prepare('DELETE FROM submissions WHERE id = ?').bind(String(id)).run();
+}
+
+async function d1UpsertNewsletter(env, n) {
+  const id = String(n.id || n.phone || ('nl-' + Date.now()));
+  await env.DB.prepare(
+    `INSERT INTO newsletters (id, phone, name, created_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET phone=excluded.phone, name=excluded.name`
+  )
+    .bind(id, n.phone || null, n.name || null, n.createdAt || new Date().toISOString())
+    .run();
+}
+
+async function d1DeleteNewsletter(env, id) {
+  await env.DB.prepare('DELETE FROM newsletters WHERE id = ?').bind(String(id)).run();
+}
+
 async function d1ImportFromStore(env, store) {
   if (!env.DB) {
     return { ok: false, error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' };
@@ -971,51 +1068,12 @@ async function d1ImportFromStore(env, store) {
   }
 
   for (const s of submissions) {
-    const payload = JSON.stringify(s);
-    const now = new Date().toISOString();
-    await env.DB.prepare(
-      `INSERT INTO submissions (
-        id, type, status, area, plan_id, plan_name, name, phone, email, message, subject,
-        prefer_contact, payload_json, from_client_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        type=excluded.type, status=excluded.status, area=excluded.area,
-        plan_id=excluded.plan_id, plan_name=excluded.plan_name, name=excluded.name,
-        phone=excluded.phone, email=excluded.email, message=excluded.message,
-        subject=excluded.subject, prefer_contact=excluded.prefer_contact,
-        payload_json=excluded.payload_json, from_client_id=excluded.from_client_id,
-        updated_at=excluded.updated_at`
-    )
-      .bind(
-        String(s.id),
-        s.type || null,
-        s.status || null,
-        s.area || null,
-        s.planId || null,
-        s.planName || null,
-        s.name || null,
-        s.phone || null,
-        s.email || null,
-        s.message || null,
-        s.subject || null,
-        s.preferContact || null,
-        payload,
-        s.fromClientId || null,
-        s.createdAt || now,
-        now
-      )
-      .run();
+    await d1UpsertSubmission(env, s);
     subCount++;
   }
 
   for (const n of newsletters) {
-    const id = String(n.id || n.phone || ('nl-' + Date.now()));
-    await env.DB.prepare(
-      `INSERT INTO newsletters (id, phone, name, created_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET phone=excluded.phone, name=excluded.name`
-    )
-      .bind(id, n.phone || null, n.name || null, n.createdAt || new Date().toISOString())
-      .run();
+    await d1UpsertNewsletter(env, n);
     newsCount++;
   }
 

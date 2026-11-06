@@ -41,7 +41,7 @@ Cloudflare D1 (buzios-db)    ← clients live (admin read + dual-write); inbox n
 | Static site | HTML / CSS / JS, Cloudflare Pages |
 | API | Cloudflare Worker `buzios-publish` |
 | Catalog (durable) | Cloudinary raw JSON + image assets |
-| Operational data | **Clients:** D1 (admin read + dual-write). **Inbox/newsletter:** Cloudinary until next phase. **Catalog:** Cloudinary |
+| Operational data | **Clients:** D1 (admin read + dual-write). **Inbox/newsletter:** dual-write on submit/admin; admin still reads Cloudinary. **Catalog:** Cloudinary |
 | Ephemeral draft | Admin `localStorage` (catalog only, dirty flag) |
 | Comms / payments | WhatsApp + bank IBAN (no payment gateway) |
 

@@ -267,12 +267,18 @@ Several staff devices can keep admin open:
 
 ## Recent changes
 
+### 2026-11-06 — Submit + inbox dual-write to D1
+
+- Public `/submit` dual-writes enrollment/contact/newsletter → Cloudinary + D1.
+- New enrollment also creates client row in D1 when phone is new.
+- Admin `update_submission` / `delete_submission` / `delete_newsletter` dual-write D1.
+- Admin still **reads** inbox from Cloudinary store (next: read from D1).
+- Catalog stays on Cloudinary.
+
 ### 2026-11-06 — Clients on D1 (read + dual-write)
 
 - Admin **reads clients from D1** (`d1_get_clients` overlay after every store load / client mutation).
 - Admin **update_client / delete_client** dual-write: Cloudinary store (backup) + D1 row upsert/delete.
-- Inbox / newsletter / public `/submit` still Cloudinary-only until next phase.
-- Catalog stays on Cloudinary.
 
 ### 2026-11-06 — Store durability + D1 foundation
 

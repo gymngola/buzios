@@ -22,18 +22,17 @@ Live: https://www.buzioshealthclub.com
 [Browser admin.html]  ──POST /admin/data /publish──► [Worker]
          │                        │
          │                        ├─ Catalog write → Cloudinary catalog.json (+ invalidate)
-         │                        ├─ Store write  → Cloudinary store.json + Workers Cache
-         │                        │                 + store-prev.json; refuse empty overwrite
-         │                        │                 + dual-write D1 (clients, submissions, newsletter)
-         │                        ├─ Store read   → Cloudinary backup; D1 for clients + inbox + newsletter
-         │                        └─ Prefer newer updatedAt, then richness; never empty over data
-         └── admin dual-reads Cloudinary on first load; overlays clients + submissions + newsletters from D1
+         │                        ├─ Ops write    → D1 only (clients, submissions, newsletter)
+         │                        ├─ Ops backup   → d1_backup → d1-backup.json + store.json
+         │                        └─ Ops read     → D1 (admin overlays after load)
+         └── admin login via action "auth" (password = Worker secret only)
 Cloudinary
   ├─ buzios/catalog.json     (plans, texts, image slots)     ← long-term stay
-  ├─ buzios/store.json       (backup for clients/inbox/newsletter)
+  ├─ buzios/store.json       (backup snapshot via d1_backup)
+  ├─ buzios/d1-backup.json   (full D1 export)
   ├─ buzios/store-prev.json  (last good store snapshot)
   └─ media (unsigned browser uploads)
-Cloudflare D1 (buzios-db)    ← clients + inbox + newsletter live (admin read); dual-write on all ops
+Cloudflare D1 (buzios-db)    ← clients + inbox + newsletter (primary)
 [Static HTML/CSS/JS] ◄── Cloudflare Pages
 ```
 
@@ -42,7 +41,7 @@ Cloudflare D1 (buzios-db)    ← clients + inbox + newsletter live (admin read);
 | Static site | HTML / CSS / JS, Cloudflare Pages |
 | API | Cloudflare Worker `buzios-publish` |
 | Catalog (durable) | Cloudinary raw JSON + image assets |
-| Operational data | **Clients + inbox + newsletter:** D1 (admin read + dual-write). **Catalog:** Cloudinary |
+| Operational data | **Clients + inbox + newsletter:** D1 only (cutover 2026-11-06). **Catalog:** Cloudinary |
 | Ephemeral draft | Admin `localStorage` (catalog only, dirty flag) |
 | Comms / payments | WhatsApp + bank IBAN (no payment gateway) |
 
@@ -51,20 +50,23 @@ Cloudflare D1 (buzios-db)    ← clients + inbox + newsletter live (admin read);
 | Data | Storage | Why |
 |------|---------|-----|
 | Plans, site texts, image slots | Cloudinary JSON | Rare writes; public site needs a simple file |
-| Clients | D1 (admin read + dual-write) | Daily edits; row-level; no whole-file races |
-| Inscrições / contactos (inbox) | D1 (admin read + dual-write) | Status updates without depending on Cloudinary file |
-| Newsletter | D1 (admin read + dual-write) | Same pattern as inbox |
+| Clients | D1 only | Daily edits; row-level; no whole-file races |
+| Inscrições / contactos (inbox) | D1 only | Status updates without Cloudinary file |
+| Newsletter | D1 only | Same pattern as inbox |
+| Ops backup | Cloudinary `d1-backup.json` + `store.json` via `d1_backup` | On-demand / cron |
 
 Worker base: `https://buzios-publish.gymngola.workers.dev`
 
 | Route | Who | Role |
 |-------|-----|------|
 | `GET /catalog` | Public + admin | Fresh catalog (bypass CDN) |
-| `POST /submit` | Public | Enrollment, contact, newsletter |
+| `POST /submit` | Public | Enrollment, contact, newsletter → D1 |
 | `POST /publish` | Admin | Write catalog |
-| `POST /admin/data` | Admin | Read/update store + D1 ops (`d1_status`, `d1_import_from_store`, `d1_get_clients`, `d1_get_submissions`, `d1_get_newsletters`) |
+| `POST /admin/data` | Admin | Auth, D1 ops, legacy store (`auth`, `d1_status`, `d1_import_from_store`, `d1_get_*`, `d1_backup`, mutations) |
 
 D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
+
+**Cutover (2026-11-06):** `WRITE_OPS_TO_STORE = false` in Worker. Mutations skip `store.json`. Admin password is only the Worker secret (login via `action: "auth"`).
 
 ### 2.1 Store durability rules (2026-11-06)
 
@@ -73,6 +75,7 @@ D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
 - Admin `applyStore` blocks empty remote overwriting a non-empty local client list.
 - `replace_store` ignores empty arrays unless `_forceReplace: true`.
 - Prefer newer `updatedAt`, then record count; never prefer empty over real data.
+- After cutover, operational writes do not call `saveStore`; use `d1_backup` for Cloudinary snapshots.
 
 ---
 
@@ -263,7 +266,9 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Empty Clientes bug:** Worker `fetch` with `{ cache: 'no-store' }` throws on CF Workers → Cloudinary load failed → intermittent 0 clients. Removed; query-string cache-bust only.
 - **Store guards:** refuse empty `saveStore`; auto `store-prev.json`; admin blocks empty remote over non-empty local list.
 - **Architecture decision:** catalog stays Cloudinary JSON; operational data moves to **Cloudflare D1**. Supabase reserved for multi-tenant Pro product later.
-- **D1 live:** schema + import (263 clients); admin **reads clients from D1**; dual-write clients/submissions/newsletter on `/submit` and admin mutations. Inbox **read** still Cloudinary. See `worker/SETUP-D1.md`.
+- **D1 live:** schema + import (263 clients); admin reads clients + inbox + newsletter from D1.
+- **Cutover:** `WRITE_OPS_TO_STORE = false` — mutations and `/submit` write **D1 only**. `d1_backup` exports to Cloudinary.
+- **Password out of code:** admin login via Worker `action: "auth"`; no hardcoded password in `js/admin.js`.
 
 ### 2026-11-04 → 2026-11-05
 

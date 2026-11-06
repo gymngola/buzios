@@ -59,18 +59,33 @@ npx wrangler d1 execute buzios-db --remote \
   --command "SELECT COUNT(*) AS n FROM clients;"
 ```
 
-## Current state (2026-11-06)
+## Current state (2026-11-06 — cutover done)
 
-- Import done (263 clients).
+- Import done (263 clients). Counts matched Cloudinary before cutover.
 - Admin **reads** clients, inbox (submissions), and newsletter from D1.
-- Admin client + submission + newsletter **writes** dual-write Cloudinary + D1.
-- Public `/submit` dual-writes to D1 (enrollment → submission + optional client).
-- Catalog stays on Cloudinary. Optional cutover later (stop writing clients to store.json).
+- **Writes** go to **D1 only** (`WRITE_OPS_TO_STORE = false` in `src/index.js`).
+- Public `/submit` writes to D1 only (enrollment → submission + optional client).
+- Catalog stays on Cloudinary.
+- Password: only in Worker secret `ADMIN_PASSWORD`. Admin login calls `action: "auth"`; no password in source.
+
+## Backup
+
+On demand (also refreshes `store.json` as emergency snapshot):
+
+```bash
+curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"…","action":"d1_backup"}'
+```
+
+Writes `buzios/d1-backup.json` + updates `buzios/store.json`.  
+Optional later: cron Worker calling the same action.
 
 ## Rollback
 
-Cloudinary `store.json` is **not** deleted. Dual-write keeps it in sync on admin edits.  
-If D1 looks wrong, fix and re-import (import upserts by `id`).
+1. Set `WRITE_OPS_TO_STORE = true` in `src/index.js` and redeploy (dual-write again).
+2. Or restore from latest `d1-backup.json` / `store.json` via `d1_import_from_store` after loading store.
+3. Cloudinary files are **not** deleted on cutover.
 
 ## Files
 
@@ -78,5 +93,5 @@ If D1 looks wrong, fix and re-import (import upserts by `id`).
 |------|------|
 | `migrations/0001_init.sql` | Tables + indexes |
 | `wrangler.toml` | D1 binding |
-| `src/index.js` | Dual-write on `/submit` + client/submission/newsletter admin mutations; `d1_get_clients`, `d1_get_submissions`, `d1_get_newsletters` |
-| `../js/admin.js` | Overlays clients + submissions + newsletters from D1 after load and relevant mutations |
+| `src/index.js` | D1 primary writes; `WRITE_OPS_TO_STORE` flag; `auth`, `d1_backup`, `d1_get_*` |
+| `../js/admin.js` | Login via Worker; overlays clients + submissions + newsletters from D1 |

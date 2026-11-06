@@ -86,7 +86,7 @@ Live base: `https://buzios-publish.gymngola.workers.dev`
 | `POST /publish` | Admin — write `buzios/catalog.json` |
 | `POST /admin/data` | Admin — read/update store (inbox, clients, newsletter) + D1 ops |
 
-`POST /admin/data` actions (password required): `get`, `update_*`, `delete_*`, `replace_store`, `debug_store`, **`d1_status`**, **`d1_import_from_store`**, **`d1_get_clients`**.
+`POST /admin/data` actions (password required): `auth`, `get`, `update_*`, `delete_*`, `replace_store`, `debug_store`, **`d1_status`**, **`d1_import_from_store`**, **`d1_get_clients`**, **`d1_get_submissions`**, **`d1_get_newsletters`**, **`d1_backup`**.
 
 After any change to `worker/src/index.js`, run `npx wrangler deploy` again from `worker/`.
 
@@ -111,13 +111,14 @@ curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
   -d '{"password":"…","action":"d1_import_from_store"}'
 ```
 
-**Clients:** admin reads from D1 (`d1_get_clients`); updates dual-write Cloudinary + D1.  
-**Submit / inbox writes:** dual-write Cloudinary + D1 (enrollment, contact, newsletter, admin status changes).  
-**Inbox read:** still Cloudinary until next phase.
+**Clients / inbox / newsletter:** D1 is primary (cutover 2026-11-06). Admin reads via `d1_get_*`. Mutations write D1 only (`WRITE_OPS_TO_STORE = false`).  
+**Backup:** `action: "d1_backup"` exports D1 → `buzios/d1-backup.json` and refreshes `store.json`.  
+**Catalog:** Cloudinary only.
 
 ### 3. Admin password
 
-Default in `js/admin.js`: `buzios2026` — change after handoff and set the same value as Worker `ADMIN_PASSWORD`.
+Password exists **only** as Worker secret `ADMIN_PASSWORD` (`npx wrangler secret put ADMIN_PASSWORD`).  
+It is **not** in `js/admin.js`. Login POSTs `action: "auth"`; the typed password is kept in sessionStorage for subsequent API calls.
 
 ### 4. Deploy static site
 
@@ -127,22 +128,38 @@ Push to GitHub or upload; **not** `wrangler deploy` from root.
 ### 5. Smoke test
 
 ```bash
-# 1. Form write — expect "count" in the response
+# 1. Form write (public) — expect ok + id
 curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/submit" \
   -H "Content-Type: application/json" \
   -d '{"type":"contact","name":"Test","phone":"900000000","message":"ping"}'
-# expect: {"ok":true,"id":"...","count":1}
+# expect: {"ok":true,"id":"..."}
 
-# 2. Admin read — expect submissions length >= 1
+# 2. Auth
 curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
   -H "Content-Type: application/json" \
-  -d '{"password":"buzios2026","action":"get"}'
+  -d '{"password":"YOUR_ADMIN_PASSWORD","action":"auth"}'
+
+# 3. Inbox from D1
+curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"YOUR_ADMIN_PASSWORD","action":"d1_get_submissions"}'
+
+# 4. Optional backup
+curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"YOUR_ADMIN_PASSWORD","action":"d1_backup"}'
 ```
+
+**Real form tests (public site):**
+
+1. Open https://www.buzioshealthclub.com/contacto.html → submit a test contact → confirm in admin **Inscrições**.
+2. Open https://www.buzioshealthclub.com/inscricao.html → submit a test enrollment → confirm in **Inscrições** + **Clientes** (new client if phone is new).
+3. Newsletter field (if present on home/footer) → confirm under newsletter list in admin.
+4. Change status of the test submission in admin → refresh → status persists (D1).
+5. Optionally run `d1_backup` after tests.
 
 Then:
 
-- Hard-refresh admin → **Inscrições** shows the contact
-- Enrollment form → Inscrições + Clientes
 - Admin → assign image to a slot → **Publicar na loja** → hard-refresh public site
 - Catalog is loaded via Worker `GET /catalog` (not the raw Cloudinary URL)
 

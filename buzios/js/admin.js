@@ -4,7 +4,9 @@
 (function () {
   'use strict';
 
-  const ADMIN_PASSWORD = 'buzios2026';
+  // Password lives only in Worker secret ADMIN_PASSWORD — never hardcoded here.
+  // After successful login we keep the typed value in memory + sessionStorage for API calls.
+  let sessionPassword = sessionStorage.getItem('buzios_admin_pw') || '';
   const PUBLISH_URL = 'https://buzios-publish.gymngola.workers.dev/publish';
   const ADMIN_DATA_URL = 'https://buzios-publish.gymngola.workers.dev/admin/data';
   const CLOUD_NAME = 'ogtzpc3v';
@@ -12,6 +14,16 @@
   const CATALOG_FOLDER = 'buzios';
   // Worker proxy = always fresh (avoids Cloudinary CDN 30-day cache)
   const CATALOG_JSON_URL = 'https://buzios-publish.gymngola.workers.dev/catalog';
+
+  function getAdminPassword() {
+    return sessionPassword || sessionStorage.getItem('buzios_admin_pw') || '';
+  }
+
+  function setSessionPassword(pw) {
+    sessionPassword = pw || '';
+    if (pw) sessionStorage.setItem('buzios_admin_pw', pw);
+    else sessionStorage.removeItem('buzios_admin_pw');
+  }
   const SITE_IMAGE_SLOTS = [
     { key: 'hero', label: 'Hero 1 (página inicial)' },
     { key: 'hero2', label: 'Hero 2 (página inicial)' },
@@ -83,11 +95,16 @@
     const authed =
       sessionStorage.getItem(LS.auth) === '1' ||
       localStorage.getItem(LS.auth) === '1';
-    if (authed) {
+    const hasPw = !!getAdminPassword();
+    // Auth flag without password (e.g. new tab after stay-logged-in) → force re-login
+    if (authed && hasPw) {
       if (localStorage.getItem(LS.auth) === '1' && $('#stayLoggedIn')) {
         $('#stayLoggedIn').checked = true;
       }
       showApp({ resume: true });
+    } else if (authed && !hasPw) {
+      // Clear stale flag so user types password again
+      sessionStorage.removeItem(LS.auth);
     }
   }
   async function showApp(opts) {
@@ -100,6 +117,43 @@
     await loadStore();
     renderAll();
     startStoreSync();
+  }
+
+  async function loginWithPassword(pw) {
+    const password = String(pw || '').trim();
+    if (!password) {
+      $('#loginError').style.display = 'block';
+      return false;
+    }
+    try {
+      const res = await fetch(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, action: 'auth' }),
+        cache: 'no-store'
+      });
+      if (!res.ok) {
+        $('#loginError').style.display = 'block';
+        return false;
+      }
+      const data = await res.json();
+      if (!data || !data.ok) {
+        $('#loginError').style.display = 'block';
+        return false;
+      }
+      setSessionPassword(password);
+      const stay = $('#stayLoggedIn') && $('#stayLoggedIn').checked;
+      sessionStorage.setItem(LS.auth, '1');
+      if (stay) localStorage.setItem(LS.auth, '1');
+      else localStorage.removeItem(LS.auth);
+      $('#loginError').style.display = 'none';
+      showApp();
+      return true;
+    } catch (e) {
+      console.warn('Login failed', e);
+      $('#loginError').style.display = 'block';
+      return false;
+    }
   }
 
   // When staff switches back to this tab/device, pull latest immediately
@@ -123,18 +177,7 @@
     }
   });
   $('#loginBtn').addEventListener('click', () => {
-    if ($('#adminPass').value === ADMIN_PASSWORD) {
-      const stay = $('#stayLoggedIn') && $('#stayLoggedIn').checked;
-      sessionStorage.setItem(LS.auth, '1');
-      if (stay) {
-        localStorage.setItem(LS.auth, '1');
-      } else {
-        localStorage.removeItem(LS.auth);
-      }
-      showApp();
-    } else {
-      $('#loginError').style.display = 'block';
-    }
+    loginWithPassword($('#adminPass').value);
   });
   $('#adminPass').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#loginBtn').click();
@@ -415,7 +458,7 @@
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'd1_get_clients' }),
+        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_clients' }),
         cache: 'no-store'
       });
       if (!res.ok) return false;
@@ -438,7 +481,7 @@
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'd1_get_submissions' }),
+        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_submissions' }),
         cache: 'no-store'
       });
       if (!res.ok) return false;
@@ -461,7 +504,7 @@
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'd1_get_newsletters' }),
+        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_newsletters' }),
         cache: 'no-store'
       });
       if (!res.ok) return false;
@@ -489,7 +532,7 @@
         const res = await fetch(ADMIN_DATA_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'get' }),
+          body: JSON.stringify({ password: getAdminPassword(), action: 'get' }),
           cache: 'no-store'
         });
         if (res.ok) {
@@ -995,42 +1038,41 @@
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, action, data }),
+        body: JSON.stringify({ password: getAdminPassword(), action, data }),
         cache: 'no-store'
       });
       if (res.ok) {
         const json = await res.json();
         if (json.store) {
-          // Own write: apply without "outro dispositivo" toast, then notify other tabs
-          const prevAt = lastKnownUpdatedAt;
+          // Own write (legacy dual-write path): apply store then overlay D1
           store = json.store;
           if (json.store.updatedAt) lastKnownUpdatedAt = json.store.updatedAt;
-          renderInbox();
-          renderContacts();
-          renderNewsletters();
-          renderClients();
-          // Client / submission / newsletter mutations: re-read from D1
-          if (action === 'update_client' || action === 'delete_client') {
-            await overlayClientsFromD1();
-          }
-          if (action === 'update_submission' || action === 'delete_submission') {
-            await overlaySubmissionsFromD1();
-          }
-          if (action === 'delete_newsletter') {
-            await overlayNewslettersFromD1();
-          }
-          broadcastStore(store);
-          setSyncStatus('ok', 'Sincronizado');
-          // Keep prevAt reference to avoid unused lint; own writes never toast remote
-          void prevAt;
-        } else if (!silent) {
-          renderInbox();
-          renderContacts();
-          renderNewsletters();
-          renderClients();
         }
+        // After cutover, mutations return without store — always re-read ops from D1
+        if (action === 'update_client' || action === 'delete_client') {
+          await overlayClientsFromD1();
+        }
+        if (action === 'update_submission' || action === 'delete_submission') {
+          await overlaySubmissionsFromD1();
+        }
+        if (action === 'delete_newsletter') {
+          await overlayNewslettersFromD1();
+        }
+        renderInbox();
+        renderContacts();
+        renderNewsletters();
+        renderClients();
+        if (json.store) broadcastStore(store);
+        setSyncStatus('ok', 'Sincronizado');
         return true;
       } else {
+        if (res.status === 401) {
+          setSessionPassword('');
+          sessionStorage.removeItem(LS.auth);
+          toast('Sessão expirada — volte a entrar');
+          location.reload();
+          return false;
+        }
         if (!silent) toast('Erro ao actualizar');
         setSyncStatus('error', 'Erro ao gravar');
         return false;
@@ -2636,7 +2678,7 @@
       const res = await fetch(PUBLISH_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, catalog })
+        body: JSON.stringify({ password: getAdminPassword(), catalog })
       });
       if (!res.ok) throw new Error(await res.text());
       syncLocalFromState();

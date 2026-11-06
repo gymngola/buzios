@@ -24,6 +24,15 @@ const CORS = {
 
 const FOLDER = 'buzios';
 
+/**
+ * Cutover flag (2026-11-06).
+ * false = operational data (clients, submissions, newsletters) is D1-only.
+ *         Mutations skip Cloudinary store.json writes.
+ * true  = dual-write Cloudinary + D1 (legacy / rollback).
+ * Catalog stays on Cloudinary either way. Use action d1_backup to export D1 → Cloudinary.
+ */
+const WRITE_OPS_TO_STORE = false;
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
@@ -232,20 +241,21 @@ async function handleSubmit(request, env) {
   if (store.clients && store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
 
   store.updatedAt = new Date().toISOString();
-  await saveStore(env, store);
-
-  // Dual-write to D1 (row-level). Cloudinary remains backup until full cutover.
+  // D1 is primary for operational data after cutover
   if (env.DB) {
     try {
       if (newSubmission) await d1UpsertSubmission(env, newSubmission);
       if (newClient) await d1UpsertClient(env, newClient);
       if (newNewsletter) await d1UpsertNewsletter(env, newNewsletter);
     } catch (e) {
-      console.error('D1 dual-write on submit failed', e && e.message);
+      console.error('D1 write on submit failed', e && e.message);
     }
   }
+  if (WRITE_OPS_TO_STORE) {
+    await saveStore(env, store);
+  }
 
-  return json({ ok: true, id, count: (store.submissions || []).length });
+  return json({ ok: true, id });
 }
 
 async function handleAdminData(request, env) {
@@ -342,25 +352,29 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'update_submission' && data && data.id) {
-    // Re-load before write so concurrent edits on other devices are kept
-    store = await loadStore(env);
-    store.submissions = store.submissions || [];
-    const idx = store.submissions.findIndex(s => s.id === data.id);
-    let saved = null;
-    if (idx >= 0) {
-      saved = Object.assign({}, store.submissions[idx], data, { id: data.id });
-      store.submissions[idx] = saved;
-    }
-    store.updatedAt = new Date().toISOString();
-    await saveStore(env, store);
-    if (env.DB && saved) {
+    const saved = Object.assign({}, data, { id: data.id });
+    if (env.DB) {
       try {
         await d1UpsertSubmission(env, saved);
       } catch (e) {
         console.error('D1 upsert submission failed', e && e.message);
+        return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
       }
     }
-    return json({ ok: true, store });
+    if (WRITE_OPS_TO_STORE) {
+      store = await loadStore(env);
+      store.submissions = store.submissions || [];
+      const idx = store.submissions.findIndex(s => s.id === data.id);
+      if (idx >= 0) {
+        store.submissions[idx] = Object.assign({}, store.submissions[idx], saved);
+      } else {
+        store.submissions.unshift(saved);
+      }
+      store.updatedAt = new Date().toISOString();
+      await saveStore(env, store);
+      return json({ ok: true, store });
+    }
+    return json({ ok: true, submission: saved });
   }
 
   if (action === 'update_client' && data && data.id) {
@@ -370,96 +384,105 @@ async function handleAdminData(request, env) {
     delete clean._expiringSoon;
     delete clean._expired;
     const clientId = String(data.id);
-    // Re-load right before write to shrink multi-staff race (last-write still wins
-    // on the same client, but concurrent edits to *other* clients are kept).
-    store = await loadStore(env);
-    store.clients = store.clients || [];
-    const idx = store.clients.findIndex(c => String(c.id) === clientId);
-    let saved;
-    if (idx >= 0) {
-      saved = Object.assign({}, store.clients[idx], clean, { id: clientId });
-      store.clients[idx] = saved;
-    } else {
-      saved = Object.assign({}, clean, { id: clientId });
-      store.clients.unshift(saved);
-    }
-    if (store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
-    store.updatedAt = new Date().toISOString();
-    await saveStore(env, store);
-    // Dual-write to D1 (row-level). Cloudinary remains backup until full cutover.
+    const saved = Object.assign({}, clean, { id: clientId });
     if (env.DB) {
       try {
         await d1UpsertClient(env, saved);
       } catch (e) {
         console.error('D1 upsert client failed', e && e.message);
+        return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
       }
     }
-    return json({ ok: true, store });
+    if (WRITE_OPS_TO_STORE) {
+      store = await loadStore(env);
+      store.clients = store.clients || [];
+      const idx = store.clients.findIndex(c => String(c.id) === clientId);
+      if (idx >= 0) {
+        store.clients[idx] = Object.assign({}, store.clients[idx], saved);
+      } else {
+        store.clients.unshift(saved);
+      }
+      if (store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
+      store.updatedAt = new Date().toISOString();
+      await saveStore(env, store);
+      return json({ ok: true, store });
+    }
+    return json({ ok: true, client: saved });
   }
 
   if (action === 'delete_client' && data && data.id) {
-    store = await loadStore(env);
-    store.clients = store.clients || [];
     const clientId = String(data.id);
     const hard = !!data.hard;
-    if (hard) {
-      store.clients = store.clients.filter(c => String(c.id) !== clientId);
-    } else {
-      // Soft delete → archive (keeps history)
-      const idx = store.clients.findIndex(c => String(c.id) === clientId);
-      if (idx >= 0) {
-        store.clients[idx] = Object.assign({}, store.clients[idx], {
-          membershipStatus: 'arquivado',
-          archivedAt: new Date().toISOString()
-        });
-      }
-    }
-    store.updatedAt = new Date().toISOString();
-    await saveStore(env, store);
-    // Dual-write to D1
     if (env.DB) {
       try {
         if (hard) {
           await d1HardDeleteClient(env, clientId);
         } else {
-          const archived = (store.clients || []).find(c => String(c.id) === clientId);
-          if (archived) await d1UpsertClient(env, archived);
+          // Soft archive: only touch status columns (admin often sends {id} only)
+          await d1ArchiveClient(env, clientId);
         }
       } catch (e) {
         console.error('D1 delete/archive client failed', e && e.message);
+        return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
       }
     }
-    return json({ ok: true, store });
+    if (WRITE_OPS_TO_STORE) {
+      store = await loadStore(env);
+      store.clients = store.clients || [];
+      if (hard) {
+        store.clients = store.clients.filter(c => String(c.id) !== clientId);
+      } else {
+        const idx = store.clients.findIndex(c => String(c.id) === clientId);
+        if (idx >= 0) {
+          store.clients[idx] = Object.assign({}, store.clients[idx], {
+            membershipStatus: 'arquivado',
+            archivedAt: new Date().toISOString()
+          });
+        }
+      }
+      store.updatedAt = new Date().toISOString();
+      await saveStore(env, store);
+      return json({ ok: true, store });
+    }
+    return json({ ok: true });
   }
 
   if (action === 'delete_submission' && data && data.id) {
-    store = await loadStore(env);
-    store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
-    store.updatedAt = new Date().toISOString();
-    await saveStore(env, store);
     if (env.DB) {
       try {
         await d1DeleteSubmission(env, data.id);
       } catch (e) {
         console.error('D1 delete submission failed', e && e.message);
+        return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
       }
     }
-    return json({ ok: true, store });
+    if (WRITE_OPS_TO_STORE) {
+      store = await loadStore(env);
+      store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
+      store.updatedAt = new Date().toISOString();
+      await saveStore(env, store);
+      return json({ ok: true, store });
+    }
+    return json({ ok: true });
   }
 
   if (action === 'delete_newsletter' && data && data.id) {
-    store = await loadStore(env);
-    store.newsletters = (store.newsletters || []).filter(n => n.id !== data.id);
-    store.updatedAt = new Date().toISOString();
-    await saveStore(env, store);
     if (env.DB) {
       try {
         await d1DeleteNewsletter(env, data.id);
       } catch (e) {
         console.error('D1 delete newsletter failed', e && e.message);
+        return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
       }
     }
-    return json({ ok: true, store });
+    if (WRITE_OPS_TO_STORE) {
+      store = await loadStore(env);
+      store.newsletters = (store.newsletters || []).filter(n => n.id !== data.id);
+      store.updatedAt = new Date().toISOString();
+      await saveStore(env, store);
+      return json({ ok: true, store });
+    }
+    return json({ ok: true });
   }
 
   // replace_store only merges non-empty sections — never wipe clients/submissions with []
@@ -482,7 +505,12 @@ async function handleAdminData(request, env) {
     return json({ ok: true, store });
   }
 
-  // —— D1 setup / migration (does not change Cloudinary store) ——
+  // —— Auth (password already validated above) ——
+  if (action === 'auth') {
+    return json({ ok: true });
+  }
+
+  // —— D1 setup / migration / backup ——
   if (action === 'd1_status') {
     return json(await d1Status(env));
   }
@@ -503,6 +531,9 @@ async function handleAdminData(request, env) {
     if (!env.DB) return json({ error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' }, 500);
     const newsletters = await d1ListNewsletters(env);
     return json({ ok: true, newsletters, count: newsletters.length });
+  }
+  if (action === 'd1_backup') {
+    return json(await d1BackupToCloudinary(env));
   }
 
   return json({ error: 'Unknown action' }, 400);
@@ -838,8 +869,9 @@ async function sha1(message) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// D1 — clients / submissions / newsletter
-// Cloudinary store remains source of truth until admin switches.
+// D1 — clients / submissions / newsletter (primary after cutover)
+// WRITE_OPS_TO_STORE=false → mutations skip store.json.
+// d1_backup exports D1 → Cloudinary (d1-backup.json + optional store.json snapshot).
 // ═══════════════════════════════════════════════════════════
 
 async function d1Status(env) {
@@ -1050,6 +1082,21 @@ async function d1HardDeleteClient(env, clientId) {
     .run();
 }
 
+/** Soft-delete: only update membership_status (preserve other columns). */
+async function d1ArchiveClient(env, clientId) {
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE clients SET membership_status = 'arquivado', updated_at = ? WHERE id = ?`
+  )
+    .bind(now, String(clientId))
+    .run();
+  await env.DB.prepare(
+    'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(now, 'archive_client', 'client', String(clientId), 'soft')
+    .run();
+}
+
 async function d1UpsertSubmission(env, s) {
   const now = new Date().toISOString();
   const payload = JSON.stringify(s);
@@ -1156,4 +1203,79 @@ async function d1ImportFromStore(env, store) {
     newsletters: newsCount,
     message: 'Imported into D1. Cloudinary store unchanged.'
   };
+}
+
+/** Export full D1 operational data to Cloudinary as backup. */
+async function d1BackupToCloudinary(env) {
+  if (!env.DB) {
+    return { ok: false, error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' };
+  }
+  try {
+    const clients = await d1ListClients(env);
+    const submissions = await d1ListSubmissions(env);
+    const newsletters = await d1ListNewsletters(env);
+    const exportedAt = new Date().toISOString();
+    const payload = {
+      exportedAt,
+      source: 'd1',
+      clients,
+      submissions,
+      newsletters,
+      classes: []
+    };
+    // Dedicated backup file
+    await uploadRaw(env, FOLDER + '/d1-backup.json', JSON.stringify(payload, null, 2));
+    // Also refresh store.json so emergency rollback / old tooling still sees data
+    await uploadRaw(
+      env,
+      FOLDER + '/store.json',
+      JSON.stringify(
+        {
+          updatedAt: exportedAt,
+          clients,
+          submissions,
+          newsletters,
+          classes: []
+        },
+        null,
+        2
+      )
+    );
+    try {
+      await putStoreCache({
+        updatedAt: exportedAt,
+        clients,
+        submissions,
+        newsletters,
+        classes: []
+      });
+    } catch (_) {
+      /* cache optional */
+    }
+    await env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    )
+      .bind(
+        exportedAt,
+        'd1_backup',
+        'store',
+        null,
+        JSON.stringify({
+          clients: clients.length,
+          submissions: submissions.length,
+          newsletters: newsletters.length
+        })
+      )
+      .run();
+    return {
+      ok: true,
+      exportedAt,
+      clients: clients.length,
+      submissions: submissions.length,
+      newsletters: newsletters.length,
+      files: ['buzios/d1-backup.json', 'buzios/store.json']
+    };
+  } catch (e) {
+    return { ok: false, error: (e && e.message) || String(e) };
+  }
 }

@@ -22,7 +22,7 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
   - Unsigned preset `buzios_unsigned` — browser image/doc uploads only
   - Signed raw upload (Worker + Root API key) — `buzios/catalog.json` + `buzios/store.json` (+ `store-prev.json` backup)
   - `invalidate=true` on every signed upload (CDN caches raw files ~30 days otherwise)
-- **Cloudflare D1** (`buzios-db`) — clients (admin read + dual-write); submissions/newsletter dual-write on `/submit` and admin mutations. Admin still **reads** inbox from Cloudinary. Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
+- **Cloudflare D1** (`buzios-db`) — clients + inbox/submissions (admin read + dual-write); newsletter dual-write on `/submit` and admin mutations (admin still **reads** newsletter from Cloudinary). Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
 - **localStorage** — admin mid-session drafts only (catalog dirty flag; not cross-browser source of truth)
 - Orders / leads via WhatsApp (no payment backend)
 - **PWA** — installable as apps (public site + admin)

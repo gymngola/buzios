@@ -432,6 +432,29 @@
     }
   }
 
+  /** Overlay store.submissions with D1 list (inbox + contacts). Same safety as clients. */
+  async function overlaySubmissionsFromD1() {
+    try {
+      const res = await fetch(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'd1_get_submissions' }),
+        cache: 'no-store'
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data.ok || !Array.isArray(data.submissions)) return false;
+      if (data.submissions.length === 0 && (store.submissions || []).length > 0) return false;
+      store.submissions = data.submissions;
+      renderInbox();
+      renderContacts();
+      return true;
+    } catch (e) {
+      console.warn('D1 submissions overlay failed', e);
+      return false;
+    }
+  }
+
   async function loadStore(opts) {
     const silent = !!(opts && opts.silent);
     const workerOnly = !!(opts && opts.workerOnly);
@@ -474,15 +497,17 @@
       }
 
       if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
-        // Still refresh clients from D1 on silent polls (row-level source of truth)
+        // Still refresh clients + inbox from D1 on silent polls (row-level source of truth)
         await overlayClientsFromD1();
+        await overlaySubmissionsFromD1();
         setSyncStatus('ok', 'Sincronizado');
         return false;
       }
 
       const changed = applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
-      // Clients: D1 is preferred over Cloudinary store once import is done
+      // Clients + submissions: D1 is preferred over Cloudinary store once import is done
       await overlayClientsFromD1();
+      await overlaySubmissionsFromD1();
       return changed;
     } finally {
       storeFetchInFlight = false;
@@ -960,9 +985,12 @@
           renderContacts();
           renderNewsletters();
           renderClients();
-          // Client mutations: re-read from D1 so UI matches row-level source of truth
+          // Client / submission mutations: re-read from D1 so UI matches row-level source of truth
           if (action === 'update_client' || action === 'delete_client') {
             await overlayClientsFromD1();
+          }
+          if (action === 'update_submission' || action === 'delete_submission') {
+            await overlaySubmissionsFromD1();
           }
           broadcastStore(store);
           setSyncStatus('ok', 'Sincronizado');

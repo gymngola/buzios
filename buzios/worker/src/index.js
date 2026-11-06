@@ -494,6 +494,11 @@ async function handleAdminData(request, env) {
     const clients = await d1ListClients(env);
     return json({ ok: true, clients, count: clients.length });
   }
+  if (action === 'd1_get_submissions') {
+    if (!env.DB) return json({ error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' }, 500);
+    const submissions = await d1ListSubmissions(env);
+    return json({ ok: true, submissions, count: submissions.length });
+  }
 
   return json({ error: 'Unknown action' }, 400);
 }
@@ -935,6 +940,39 @@ function rowToClient(r) {
 async function d1ListClients(env) {
   const res = await env.DB.prepare('SELECT * FROM clients ORDER BY member_number IS NULL, member_number, name').all();
   return (res.results || []).map(rowToClient);
+}
+
+function rowToSubmission(r) {
+  if (!r) return null;
+  let base = {};
+  try {
+    base = r.payload_json ? JSON.parse(r.payload_json) : {};
+  } catch (_) {}
+  // Columns are source of truth for indexed fields; payload_json keeps extras (attachments, schedule, goals, …)
+  return Object.assign({}, base, {
+    id: r.id,
+    type: r.type != null ? r.type : base.type || null,
+    status: r.status != null ? r.status : base.status || null,
+    area: r.area != null ? r.area : base.area,
+    planId: r.plan_id != null ? r.plan_id : base.planId,
+    planName: r.plan_name != null ? r.plan_name : base.planName,
+    name: r.name != null ? r.name : base.name,
+    phone: r.phone != null ? r.phone : base.phone,
+    email: r.email != null ? r.email : base.email,
+    message: r.message != null ? r.message : base.message,
+    subject: r.subject != null ? r.subject : base.subject,
+    preferContact: r.prefer_contact != null ? r.prefer_contact : base.preferContact,
+    fromClientId: r.from_client_id != null ? r.from_client_id : base.fromClientId,
+    createdAt: r.created_at || base.createdAt,
+    updatedAt: r.updated_at || base.updatedAt
+  });
+}
+
+async function d1ListSubmissions(env) {
+  const res = await env.DB.prepare(
+    'SELECT * FROM submissions ORDER BY created_at DESC'
+  ).all();
+  return (res.results || []).map(rowToSubmission);
 }
 
 async function d1UpsertClient(env, c) {

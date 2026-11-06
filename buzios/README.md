@@ -22,7 +22,7 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
   - Unsigned preset `buzios_unsigned` — browser image/doc uploads only
   - Signed raw upload (Worker + Root API key) — `buzios/catalog.json` + `buzios/store.json` (+ `store-prev.json` backup)
   - `invalidate=true` on every signed upload (CDN caches raw files ~30 days otherwise)
-- **Cloudflare D1** (`buzios-db`) — **clients live here** (read + dual-write on admin update/delete). Inbox/newsletter still Cloudinary for now. Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
+- **Cloudflare D1** (`buzios-db`) — clients (admin read + dual-write); submissions/newsletter dual-write on `/submit` and admin mutations. Admin still **reads** inbox from Cloudinary. Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
 - **localStorage** — admin mid-session drafts only (catalog dirty flag; not cross-browser source of truth)
 - Orders / leads via WhatsApp (no payment backend)
 - **PWA** — installable as apps (public site + admin)
@@ -111,8 +111,9 @@ curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
   -d '{"password":"…","action":"d1_import_from_store"}'
 ```
 
-**Clients:** admin reads from D1 (`d1_get_clients`); admin updates dual-write Cloudinary + D1.  
-Inbox / newsletter still Cloudinary until the next phase.
+**Clients:** admin reads from D1 (`d1_get_clients`); updates dual-write Cloudinary + D1.  
+**Submit / inbox writes:** dual-write Cloudinary + D1 (enrollment, contact, newsletter, admin status changes).  
+**Inbox read:** still Cloudinary until next phase.
 
 ### 3. Admin password
 
@@ -172,17 +173,19 @@ Each installs as its own standalone app (different icons and names). The service
 
 ### Store (inscriptions, contact, newsletter, clients)
 
-**Today (live):** still Cloudinary `buzios/store.json`.  
-**Target:** same data in **D1** (row per client); catalog stays on Cloudinary.
+| Data | Write | Admin read |
+|------|-------|------------|
+| Clients | Dual-write Cloudinary + D1 | **D1** (`d1_get_clients`) |
+| Submissions / newsletter | Dual-write Cloudinary + D1 | Cloudinary store (next: D1) |
+| Catalog | Cloudinary only | Cloudinary via Worker `/catalog` |
 
-1. Public forms → `POST /submit`
-2. Worker **writes**: Cloudinary `buzios/store.json` first (signed upload + `invalidate`), then Workers Cache; also writes `buzios/store-prev.json` as last-good backup
-3. Worker **reads**: Admin API versioned URL / delivery (query cache-bust only — **never** `fetch(..., { cache: 'no-store' })` inside Workers; that option throws and made Cloudinary look empty)
-4. Prefer newer `updatedAt`, then richness; **never** prefer an empty snapshot over real data
-5. `saveStore` **refuses** to overwrite a non-empty store with an empty one
-6. Admin `applyStore` **blocks** empty remote overwriting a non-empty local list
-7. Admin `loadStore()` dual-reads Worker + Cloudinary on first load; silent polls use Worker only
-8. **Backup** (Clientes → Backup) downloads full JSON: store + catalog — use before bulk deletes or re-imports
+1. Public forms → `POST /submit` → Cloudinary store **and** D1 row(s)
+2. Worker still writes Cloudinary `buzios/store.json` first (signed + `invalidate`) + `store-prev.json` backup + Workers Cache
+3. Cloudinary reads: Admin API versioned URL / delivery (query cache-bust only — **never** `fetch(..., { cache: 'no-store' })` inside Workers)
+4. Prefer newer `updatedAt`, then richness; **never** prefer empty over real data
+5. `saveStore` **refuses** empty overwrite; admin `applyStore` blocks empty remote over non-empty local
+6. Admin `loadStore()` dual-reads Worker + Cloudinary, then **overlays clients from D1**
+7. **Backup** (Clientes → Backup) downloads full JSON: store + catalog
 
 `replace_store` ignores empty `clients` / `submissions` arrays unless `data._forceReplace === true` (recovery/import only).
 ### Site images

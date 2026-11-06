@@ -78,5 +78,5 @@ If D1 looks wrong, fix and re-import (import upserts by `id`).
 |------|------|
 | `migrations/0001_init.sql` | Tables + indexes |
 | `wrangler.toml` | D1 binding |
-| `src/index.js` | Dual-write on client update/delete; `d1_get_clients` |
-| `js/admin.js` | Overlays clients from D1 after load and client mutations |
+| `src/index.js` | Dual-write on `/submit` + client/submission/newsletter admin mutations; `d1_get_clients` |
+| `../js/admin.js` | Overlays clients from D1 after load and client mutations |

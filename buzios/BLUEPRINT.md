@@ -115,16 +115,17 @@ Password gate → sections:
 | Guia | In-app staff help |
 
 - Only Planos / Imagens / Textos need **Publicar no website**.
-- Clientes / inscrições / contactos / newsletter persist via `/admin/data` automatically.
+- Clientes / inscrições / contactos / newsletter persist via `/admin/data` → **D1** automatically.
 - Nav badge on Clientes when debt + expired count > 0.
 - Active panel remembered in `sessionStorage`.
-- **Session:** `sessionStorage` / `localStorage` (`buzios_admin_auth`). Reload does not flash login when already authed (`html.admin-authed` set in `<head>`).
-- **Multi-device sync:** while admin is open, store is polled ~every 7s (and on tab focus). Newer `updatedAt` replaces local store; toast “Actualizado noutro dispositivo”. Writes pause polling briefly.
+- **Session:** login against Worker `action: "auth"` (password = secret only). Auth flag `buzios_admin_auth` (session + optional local “Manter sessão”); API password held in `sessionStorage` (`buzios_admin_pw`). Reload does not flash login when already authed (`html.admin-authed` set in `<head>`). **Sair** clears password + flags and returns to login.
+- **Multi-device sync:** while admin is open, store is polled on an interval (and on tab focus). D1 overlays refresh clients / inbox / newsletter. Writes pause polling briefly.
 
 **Admin chrome**
 
 - Login: logo + “Búzios Admin”
 - Sidebar brand: logo (+ text on wide nav)
+- Sidebar footer actions: **Website** (opens public site), **Instalar app**, **Sair**
 - Icons: `icons/admin-192.png`, `admin-512.png` (from same logo artwork)
 
 ### 4.1 Inscrições workflow
@@ -269,6 +270,8 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **D1 live:** schema + import (263 clients); admin reads clients + inbox + newsletter from D1.
 - **Cutover:** `WRITE_OPS_TO_STORE = false` — mutations and `/submit` write **D1 only**. `d1_backup` exports to Cloudinary.
 - **Password out of code:** admin login via Worker `action: "auth"`; no hardcoded password in `js/admin.js`.
+- **Admin load hardening:** Cloudinary store fetch 8s timeout; always overlay clients/submissions/newsletters from D1 so Clientes cannot stay empty if store snapshot stalls.
+- **Admin chrome:** sidebar **Website** (public site), **Sair** (logout clears session password + auth).
 
 ### 2026-11-04 → 2026-11-05
 

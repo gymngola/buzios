@@ -119,6 +119,23 @@
     startStoreSync();
   }
 
+  function logoutAdmin() {
+    stopStoreSync();
+    setSessionPassword('');
+    sessionStorage.removeItem(LS.auth);
+    localStorage.removeItem(LS.auth);
+    document.documentElement.classList.remove('admin-authed');
+    $('#adminApp').classList.add('hidden');
+    $('#loginScreen').classList.remove('hidden');
+    const pass = $('#adminPass');
+    if (pass) {
+      pass.value = '';
+      pass.focus();
+    }
+    if ($('#loginError')) $('#loginError').style.display = 'none';
+    toast('Sessão terminada');
+  }
+
   async function loginWithPassword(pw) {
     const password = String(pw || '').trim();
     if (!password) {
@@ -182,6 +199,14 @@
   $('#adminPass').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') $('#loginBtn').click();
   });
+  const logoutBtn = $('#logoutAdminBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      logoutAdmin();
+    });
+  }
 
   // Close modals when clicking the dimmed backdrop (not the panel itself)
   function bindModalBackdropClose(modalId) {

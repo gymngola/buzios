@@ -192,17 +192,17 @@ Each installs as its own standalone app (different icons and names). The service
 
 | Data | Write | Admin read |
 |------|-------|------------|
-| Clients | Dual-write Cloudinary + D1 | **D1** (`d1_get_clients`) |
-| Submissions / newsletter | Dual-write Cloudinary + D1 | Cloudinary store (next: D1) |
+| Clients | **D1 only** (cutover) | **D1** (`d1_get_clients`) |
+| Submissions / newsletter | **D1 only** (cutover) | **D1** (`d1_get_submissions` / `d1_get_newsletters`) |
 | Catalog | Cloudinary only | Cloudinary via Worker `/catalog` |
+| Ops backup | `d1_backup` → Cloudinary | `buzios/d1-backup.json` + refreshed `store.json` |
 
-1. Public forms → `POST /submit` → Cloudinary store **and** D1 row(s)
-2. Worker still writes Cloudinary `buzios/store.json` first (signed + `invalidate`) + `store-prev.json` backup + Workers Cache
-3. Cloudinary reads: Admin API versioned URL / delivery (query cache-bust only — **never** `fetch(..., { cache: 'no-store' })` inside Workers)
+1. Public forms → `POST /submit` → **D1** only (`WRITE_OPS_TO_STORE = false`)
+2. Admin mutations (clients / inbox / newsletter) → **D1** only
+3. Admin `loadStore()` reads Worker store snapshot (legacy) + optional Cloudinary (8s timeout), then **always overlays** clients + submissions + newsletters from D1
 4. Prefer newer `updatedAt`, then richness; **never** prefer empty over real data
-5. `saveStore` **refuses** empty overwrite; admin `applyStore` blocks empty remote over non-empty local
-6. Admin `loadStore()` dual-reads Worker + Cloudinary, then **overlays clients from D1**
-7. **Backup** (Clientes → Backup) downloads full JSON: store + catalog
+5. `saveStore` **refuses** empty overwrite (still used if flag is re-enabled or by `d1_backup`)
+6. **Backup** (Clientes → Backup) downloads full JSON; server-side `d1_backup` writes Cloudinary snapshots
 
 `replace_store` ignores empty `clients` / `submissions` arrays unless `data._forceReplace === true` (recovery/import only).
 ### Site images
@@ -216,8 +216,9 @@ Each installs as its own standalone app (different icons and names). The service
 | Public ID | Written by | Read by |
 |-----------|------------|---------|
 | `buzios/catalog.json` | `POST /publish` | Worker `GET /catalog` → public + admin |
-| `buzios/store.json` | `POST /submit`, `POST /admin/data` | Worker (Admin API versioned + delivery + cache); admin dual-read fallback |
-| `buzios/store-prev.json` | `saveStore` (automatic) | Recovery only |
+| `buzios/store.json` | `d1_backup` (and legacy dual-write if flag on) | Recovery / emergency snapshot |
+| `buzios/d1-backup.json` | `d1_backup` | Full D1 export |
+| `buzios/store-prev.json` | `saveStore` (automatic, when ops write to store) | Recovery only |
 
 Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `public_id`, `timestamp` + API secret.
 
@@ -330,7 +331,8 @@ Several staff devices can keep admin open:
 
 - Media “delete” in admin removes the library list entry only (not the Cloudinary file)
 - Admin tab is remembered in `sessionStorage` across reloads
-- Auth: `sessionStorage` / `localStorage` key `buzios_admin_auth`; “Manter sessão iniciada” uses `localStorage`
+- Auth: password only in Worker secret; login via `action: "auth"`; typed password in `sessionStorage` (`buzios_admin_pw`) for API calls; auth flag `buzios_admin_auth` (session + optional local “Manter sessão”)
+- Sidebar: **Website** (public site), **Instalar app**, **Sair** (clears password + auth, returns to login)
 - Keep `public_id` paths as `buzios/catalog.json` and `buzios/store.json` (with extension)
 - After significant product/UX/infra changes: update **README.md** and **BLUEPRINT.md** in the same change set
 - Deploy: **Pages** = static root; **Worker** = always `cd worker && npx wrangler deploy` (never from project root)

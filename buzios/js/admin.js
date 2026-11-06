@@ -377,6 +377,19 @@
     if (nextAt && prevAt && storeTimestamp({ updatedAt: nextAt }) < storeTimestamp({ updatedAt: prevAt })) {
       return false;
     }
+    // CRITICAL: never replace a non-empty local store with an empty remote
+    // (this was the main cause of "clientes desapareceram")
+    const localScore = storeScore(store);
+    const nextScore = storeScore(next);
+    if (localScore > 0 && nextScore <= 0) {
+      console.warn('Blocked empty store overwrite', { localScore, nextScore, nextAt, prevAt });
+      setSyncStatus('error', 'Servidor devolveu vazio — mantive os dados locais');
+      return false;
+    }
+    // Prefer richer if timestamps are equal / missing
+    if (localScore > nextScore && storeTimestamp(store) >= storeTimestamp(next || {})) {
+      return false;
+    }
     store = next || store;
     if (nextAt) lastKnownUpdatedAt = nextAt;
     renderInbox();

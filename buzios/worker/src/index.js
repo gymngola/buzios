@@ -483,6 +483,8 @@ function looksLikeStore(data) {
 }
 
 async function fetchStoreJson(url) {
+  // NOTE: Cloudflare Workers does NOT support fetch cache option
+  // (`cache: 'no-store'` throws). Always bust with query params only.
   const bust =
     (url.includes('?') ? '&' : '?') +
     '_=' +
@@ -490,7 +492,7 @@ async function fetchStoreJson(url) {
     '&cb=' +
     Math.random().toString(36).slice(2, 8);
   try {
-    const res = await fetch(url + bust, { cache: 'no-store' });
+    const res = await fetch(url + bust);
     if (!res.ok) return null;
     const text = await res.text();
     if (!text || text.length < 2) return null;
@@ -539,7 +541,8 @@ async function loadStoreFromCloudinary(env) {
             '/' +
             publicId;
           _cloudLoadDebug = { step: 'admin_versioned', version: version };
-          const fileRes = await fetch(versioned, { cache: 'no-store' });
+          // No { cache: 'no-store' } — Workers runtime throws on that option
+          const fileRes = await fetch(versioned);
           if (fileRes.ok) {
             const text = await fileRes.text();
             const data = JSON.parse(text);
@@ -579,7 +582,8 @@ async function loadStoreFromCloudinary(env) {
   });
 
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    // No { cache: 'no-store' } — Workers runtime throws on that option
+    const res = await fetch(url);
     _cloudLoadDebug.status = res.status;
     _cloudLoadDebug.ok = res.ok;
     if (!res.ok) return null;
@@ -643,6 +647,29 @@ async function loadStore(env) {
 }
 
 async function saveStore(env, store) {
+  // Safety: never overwrite a real store with an empty one
+  const incomingScore = storeScore(store);
+  if (incomingScore <= 0) {
+    const existing = await loadStoreFromCloudinary(env);
+    if (existing && storeScore(existing) > 0) {
+      throw new Error(
+        'Refused to save empty store over existing data (' +
+          storeScore(existing) +
+          ' records).'
+      );
+    }
+  }
+
+  // Keep previous good snapshot for recovery
+  try {
+    const prev = await loadStoreFromCloudinary(env);
+    if (prev && storeScore(prev) > 0) {
+      await uploadRaw(env, FOLDER + '/store-prev.json', JSON.stringify(prev));
+    }
+  } catch (_) {
+    // Backup failure must not block the main write
+  }
+
   const body = JSON.stringify(store);
   // 1. Cloudinary first — durable + CDN invalidate (source of truth)
   await uploadRaw(env, FOLDER + '/store.json', body);

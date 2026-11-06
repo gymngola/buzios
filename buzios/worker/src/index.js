@@ -6,6 +6,9 @@
  *   POST /submit           — public: enrollment / contact / newsletter
  *   POST /admin/data       — admin: get or update submissions + clients (password)
  *
+ * Cron (wrangler.toml [triggers]):
+ *   0 3 1,7,13,19,25 * *  — every ~6 days at 03:00 UTC → d1BackupToCloudinary
+ *
  * Secrets:
  *   ADMIN_PASSWORD
  *   CLOUDINARY_CLOUD_NAME
@@ -60,6 +63,33 @@ export default {
     } catch (err) {
       return json({ error: err.message || 'Server error' }, 500);
     }
+  },
+
+  /**
+   * Cron: every ~6 days (see wrangler.toml [triggers]).
+   * Exports D1 → Cloudinary dated snapshot + latest pointers.
+   * Complements D1 Time Travel (7 days Free / 30 days Paid).
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      d1BackupToCloudinary(env, { source: 'cron', cron: event.cron || null }).then(
+        (result) => {
+          if (result && result.ok) {
+            console.log(
+              'cron d1_backup ok',
+              result.exportedAt,
+              'clients=' + result.clients,
+              'files=' + (result.files || []).join(',')
+            );
+          } else {
+            console.error('cron d1_backup failed', result && result.error);
+          }
+        },
+        (err) => {
+          console.error('cron d1_backup threw', err && err.message);
+        }
+      )
+    );
   }
 };
 
@@ -533,7 +563,7 @@ async function handleAdminData(request, env) {
     return json({ ok: true, newsletters, count: newsletters.length });
   }
   if (action === 'd1_backup') {
-    return json(await d1BackupToCloudinary(env));
+    return json(await d1BackupToCloudinary(env, { source: 'manual' }));
   }
 
   return json({ error: 'Unknown action' }, 400);
@@ -1205,8 +1235,17 @@ async function d1ImportFromStore(env, store) {
   };
 }
 
-/** Export full D1 operational data to Cloudinary as backup. */
-async function d1BackupToCloudinary(env) {
+/**
+ * Export full D1 operational data to Cloudinary as backup.
+ * Writes:
+ *   - buzios/backups/d1-YYYY-MM-DD.json  (dated history; keep several)
+ *   - buzios/d1-backup.json              (always-latest pointer)
+ *   - buzios/store.json                  (emergency snapshot for rollback tooling)
+ * opts.source: 'manual' | 'cron' (default manual)
+ */
+async function d1BackupToCloudinary(env, opts) {
+  opts = opts || {};
+  const source = opts.source || 'manual';
   if (!env.DB) {
     return { ok: false, error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' };
   }
@@ -1215,17 +1254,23 @@ async function d1BackupToCloudinary(env) {
     const submissions = await d1ListSubmissions(env);
     const newsletters = await d1ListNewsletters(env);
     const exportedAt = new Date().toISOString();
+    const day = exportedAt.slice(0, 10); // YYYY-MM-DD
+    const datedPublicId = FOLDER + '/backups/d1-' + day + '.json';
     const payload = {
       exportedAt,
-      source: 'd1',
+      source: source,
       clients,
       submissions,
       newsletters,
       classes: []
     };
-    // Dedicated backup file
-    await uploadRaw(env, FOLDER + '/d1-backup.json', JSON.stringify(payload, null, 2));
-    // Also refresh store.json so emergency rollback / old tooling still sees data
+    const body = JSON.stringify(payload, null, 2);
+
+    // 1. Dated history file (survives beyond Time Travel window)
+    await uploadRaw(env, datedPublicId, body);
+    // 2. Always-latest dedicated backup
+    await uploadRaw(env, FOLDER + '/d1-backup.json', body);
+    // 3. Refresh store.json so emergency rollback / old tooling still sees data
     await uploadRaw(
       env,
       FOLDER + '/store.json',
@@ -1261,19 +1306,23 @@ async function d1BackupToCloudinary(env) {
         'store',
         null,
         JSON.stringify({
+          source: source,
+          cron: opts.cron || null,
           clients: clients.length,
           submissions: submissions.length,
-          newsletters: newsletters.length
+          newsletters: newsletters.length,
+          dated: datedPublicId
         })
       )
       .run();
     return {
       ok: true,
       exportedAt,
+      source: source,
       clients: clients.length,
       submissions: submissions.length,
       newsletters: newsletters.length,
-      files: ['buzios/d1-backup.json', 'buzios/store.json']
+      files: [datedPublicId, FOLDER + '/d1-backup.json', FOLDER + '/store.json']
     };
   } catch (e) {
     return { ok: false, error: (e && e.message) || String(e) };

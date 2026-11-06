@@ -4,6 +4,12 @@ compatibility_date = "2024-09-23"
 workers_dev = true
 preview_urls = true
 
+# Cron: every ~6 days at 03:00 UTC (days 1,7,13,19,25 of month).
+# Runs scheduled() → d1BackupToCloudinary → Cloudinary dated + latest snapshots.
+# Time Travel on Free is only 7 days; this keeps an off-platform copy beyond that window.
+[triggers]
+crons = ["0 3 1,7,13,19,25 * *"]
+
 # D1 — operational data (clients, submissions, newsletter)
 # Create DB once:  npx wrangler d1 create buzios-db
 # Then paste the database_id below and run migrations.

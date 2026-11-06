@@ -23,14 +23,17 @@ Live: https://www.buzioshealthclub.com
          │                        │
          │                        ├─ Catalog write → Cloudinary catalog.json (+ invalidate)
          │                        ├─ Ops write    → D1 only (clients, submissions, newsletter)
-         │                        ├─ Ops backup   → d1_backup → d1-backup.json + store.json
+         │                        ├─ Ops backup   → cron (~6d) + d1_backup
+         │                        │                 → backups/d1-YYYY-MM-DD.json
+         │                        │                 → d1-backup.json + store.json
          │                        └─ Ops read     → D1 (admin overlays after load)
          └── admin login via action "auth" (password = Worker secret only)
 Cloudinary
-  ├─ buzios/catalog.json     (plans, texts, image slots)     ← long-term stay
-  ├─ buzios/store.json       (backup snapshot via d1_backup)
-  ├─ buzios/d1-backup.json   (full D1 export)
-  ├─ buzios/store-prev.json  (last good store snapshot)
+  ├─ buzios/catalog.json              (plans, texts, image slots)  ← long-term stay
+  ├─ buzios/backups/d1-YYYY-MM-DD.json (dated ops history, cron)
+  ├─ buzios/d1-backup.json            (always-latest D1 export)
+  ├─ buzios/store.json                (emergency snapshot via backup)
+  ├─ buzios/store-prev.json           (last good store snapshot)
   └─ media (unsigned browser uploads)
 Cloudflare D1 (buzios-db)    ← clients + inbox + newsletter (primary)
 [Static HTML/CSS/JS] ◄── Cloudflare Pages
@@ -53,7 +56,7 @@ Cloudflare D1 (buzios-db)    ← clients + inbox + newsletter (primary)
 | Clients | D1 only | Daily edits; row-level; no whole-file races |
 | Inscrições / contactos (inbox) | D1 only | Status updates without Cloudinary file |
 | Newsletter | D1 only | Same pattern as inbox |
-| Ops backup | Cloudinary `d1-backup.json` + `store.json` via `d1_backup` | On-demand / cron |
+| Ops backup | Cloudinary dated `backups/d1-YYYY-MM-DD.json` + latest pointers | Cron every ~6 days + on-demand `d1_backup` |
 
 Worker base: `https://buzios-publish.gymngola.workers.dev`
 
@@ -272,6 +275,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Password out of code:** admin login via Worker `action: "auth"`; no hardcoded password in `js/admin.js`.
 - **Admin load hardening:** Cloudinary store fetch 8s timeout; always overlay clients/submissions/newsletters from D1 so Clientes cannot stay empty if store snapshot stalls.
 - **Admin chrome:** sidebar **Website** (public site), **Sair** (logout clears session password + auth).
+- **Scheduled ops backup:** Worker cron `0 3 1,7,13,19,25 * *` (~every 6 days, 03:00 UTC) runs `d1BackupToCloudinary`. Writes `buzios/backups/d1-YYYY-MM-DD.json` (dated history) + `d1-backup.json` + `store.json`. Complements D1 Time Travel (7d Free / 30d Paid). Docs: `SETUP-D1.md`, README, this blueprint.
 
 ### 2026-11-04 → 2026-11-05
 

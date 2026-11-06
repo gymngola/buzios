@@ -112,7 +112,11 @@ curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
 ```
 
 **Clients / inbox / newsletter:** D1 is primary (cutover 2026-11-06). Admin reads via `d1_get_*`. Mutations write D1 only (`WRITE_OPS_TO_STORE = false`).  
-**Backup:** `action: "d1_backup"` exports D1 → `buzios/d1-backup.json` and refreshes `store.json`.  
+**Backup:** `action: "d1_backup"` (manual) + **cron every ~6 days** export D1 → Cloudinary:
+- `buzios/backups/d1-YYYY-MM-DD.json` (dated history)
+- `buzios/d1-backup.json` (latest)
+- `buzios/store.json` (emergency snapshot)  
+Time Travel alone is only 7 days on Free — keep the Cloudinary snapshots. See `worker/SETUP-D1.md`.  
 **Catalog:** Cloudinary only.
 
 ### 3. Admin password
@@ -195,7 +199,7 @@ Each installs as its own standalone app (different icons and names). The service
 | Clients | **D1 only** (cutover) | **D1** (`d1_get_clients`) |
 | Submissions / newsletter | **D1 only** (cutover) | **D1** (`d1_get_submissions` / `d1_get_newsletters`) |
 | Catalog | Cloudinary only | Cloudinary via Worker `/catalog` |
-| Ops backup | `d1_backup` → Cloudinary | `buzios/d1-backup.json` + refreshed `store.json` |
+| Ops backup | Cron (~6 days) + `d1_backup` → Cloudinary | `buzios/backups/d1-YYYY-MM-DD.json` + `d1-backup.json` + `store.json` |
 
 1. Public forms → `POST /submit` → **D1** only (`WRITE_OPS_TO_STORE = false`)
 2. Admin mutations (clients / inbox / newsletter) → **D1** only
@@ -216,8 +220,9 @@ Each installs as its own standalone app (different icons and names). The service
 | Public ID | Written by | Read by |
 |-----------|------------|---------|
 | `buzios/catalog.json` | `POST /publish` | Worker `GET /catalog` → public + admin |
-| `buzios/store.json` | `d1_backup` (and legacy dual-write if flag on) | Recovery / emergency snapshot |
-| `buzios/d1-backup.json` | `d1_backup` | Full D1 export |
+| `buzios/store.json` | Cron + `d1_backup` (and legacy dual-write if flag on) | Recovery / emergency snapshot |
+| `buzios/d1-backup.json` | Cron + `d1_backup` | Always-latest full D1 export |
+| `buzios/backups/d1-YYYY-MM-DD.json` | Cron + `d1_backup` | Dated history (beyond Time Travel window) |
 | `buzios/store-prev.json` | `saveStore` (automatic, when ops write to store) | Recovery only |
 
 Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `public_id`, `timestamp` + API secret.

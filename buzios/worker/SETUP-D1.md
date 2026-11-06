@@ -68,9 +68,36 @@ npx wrangler d1 execute buzios-db --remote \
 - Catalog stays on Cloudinary.
 - Password: only in Worker secret `ADMIN_PASSWORD`. Admin login calls `action: "auth"`; no password in source.
 
-## Backup
+## Backup (critical — read this)
 
-On demand (also refreshes `store.json` as emergency snapshot):
+D1 **Time Travel** recovers the DB to any minute in the last **7 days (Free)** or **30 days (Workers Paid)**.  
+That alone is **not** enough for long-term safety. Keep off-platform snapshots on Cloudinary.
+
+### Automatic (cron — every ~6 days)
+
+Configured in `wrangler.toml`:
+
+```toml
+[triggers]
+crons = ["0 3 1,7,13,19,25 * *"]   # 03:00 UTC on days 1,7,13,19,25
+```
+
+On each run the Worker exports D1 → Cloudinary:
+
+| Public ID | Role |
+|-----------|------|
+| `buzios/backups/d1-YYYY-MM-DD.json` | **Dated history** (survives beyond Time Travel) |
+| `buzios/d1-backup.json` | Always-latest pointer |
+| `buzios/store.json` | Emergency snapshot for rollback / old tooling |
+
+After deploy, confirm the trigger is registered:
+
+```bash
+cd worker && npx wrangler deployments list
+# or check Cloudflare dashboard → Workers → buzios-publish → Triggers
+```
+
+### On demand (manual)
 
 ```bash
 curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
@@ -78,20 +105,27 @@ curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
   -d '{"password":"…","action":"d1_backup"}'
 ```
 
-Writes `buzios/d1-backup.json` + updates `buzios/store.json`.  
-Optional later: cron Worker calling the same action.
+Same three files as above. Prefer running this after bulk imports, mass deletes, or before risky admin work.
+
+### Reminder
+
+- **At least every 6 days** a Cloudinary snapshot must exist (cron does this after deploy).
+- Prefer **Workers Paid** for 30-day Time Travel.
+- Dated files under `buzios/backups/` are the durable archive; do not delete them casually.
+- Admin **Clientes → Backup** still downloads a full JSON to the staff browser (local copy).
 
 ## Rollback
 
 1. Set `WRITE_OPS_TO_STORE = true` in `src/index.js` and redeploy (dual-write again).
-2. Or restore from latest `d1-backup.json` / `store.json` via `d1_import_from_store` after loading store.
+2. Or restore from latest `d1-backup.json` / `store.json` / `buzios/backups/d1-*.json` via `d1_import_from_store` after loading store.
 3. Cloudinary files are **not** deleted on cutover.
+4. Within the Time Travel window: restore D1 to a prior minute (dashboard or `wrangler d1 time-travel`).
 
 ## Files
 
 | Path | Role |
 |------|------|
 | `migrations/0001_init.sql` | Tables + indexes |
-| `wrangler.toml` | D1 binding |
-| `src/index.js` | D1 primary writes; `WRITE_OPS_TO_STORE` flag; `auth`, `d1_backup`, `d1_get_*` |
+| `wrangler.toml` | D1 binding + cron trigger |
+| `src/index.js` | D1 primary writes; `WRITE_OPS_TO_STORE`; `scheduled` cron backup; `d1_backup` |
 | `../js/admin.js` | Login via Worker; overlays clients + submissions + newsletters from D1 |

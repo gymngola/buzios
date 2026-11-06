@@ -10,5 +10,5 @@ preview_urls = true
 [[d1_databases]]
 binding = "DB"
 database_name = "buzios-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "e02a0a4d-a82e-437e-8466-6e985e417eaf"
 migrations_dir = "migrations"

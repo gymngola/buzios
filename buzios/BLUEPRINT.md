@@ -258,6 +258,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 | `worker/src/index.js` | API (Cloudinary store + D1 helpers) |
 | `worker/wrangler.toml` | Worker + D1 binding |
 | `worker/migrations/0001_init.sql` | D1 schema (clients, submissions, newsletters, audit_log) |
+| `worker/migrations/0002_trash.sql` | `deleted_at` for 30-day trash |
 | `worker/SETUP-D1.md` | D1 create / migrate / import commands |
 | `icons/logo.png` | Brand mark |
 
@@ -278,6 +279,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Scheduled ops backup:** Worker cron `0 3 1,7,13,19,25 * *` (~every 6 days, 03:00 UTC) runs `d1BackupToCloudinary`. Writes `buzios/backups/d1-YYYY-MM-DD.json` (dated history) + `d1-backup.json` + `store.json`. Complements D1 Time Travel (7d Free / 30d Paid). Docs: `SETUP-D1.md`, README, this blueprint.
 - **/submit fail-loud:** After cutover D1 is primary. If DB is unbound or any upsert throws, `/submit` returns 5xx (never silent `{ok:true}`). Public forms already check `res.ok` and show error alerts.
 - **D1 batch + retries:** Multi-row writes (enrollment submission+client, delete+audit) use `DB.batch()` as one transaction. Transient errors (network lost, DO reset, SQLITE_BUSY, overloaded) retry up to 3× with exponential backoff + jitter. Platform only auto-retries reads.
+- **30-day trash:** “Apagar/Lixeira” sets `deleted_at` (soft). Filter **Lixeira (30d)** + Restaurar. Permanent purge after 30 days on backup cron. Migration `0002_trash.sql`. Arquivar remains separate.
 
 ### 2026-11-04 → 2026-11-05
 

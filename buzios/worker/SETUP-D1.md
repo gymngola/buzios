@@ -28,6 +28,9 @@ migrations_dir = "migrations"
 npx wrangler d1 migrations apply buzios-db --remote
 ```
 
+- `0001_init.sql` — clients, submissions, newsletters, audit_log  
+- `0002_trash.sql` — `deleted_at` on clients + submissions (30-day trash)
+
 Local optional (for tests):
 
 ```bash
@@ -90,12 +93,24 @@ On each run the Worker exports D1 → Cloudinary:
 | `buzios/d1-backup.json` | Always-latest pointer |
 | `buzios/store.json` | Emergency snapshot for rollback / old tooling |
 
+The same cron also **purges trash older than 30 days** (clients + submissions with `deleted_at`).
+
 After deploy, confirm the trigger is registered:
 
 ```bash
 cd worker && npx wrangler deployments list
 # or check Cloudflare dashboard → Workers → buzios-publish → Triggers
 ```
+
+### Trash (soft delete)
+
+| Action | Behaviour |
+|--------|-----------|
+| Arquivar client | `membership_status = arquivado` (not trash) |
+| Apagar / Lixeira | Sets `deleted_at` — hidden from main lists; filter **Lixeira (30d)** |
+| Restaurar | Clears `deleted_at` |
+| Apagar já (in lixeira) | Permanent `DELETE` |
+| Auto | Cron purges rows with `deleted_at` older than 30 days |
 
 ### On demand (manual)
 
@@ -126,6 +141,7 @@ Same three files as above. Prefer running this after bulk imports, mass deletes,
 | Path | Role |
 |------|------|
 | `migrations/0001_init.sql` | Tables + indexes |
+| `migrations/0002_trash.sql` | `deleted_at` (30-day trash) |
 | `wrangler.toml` | D1 binding + cron trigger |
-| `src/index.js` | D1 primary writes; `WRITE_OPS_TO_STORE`; `scheduled` cron backup; `d1_backup` |
-| `../js/admin.js` | Login via Worker; overlays clients + submissions + newsletters from D1 |
+| `src/index.js` | D1 writes; trash/restore/purge; cron backup + purge; `d1_backup` |
+| `../js/admin.js` | Login via Worker; D1 overlays; Lixeira filters |

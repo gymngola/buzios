@@ -67,28 +67,37 @@ export default {
 
   /**
    * Cron: every ~6 days (see wrangler.toml [triggers]).
-   * Exports D1 → Cloudinary dated snapshot + latest pointers.
-   * Complements D1 Time Travel (7 days Free / 30 days Paid).
+   * 1) Export D1 → Cloudinary dated snapshot + latest pointers.
+   * 2) Permanently purge trash older than 30 days.
    */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
-      d1BackupToCloudinary(env, { source: 'cron', cron: event.cron || null }).then(
-        (result) => {
-          if (result && result.ok) {
-            console.log(
-              'cron d1_backup ok',
-              result.exportedAt,
-              'clients=' + result.clients,
-              'files=' + (result.files || []).join(',')
-            );
-          } else {
-            console.error('cron d1_backup failed', result && result.error);
-          }
-        },
-        (err) => {
-          console.error('cron d1_backup threw', err && err.message);
+      (async () => {
+        const result = await d1BackupToCloudinary(env, {
+          source: 'cron',
+          cron: event.cron || null
+        });
+        if (result && result.ok) {
+          console.log(
+            'cron d1_backup ok',
+            result.exportedAt,
+            'clients=' + result.clients,
+            'files=' + (result.files || []).join(',')
+          );
+        } else {
+          console.error('cron d1_backup failed', result && result.error);
         }
-      )
+        try {
+          const purge = await d1PurgeTrash(env, 30);
+          console.log(
+            'cron purge_trash',
+            'clients=' + purge.clientsPurged,
+            'submissions=' + purge.submissionsPurged
+          );
+        } catch (e) {
+          console.error('cron purge_trash failed', e && e.message);
+        }
+      })()
     );
   }
 };
@@ -472,15 +481,19 @@ async function handleAdminData(request, env) {
     return json({ ok: true, client: saved });
   }
 
+  // hard=false → archive (arquivado). hard=true → trash (deleted_at, 30-day recovery).
+  // data.purge=true → permanent DELETE (cron / empty trash only).
   if (action === 'delete_client' && data && data.id) {
     const clientId = String(data.id);
     const hard = !!data.hard;
+    const purge = !!data.purge;
     if (env.DB) {
       try {
-        if (hard) {
+        if (purge) {
           await d1HardDeleteClient(env, clientId);
+        } else if (hard) {
+          await d1TrashClient(env, clientId);
         } else {
-          // Soft archive: only touch status columns (admin often sends {id} only)
           await d1ArchiveClient(env, clientId);
         }
       } catch (e) {
@@ -491,8 +504,15 @@ async function handleAdminData(request, env) {
     if (WRITE_OPS_TO_STORE) {
       store = await loadStore(env);
       store.clients = store.clients || [];
-      if (hard) {
+      if (purge) {
         store.clients = store.clients.filter(c => String(c.id) !== clientId);
+      } else if (hard) {
+        const idx = store.clients.findIndex(c => String(c.id) === clientId);
+        if (idx >= 0) {
+          store.clients[idx] = Object.assign({}, store.clients[idx], {
+            deletedAt: new Date().toISOString()
+          });
+        }
       } else {
         const idx = store.clients.findIndex(c => String(c.id) === clientId);
         if (idx >= 0) {
@@ -509,10 +529,27 @@ async function handleAdminData(request, env) {
     return json({ ok: true });
   }
 
-  if (action === 'delete_submission' && data && data.id) {
+  if (action === 'restore_client' && data && data.id) {
     if (env.DB) {
       try {
-        await d1DeleteSubmission(env, data.id);
+        await d1RestoreClient(env, data.id);
+      } catch (e) {
+        return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
+      }
+    }
+    return json({ ok: true });
+  }
+
+  // Soft-delete to trash (deleted_at). data.purge=true → permanent.
+  if (action === 'delete_submission' && data && data.id) {
+    const purge = !!data.purge;
+    if (env.DB) {
+      try {
+        if (purge) {
+          await d1HardDeleteSubmission(env, data.id);
+        } else {
+          await d1TrashSubmission(env, data.id);
+        }
       } catch (e) {
         console.error('D1 delete submission failed', e && e.message);
         return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
@@ -520,12 +557,38 @@ async function handleAdminData(request, env) {
     }
     if (WRITE_OPS_TO_STORE) {
       store = await loadStore(env);
-      store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
+      if (purge) {
+        store.submissions = (store.submissions || []).filter(s => s.id !== data.id);
+      } else {
+        const idx = (store.submissions || []).findIndex(s => s.id === data.id);
+        if (idx >= 0) {
+          store.submissions[idx] = Object.assign({}, store.submissions[idx], {
+            status: 'eliminado',
+            deletedAt: new Date().toISOString()
+          });
+        }
+      }
       store.updatedAt = new Date().toISOString();
       await saveStore(env, store);
       return json({ ok: true, store });
     }
     return json({ ok: true });
+  }
+
+  if (action === 'restore_submission' && data && data.id) {
+    if (env.DB) {
+      try {
+        await d1RestoreSubmission(env, data.id);
+      } catch (e) {
+        return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
+      }
+    }
+    return json({ ok: true });
+  }
+
+  if (action === 'd1_purge_trash') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    return json(await d1PurgeTrash(env, data && data.days != null ? Number(data.days) : 30));
   }
 
   if (action === 'delete_newsletter' && data && data.id) {
@@ -1032,7 +1095,8 @@ function rowToClient(r) {
     emergencyPhone: r.emergency_phone,
     fromImport: !!r.from_import,
     fromSubmission: r.from_submission,
-    createdAt: r.created_at
+    createdAt: r.created_at,
+    deletedAt: r.deleted_at || null
   };
 }
 
@@ -1063,7 +1127,8 @@ function rowToSubmission(r) {
     preferContact: r.prefer_contact != null ? r.prefer_contact : base.preferContact,
     fromClientId: r.from_client_id != null ? r.from_client_id : base.fromClientId,
     createdAt: r.created_at || base.createdAt,
-    updatedAt: r.updated_at || base.updatedAt
+    updatedAt: r.updated_at || base.updatedAt,
+    deletedAt: r.deleted_at || null
   });
 }
 
@@ -1190,6 +1255,7 @@ async function d1UpsertClient(env, c) {
   await d1BatchWithRetry(env, () => [d1ClientUpsertStmt(env, c)]);
 }
 
+/** Permanent delete (after 30-day trash or explicit purge). */
 async function d1HardDeleteClient(env, clientId) {
   const id = String(clientId);
   const at = new Date().toISOString();
@@ -1197,11 +1263,38 @@ async function d1HardDeleteClient(env, clientId) {
     env.DB.prepare('DELETE FROM clients WHERE id = ?').bind(id),
     env.DB.prepare(
       'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
-    ).bind(at, 'delete_client', 'client', id, 'hard')
+    ).bind(at, 'delete_client', 'client', id, 'purge')
   ]);
 }
 
-/** Soft-delete: only update membership_status (preserve other columns). */
+/** Move client to trash (recoverable for 30 days). */
+async function d1TrashClient(env, clientId) {
+  const id = String(clientId);
+  const now = new Date().toISOString();
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare(
+      `UPDATE clients SET deleted_at = ?, updated_at = ? WHERE id = ?`
+    ).bind(now, now, id),
+    env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    ).bind(now, 'trash_client', 'client', id, 'trash')
+  ]);
+}
+
+async function d1RestoreClient(env, clientId) {
+  const id = String(clientId);
+  const now = new Date().toISOString();
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare(
+      `UPDATE clients SET deleted_at = NULL, updated_at = ? WHERE id = ?`
+    ).bind(now, id),
+    env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    ).bind(now, 'restore_client', 'client', id, 'restore')
+  ]);
+}
+
+/** Soft archive: membership_status only (not trash). */
 async function d1ArchiveClient(env, clientId) {
   const id = String(clientId);
   const now = new Date().toISOString();
@@ -1254,10 +1347,88 @@ async function d1UpsertSubmission(env, s) {
   await d1BatchWithRetry(env, () => [d1SubmissionUpsertStmt(env, s)]);
 }
 
-async function d1DeleteSubmission(env, id) {
+/** Soft-delete submission to trash (recoverable 30 days). */
+async function d1TrashSubmission(env, id) {
+  const sid = String(id);
+  const now = new Date().toISOString();
   await d1BatchWithRetry(env, () => [
-    env.DB.prepare('DELETE FROM submissions WHERE id = ?').bind(String(id))
+    env.DB.prepare(
+      `UPDATE submissions SET deleted_at = ?, status = 'eliminado', updated_at = ? WHERE id = ?`
+    ).bind(now, now, sid),
+    env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    ).bind(now, 'trash_submission', 'submission', sid, 'trash')
   ]);
+}
+
+async function d1RestoreSubmission(env, id) {
+  const sid = String(id);
+  const now = new Date().toISOString();
+  // Restore to 'arquivado' so it does not reappear as "novo" in the main inbox
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare(
+      `UPDATE submissions SET deleted_at = NULL, status = 'arquivado', updated_at = ? WHERE id = ?`
+    ).bind(now, sid),
+    env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    ).bind(now, 'restore_submission', 'submission', sid, 'restore')
+  ]);
+}
+
+async function d1HardDeleteSubmission(env, id) {
+  const sid = String(id);
+  const at = new Date().toISOString();
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare('DELETE FROM submissions WHERE id = ?').bind(sid),
+    env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    ).bind(at, 'delete_submission', 'submission', sid, 'purge')
+  ]);
+}
+
+/** Permanently delete trash older than `days` (default 30). */
+async function d1PurgeTrash(env, days) {
+  days = days > 0 ? days : 30;
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const clients = await env.DB.prepare(
+    'SELECT id FROM clients WHERE deleted_at IS NOT NULL AND deleted_at < ?'
+  )
+    .bind(cutoff)
+    .all();
+  const submissions = await env.DB.prepare(
+    'SELECT id FROM submissions WHERE deleted_at IS NOT NULL AND deleted_at < ?'
+  )
+    .bind(cutoff)
+    .all();
+  let clientsPurged = 0;
+  let submissionsPurged = 0;
+  for (const row of clients.results || []) {
+    await d1HardDeleteClient(env, row.id);
+    clientsPurged++;
+  }
+  for (const row of submissions.results || []) {
+    await d1HardDeleteSubmission(env, row.id);
+    submissionsPurged++;
+  }
+  const at = new Date().toISOString();
+  await env.DB.prepare(
+    'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(
+      at,
+      'purge_trash',
+      'store',
+      null,
+      JSON.stringify({ days, cutoff, clientsPurged, submissionsPurged })
+    )
+    .run();
+  return {
+    ok: true,
+    days,
+    cutoff,
+    clientsPurged,
+    submissionsPurged
+  };
 }
 
 function d1NewsletterUpsertStmt(env, n) {

@@ -727,10 +727,15 @@
       btns.push(`<button type="button" data-promote-cli="${id}">Criar cliente</button>`);
       btns.push(`<button type="button" data-promote-cli-pend="${id}">Criar pendente (docs)</button>`);
     }
+    if (isInTrash(s)) {
+      btns.push(`<button type="button" data-restore-sub="${id}">Restaurar</button>`);
+      btns.push(`<button type="button" class="danger" data-del-sub="${id}" data-purge="1">Apagar já</button>`);
+      return btns.join('');
+    }
     if (status !== 'arquivado') {
       btns.push(`<button type="button" data-st="${id}" data-v="arquivado">Arquivar</button>`);
     }
-    btns.push(`<button type="button" class="danger" data-del-sub="${id}">Apagar</button>`);
+    btns.push(`<button type="button" class="danger" data-del-sub="${id}">Lixeira</button>`);
     return btns.join('');
   }
 
@@ -738,8 +743,13 @@
     const list = $('#inboxList');
     if (!list) return;
     let items = (store.submissions || []).filter(s => s.type === 'enrollment');
-    if (inboxFilter && inboxFilter !== 'all') {
-      items = items.filter(s => (s.status || 'novo') === inboxFilter);
+    if (inboxFilter === 'lixeira') {
+      items = items.filter(isInTrash);
+    } else {
+      items = items.filter(s => !isInTrash(s));
+      if (inboxFilter && inboxFilter !== 'all') {
+        items = items.filter(s => (s.status || 'novo') === inboxFilter);
+      }
     }
     items = items.slice().sort((a, b) => {
       const sa = SUB_STATUS_ORDER[a.status || 'novo'] ?? 9;
@@ -832,6 +842,11 @@
     const id = escapeHtml(s.id);
     const status = s.status || 'novo';
     const btns = [];
+    if (isInTrash(s)) {
+      btns.push(`<button type="button" data-restore-sub="${id}">Restaurar</button>`);
+      btns.push(`<button type="button" class="danger" data-del-sub="${id}" data-purge="1">Apagar já</button>`);
+      return btns.join('');
+    }
     if (status !== 'novo') {
       btns.push(`<button type="button" data-st="${id}" data-v="novo">Reabrir (novo)</button>`);
     }
@@ -845,7 +860,7 @@
     if (wa) {
       btns.push(`<a class="wa-btn" href="${wa}" target="_blank" rel="noopener">WhatsApp</a>`);
     }
-    btns.push(`<button type="button" class="danger" data-del-sub="${id}">Apagar</button>`);
+    btns.push(`<button type="button" class="danger" data-del-sub="${id}">Lixeira</button>`);
     return btns.join('');
   }
 
@@ -853,14 +868,19 @@
     const list = $('#contactsList');
     if (!list) return;
     let items = (store.submissions || []).filter(s => s.type === 'contact' || (!s.type && s.message));
-    if (contactsFilter && contactsFilter !== 'all') {
-      if (contactsFilter === 'contactado') {
-        items = items.filter(s => {
-          const st = s.status || 'novo';
-          return st === 'contactado' || st === 'respondido';
-        });
-      } else {
-        items = items.filter(s => (s.status || 'novo') === contactsFilter);
+    if (contactsFilter === 'lixeira') {
+      items = items.filter(isInTrash);
+    } else {
+      items = items.filter(s => !isInTrash(s));
+      if (contactsFilter && contactsFilter !== 'all') {
+        if (contactsFilter === 'contactado') {
+          items = items.filter(s => {
+            const st = s.status || 'novo';
+            return st === 'contactado' || st === 'respondido';
+          });
+        } else {
+          items = items.filter(s => (s.status || 'novo') === contactsFilter);
+        }
       }
     }
     items = items.slice().sort((a, b) => {
@@ -1081,13 +1101,33 @@
         e.stopPropagation();
         const id = btn.getAttribute('data-del-sub');
         if (!id) return;
-        if (!confirm('Apagar esta entrada?')) return;
+        const purge = btn.getAttribute('data-purge') === '1';
+        if (purge) {
+          if (!confirm('Apagar definitivamente? Já não poderá restaurar.')) return;
+        } else if (!confirm('Mover para a lixeira? Pode restaurar nos próximos 30 dias.')) {
+          return;
+        }
         btn.disabled = true;
-        const ok = await adminAction('delete_submission', { id });
-        if (ok) toast('Apagado');
+        const ok = await adminAction('delete_submission', { id, purge: !!purge });
+        if (ok) toast(purge ? 'Apagado definitivamente' : 'Na lixeira (30 dias)');
         else {
           btn.disabled = false;
           toast('Não foi possível apagar');
+        }
+      });
+    });
+    list.querySelectorAll('[data-restore-sub]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = btn.getAttribute('data-restore-sub');
+        if (!id) return;
+        btn.disabled = true;
+        const ok = await adminAction('restore_submission', { id });
+        if (ok) toast('Restaurado (arquivado)');
+        else {
+          btn.disabled = false;
+          toast('Não foi possível restaurar');
         }
       });
     });
@@ -1112,10 +1152,14 @@
           if (json.store.updatedAt) lastKnownUpdatedAt = json.store.updatedAt;
         }
         // After cutover, mutations return without store — always re-read ops from D1
-        if (action === 'update_client' || action === 'delete_client') {
+        if (action === 'update_client' || action === 'delete_client' || action === 'restore_client') {
           await overlayClientsFromD1();
         }
-        if (action === 'update_submission' || action === 'delete_submission') {
+        if (
+          action === 'update_submission' ||
+          action === 'delete_submission' ||
+          action === 'restore_submission'
+        ) {
           await overlaySubmissionsFromD1();
         }
         if (action === 'delete_newsletter') {
@@ -1235,7 +1279,7 @@
     }
 
     if (action === 'delete') {
-      if (!confirm('Apagar ' + ids.length + ' item(ns) seleccionados? Esta acção não pode ser desfeita.')) return;
+      if (!confirm('Mover ' + ids.length + ' item(ns) para a lixeira?\nPode restaurar nos próximos 30 dias.')) return;
     }
 
     let ok = 0;
@@ -1453,7 +1497,14 @@
     return out;
   }
 
+  function isInTrash(item) {
+    return !!(item && item.deletedAt);
+  }
+
   function clientMatchesFilter(c, filter) {
+    if (filter === 'lixeira') return isInTrash(c);
+    // All non-trash views hide trashed rows
+    if (isInTrash(c)) return false;
     if (filter === 'all') return c.membershipStatus !== 'arquivado';
     if (filter === 'activo') return c.membershipStatus === 'activo' && !c._expired;
     if (filter === 'a_expirar') return c._expiringSoon && c.membershipStatus === 'activo';
@@ -1507,16 +1558,18 @@
   }
 
   function clientsStats(items) {
-    let activo = 0, aExpirar = 0, expirado = 0, divida = 0, pendente = 0;
+    let activo = 0, aExpirar = 0, expirado = 0, divida = 0, pendente = 0, visible = 0;
     items.forEach(c => {
+      if (isInTrash(c)) return;
       if (c.membershipStatus === 'arquivado') return;
+      visible++;
       if (c.membershipStatus === 'pendente') pendente++;
       if (c.membershipStatus === 'activo' && !c._expired) activo++;
       if (c._expiringSoon && c.membershipStatus === 'activo') aExpirar++;
       if (c.membershipStatus === 'expirado' || c._expired) expirado++;
       if (c.billingStatus === 'em_divida' || c.billingStatus === 'atrasado') divida++;
     });
-    return { activo, aExpirar, expirado, divida, pendente, total: items.length };
+    return { activo, aExpirar, expirado, divida, pendente, total: visible };
   }
 
   function updateClientsNavBadge(stats) {
@@ -1542,7 +1595,7 @@
     if (!n || n.length < 6) return null;
     return (store.clients || []).find(c => {
       if (excludeId && c.id === excludeId) return false;
-      if (c.membershipStatus === 'arquivado') return false;
+      if (isInTrash(c) || c.membershipStatus === 'arquivado') return false;
       return normalizePhone(c.phone) === n;
     }) || null;
   }
@@ -1630,12 +1683,17 @@
         <button type="button" class="btn-renew" data-renew-cli="${c.id}">Renovar</button>
         ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
       `;
-      const secondaryButtons = `
+      const secondaryButtons = isInTrash(c)
+        ? `
+        <button type="button" data-restore-cli="${c.id}">Restaurar</button>
+        <button type="button" class="danger" data-del-cli="${c.id}" data-purge="1">Apagar já</button>
+      `
+        : `
         <button type="button" data-edit-cli="${c.id}">Editar</button>
         ${mem !== 'suspenso' && mem !== 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="suspenso">Suspender</button>' : ''}
         ${mem === 'suspenso' || mem === 'arquivado' ? '<button type="button" data-status-cli="' + c.id + '" data-status-v="activo">Reactivar</button>' : ''}
         ${mem !== 'arquivado' ? '<button type="button" data-archive-cli="' + c.id + '">Arquivar</button>' : ''}
-        <button type="button" class="danger" data-del-cli="${c.id}">Apagar</button>
+        <button type="button" class="danger" data-del-cli="${c.id}">Lixeira</button>
       `;
 
       return `
@@ -1717,10 +1775,24 @@
       btn.addEventListener('click', async () => {
         const existing = (store.clients || []).find(x => String(x.id) === String(btn.dataset.delCli));
         if (!existing) return;
-        if (!confirm('APAGAR definitivamente ' + (existing.name || 'este cliente') + '?\n\nPrefira Arquivar se quiser manter histórico.')) return;
-        if (!confirm('Confirma apagar para sempre?')) return;
-        const ok = await adminAction('delete_client', { id: existing.id, hard: true });
-        if (ok) toast('Cliente apagado');
+        const purge = btn.getAttribute('data-purge') === '1';
+        if (purge) {
+          if (!confirm('Apagar definitivamente ' + (existing.name || 'este cliente') + '?\nJá não poderá restaurar.')) return;
+          const ok = await adminAction('delete_client', { id: existing.id, hard: true, purge: true });
+          if (ok) toast('Cliente apagado definitivamente');
+        } else {
+          if (!confirm('Mover ' + (existing.name || 'este cliente') + ' para a lixeira?\nPode restaurar nos próximos 30 dias. (Prefira Arquivar se só quiser esconder da lista principal.)')) return;
+          const ok = await adminAction('delete_client', { id: existing.id, hard: true });
+          if (ok) toast('Cliente na lixeira (30 dias)');
+        }
+      });
+    });
+    list.querySelectorAll('[data-restore-cli]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const existing = (store.clients || []).find(x => String(x.id) === String(btn.dataset.restoreCli));
+        if (!existing) return;
+        const ok = await adminAction('restore_client', { id: existing.id });
+        if (ok) toast('Cliente restaurado');
       });
     });
     // Close "Mais" menus when clicking outside
@@ -2255,12 +2327,11 @@
     if (!editingClientId) return;
     const existing = (store.clients || []).find(x => String(x.id) === String(editingClientId));
     if (!existing) return;
-    if (!confirm('APAGAR definitivamente ' + (existing.name || 'este cliente') + '?\n\nIsto não pode ser desfeito. Prefira Arquivar se quiser manter histórico.')) return;
-    if (!confirm('Confirma apagar para sempre?')) return;
+    if (!confirm('Mover ' + (existing.name || 'este cliente') + ' para a lixeira?\nPode restaurar nos próximos 30 dias.\n(Prefira Arquivar se só quiser esconder da lista principal.)')) return;
     const ok = await adminAction('delete_client', { id: editingClientId, hard: true });
     if (ok) {
       $('#clientModal').classList.remove('open');
-      toast('Cliente apagado');
+      toast('Cliente na lixeira (30 dias)');
     }
   });
 

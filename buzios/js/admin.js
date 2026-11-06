@@ -14,6 +14,37 @@
   const CATALOG_FOLDER = 'buzios';
   // Worker proxy = always fresh (avoids Cloudinary CDN 30-day cache)
   const CATALOG_JSON_URL = 'https://buzios-publish.gymngola.workers.dev/catalog';
+  /** Worker /admin/data can hang on restrictive networks (e.g. gym Wi‑Fi). Never wait forever. */
+  const WORKER_FETCH_MS = 12000;
+
+  /**
+   * fetch with AbortController timeout.
+   * Rejects with err.name === 'AbortError' on timeout (or caller abort).
+   */
+  async function fetchWithTimeout(url, options, ms) {
+    const timeoutMs = typeof ms === 'number' ? ms : WORKER_FETCH_MS;
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    try {
+      const opts = Object.assign({}, options || {});
+      if (ctrl) {
+        if (options && options.signal) {
+          // Honour both caller signal and timeout
+          const onAbort = () => ctrl.abort();
+          if (options.signal.aborted) ctrl.abort();
+          else options.signal.addEventListener('abort', onAbort, { once: true });
+        }
+        opts.signal = ctrl.signal;
+      }
+      return await fetch(url, opts);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  function isTimeoutError(err) {
+    return !!(err && (err.name === 'AbortError' || /abort/i.test(String(err.message || ''))));
+  }
 
   function getAdminPassword() {
     return sessionPassword || sessionStorage.getItem('buzios_admin_pw') || '';
@@ -142,20 +173,27 @@
       $('#loginError').style.display = 'block';
       return false;
     }
+    const errEl = $('#loginError');
     try {
-      const res = await fetch(ADMIN_DATA_URL, {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password, action: 'auth' }),
         cache: 'no-store'
-      });
+      }, WORKER_FETCH_MS);
       if (!res.ok) {
-        $('#loginError').style.display = 'block';
+        if (errEl) {
+          errEl.textContent = 'Palavra-passe incorrecta';
+          errEl.style.display = 'block';
+        }
         return false;
       }
       const data = await res.json();
       if (!data || !data.ok) {
-        $('#loginError').style.display = 'block';
+        if (errEl) {
+          errEl.textContent = 'Palavra-passe incorrecta';
+          errEl.style.display = 'block';
+        }
         return false;
       }
       setSessionPassword(password);
@@ -163,12 +201,17 @@
       sessionStorage.setItem(LS.auth, '1');
       if (stay) localStorage.setItem(LS.auth, '1');
       else localStorage.removeItem(LS.auth);
-      $('#loginError').style.display = 'none';
+      if (errEl) errEl.style.display = 'none';
       showApp();
       return true;
     } catch (e) {
       console.warn('Login failed', e);
-      $('#loginError').style.display = 'block';
+      if (errEl) {
+        errEl.textContent = isTimeoutError(e)
+          ? 'Servidor não respondeu. Verifique a rede (Wi‑Fi do ginásio pode bloquear a API).'
+          : 'Sem ligação ao servidor. Verifique a rede e tente de novo.';
+        errEl.style.display = 'block';
+      }
       return false;
     }
   }
@@ -383,6 +426,8 @@
   /** Multi-device + multi-tab sync. */
   let lastKnownUpdatedAt = null;
   let storeFetchInFlight = false;
+  /** Last ops load failure: null | 'timeout' | 'network' — drives sync status + empty state. */
+  let lastOpsLoadError = null;
   let localWriteInFlight = 0;
   let localWriteUntil = 0; // pause remote poll briefly after local write
   let storeSyncTimer = null;
@@ -494,12 +539,12 @@
   async function overlayClientsFromD1() {
     if (!getAdminPassword()) return false;
     try {
-      const res = await fetch(ADMIN_DATA_URL, {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_clients' }),
         cache: 'no-store'
-      });
+      }, WORKER_FETCH_MS);
       if (!res.ok) {
         console.warn('D1 clients overlay HTTP', res.status);
         return false;
@@ -509,10 +554,12 @@
       // Prefer D1 when it has data (or equal count). Never replace non-empty local with empty D1.
       if (data.clients.length === 0 && (store.clients || []).length > 0) return false;
       store.clients = data.clients;
+      lastOpsLoadError = null;
       renderClients();
       return true;
     } catch (e) {
       console.warn('D1 clients overlay failed', e);
+      lastOpsLoadError = isTimeoutError(e) ? 'timeout' : 'network';
       return false;
     }
   }
@@ -520,12 +567,12 @@
   /** Overlay store.submissions with D1 list (inbox + contacts). Same safety as clients. */
   async function overlaySubmissionsFromD1() {
     try {
-      const res = await fetch(ADMIN_DATA_URL, {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_submissions' }),
         cache: 'no-store'
-      });
+      }, WORKER_FETCH_MS);
       if (!res.ok) return false;
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.submissions)) return false;
@@ -536,6 +583,7 @@
       return true;
     } catch (e) {
       console.warn('D1 submissions overlay failed', e);
+      if (!lastOpsLoadError) lastOpsLoadError = isTimeoutError(e) ? 'timeout' : 'network';
       return false;
     }
   }
@@ -543,12 +591,12 @@
   /** Overlay store.newsletters with D1 list. Same safety as clients/submissions. */
   async function overlayNewslettersFromD1() {
     try {
-      const res = await fetch(ADMIN_DATA_URL, {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_newsletters' }),
         cache: 'no-store'
-      });
+      }, WORKER_FETCH_MS);
       if (!res.ok) return false;
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.newsletters)) return false;
@@ -558,6 +606,7 @@
       return true;
     } catch (e) {
       console.warn('D1 newsletters overlay failed', e);
+      if (!lastOpsLoadError) lastOpsLoadError = isTimeoutError(e) ? 'timeout' : 'network';
       return false;
     }
   }
@@ -568,6 +617,7 @@
     if (storeFetchInFlight) return false;
     storeFetchInFlight = true;
     if (!silent) setSyncStatus('syncing');
+    lastOpsLoadError = null;
     try {
       // No password → cannot call Worker; still try D1 overlays only if we somehow have one
       if (!getAdminPassword()) {
@@ -576,13 +626,15 @@
       }
 
       let fromWorker = null;
+      let workerReachable = false;
       try {
-        const res = await fetch(ADMIN_DATA_URL, {
+        const res = await fetchWithTimeout(ADMIN_DATA_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password: getAdminPassword(), action: 'get' }),
           cache: 'no-store'
-        });
+        }, WORKER_FETCH_MS);
+        workerReachable = true;
         if (res.status === 401) {
           setSessionPassword('');
           sessionStorage.removeItem(LS.auth);
@@ -595,6 +647,7 @@
         }
       } catch (e) {
         console.warn('Store load (worker) failed', e);
+        lastOpsLoadError = isTimeoutError(e) ? 'timeout' : 'network';
       }
 
       let chosen = fromWorker;
@@ -617,7 +670,16 @@
           await overlayClientsFromD1();
           await overlaySubmissionsFromD1();
           await overlayNewslettersFromD1();
-          setSyncStatus('ok', 'Sincronizado');
+          if (lastOpsLoadError && !(store.clients || []).length) {
+            setSyncStatus(
+              'error',
+              lastOpsLoadError === 'timeout'
+                ? 'Servidor não respondeu (tempo esgotado)'
+                : 'Sem ligação ao servidor'
+            );
+          } else {
+            setSyncStatus('ok', 'Sincronizado');
+          }
           return false;
         }
         applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
@@ -628,16 +690,40 @@
       await overlayNewslettersFromD1();
 
       if (!chosen && !gotClients && !(store.clients || []).length) {
-        if (!silent) setSyncStatus('error', 'Sem dados do servidor');
+        if (!silent) {
+          if (lastOpsLoadError === 'timeout') {
+            setSyncStatus('error', 'Servidor não respondeu (tempo esgotado)');
+          } else if (lastOpsLoadError === 'network' || !workerReachable) {
+            setSyncStatus('error', 'Sem ligação ao servidor');
+          } else {
+            setSyncStatus('error', 'Sem dados do servidor');
+          }
+        }
+        renderClients();
         return false;
       }
 
-      if (!silent) setSyncStatus('ok', 'Sincronizado');
-      else setSyncStatus('ok', 'Sincronizado');
+      if (gotClients || (store.clients || []).length) {
+        setSyncStatus('ok', 'Sincronizado');
+      } else if (lastOpsLoadError) {
+        setSyncStatus(
+          'error',
+          lastOpsLoadError === 'timeout'
+            ? 'Servidor não respondeu (tempo esgotado)'
+            : 'Sem ligação ao servidor'
+        );
+      } else {
+        setSyncStatus('ok', 'Sincronizado');
+      }
       return !!chosen;
     } catch (e) {
       console.warn('loadStore failed', e);
-      if (!silent) setSyncStatus('error', 'Erro ao sincronizar');
+      if (!silent) {
+        setSyncStatus(
+          'error',
+          isTimeoutError(e) ? 'Servidor não respondeu (tempo esgotado)' : 'Erro ao sincronizar'
+        );
+      }
       return false;
     } finally {
       storeFetchInFlight = false;
@@ -1138,12 +1224,12 @@
     localWriteInFlight++;
     localWriteUntil = Date.now() + LOCAL_WRITE_COOLDOWN_MS;
     try {
-      const res = await fetch(ADMIN_DATA_URL, {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: getAdminPassword(), action, data }),
         cache: 'no-store'
-      });
+      }, WORKER_FETCH_MS);
       if (res.ok) {
         const json = await res.json();
         if (json.store) {
@@ -1185,8 +1271,17 @@
         return false;
       }
     } catch (e) {
-      if (!silent) toast('Erro de rede');
-      setSyncStatus('error', 'Erro de rede');
+      if (!silent) {
+        toast(
+          isTimeoutError(e)
+            ? 'Servidor não respondeu. Tente de novo ou use outra rede.'
+            : 'Erro de rede'
+        );
+      }
+      setSyncStatus(
+        'error',
+        isTimeoutError(e) ? 'Servidor não respondeu (tempo esgotado)' : 'Erro de rede'
+      );
       return false;
     } finally {
       localWriteInFlight = Math.max(0, localWriteInFlight - 1);
@@ -1638,7 +1733,21 @@
 
     const filtered = getVisibleClients();
     if (!raw.length) {
-      list.innerHTML = '<div class="clients-empty">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione com <strong>+ Cliente</strong>.</div>';
+      if (lastOpsLoadError) {
+        const detail =
+          lastOpsLoadError === 'timeout'
+            ? 'O servidor não respondeu a tempo (rede lenta ou bloqueada).'
+            : 'Não foi possível contactar o servidor.';
+        list.innerHTML =
+          '<div class="clients-empty">' +
+          '<strong>Clientes não carregaram.</strong> ' +
+          detail +
+          ' Tente outra rede (ex. hotspot) ou recarregue a página.' +
+          '</div>';
+      } else {
+        list.innerHTML =
+          '<div class="clients-empty">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione com <strong>+ Cliente</strong>.</div>';
+      }
       updateBulkBar('clients');
       return;
     }
@@ -2809,16 +2918,20 @@
     };
     try {
       toast('A publicar…');
-      const res = await fetch(PUBLISH_URL, {
+      const res = await fetchWithTimeout(PUBLISH_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: getAdminPassword(), catalog })
-      });
+      }, WORKER_FETCH_MS);
       if (!res.ok) throw new Error(await res.text());
       syncLocalFromState();
       toast('Publicado no website — visitantes verão após refresh');
     } catch (err) {
-      toast('Erro ao publicar: ' + (err.message || err));
+      toast(
+        isTimeoutError(err)
+          ? 'Publicar: servidor não respondeu (rede?). Tente de novo.'
+          : 'Erro ao publicar: ' + (err.message || err)
+      );
     }
   }
 

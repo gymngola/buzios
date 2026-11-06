@@ -455,6 +455,28 @@
     }
   }
 
+  /** Overlay store.newsletters with D1 list. Same safety as clients/submissions. */
+  async function overlayNewslettersFromD1() {
+    try {
+      const res = await fetch(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'd1_get_newsletters' }),
+        cache: 'no-store'
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data.ok || !Array.isArray(data.newsletters)) return false;
+      if (data.newsletters.length === 0 && (store.newsletters || []).length > 0) return false;
+      store.newsletters = data.newsletters;
+      renderNewsletters();
+      return true;
+    } catch (e) {
+      console.warn('D1 newsletters overlay failed', e);
+      return false;
+    }
+  }
+
   async function loadStore(opts) {
     const silent = !!(opts && opts.silent);
     const workerOnly = !!(opts && opts.workerOnly);
@@ -497,17 +519,19 @@
       }
 
       if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
-        // Still refresh clients + inbox from D1 on silent polls (row-level source of truth)
+        // Still refresh clients + inbox + newsletter from D1 on silent polls
         await overlayClientsFromD1();
         await overlaySubmissionsFromD1();
+        await overlayNewslettersFromD1();
         setSyncStatus('ok', 'Sincronizado');
         return false;
       }
 
       const changed = applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
-      // Clients + submissions: D1 is preferred over Cloudinary store once import is done
+      // Clients + submissions + newsletters: D1 preferred over Cloudinary once import is done
       await overlayClientsFromD1();
       await overlaySubmissionsFromD1();
+      await overlayNewslettersFromD1();
       return changed;
     } finally {
       storeFetchInFlight = false;
@@ -985,12 +1009,15 @@
           renderContacts();
           renderNewsletters();
           renderClients();
-          // Client / submission mutations: re-read from D1 so UI matches row-level source of truth
+          // Client / submission / newsletter mutations: re-read from D1
           if (action === 'update_client' || action === 'delete_client') {
             await overlayClientsFromD1();
           }
           if (action === 'update_submission' || action === 'delete_submission') {
             await overlaySubmissionsFromD1();
+          }
+          if (action === 'delete_newsletter') {
+            await overlayNewslettersFromD1();
           }
           broadcastStore(store);
           setSyncStatus('ok', 'Sincronizado');

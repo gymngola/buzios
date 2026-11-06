@@ -499,6 +499,11 @@ async function handleAdminData(request, env) {
     const submissions = await d1ListSubmissions(env);
     return json({ ok: true, submissions, count: submissions.length });
   }
+  if (action === 'd1_get_newsletters') {
+    if (!env.DB) return json({ error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' }, 500);
+    const newsletters = await d1ListNewsletters(env);
+    return json({ ok: true, newsletters, count: newsletters.length });
+  }
 
   return json({ error: 'Unknown action' }, 400);
 }
@@ -973,6 +978,23 @@ async function d1ListSubmissions(env) {
     'SELECT * FROM submissions ORDER BY created_at DESC'
   ).all();
   return (res.results || []).map(rowToSubmission);
+}
+
+function rowToNewsletter(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    phone: r.phone || null,
+    name: r.name || null,
+    createdAt: r.created_at || null
+  };
+}
+
+async function d1ListNewsletters(env) {
+  const res = await env.DB.prepare(
+    'SELECT * FROM newsletters ORDER BY created_at DESC'
+  ).all();
+  return (res.results || []).map(rowToNewsletter);
 }
 
 async function d1UpsertClient(env, c) {

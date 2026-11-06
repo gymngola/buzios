@@ -25,15 +25,15 @@ Live: https://www.buzioshealthclub.com
          │                        ├─ Store write  → Cloudinary store.json + Workers Cache
          │                        │                 + store-prev.json; refuse empty overwrite
          │                        │                 + dual-write D1 (clients, submissions, newsletter)
-         │                        ├─ Store read   → Cloudinary (newsletter); D1 for clients + inbox
+         │                        ├─ Store read   → Cloudinary backup; D1 for clients + inbox + newsletter
          │                        └─ Prefer newer updatedAt, then richness; never empty over data
-         └── admin dual-reads Cloudinary on first load; overlays clients + submissions from D1
+         └── admin dual-reads Cloudinary on first load; overlays clients + submissions + newsletters from D1
 Cloudinary
   ├─ buzios/catalog.json     (plans, texts, image slots)     ← long-term stay
-  ├─ buzios/store.json       (newsletter read source; clients/inbox backup)
+  ├─ buzios/store.json       (backup for clients/inbox/newsletter)
   ├─ buzios/store-prev.json  (last good store snapshot)
   └─ media (unsigned browser uploads)
-Cloudflare D1 (buzios-db)    ← clients + inbox live (admin read); dual-write on all ops; newsletter read next
+Cloudflare D1 (buzios-db)    ← clients + inbox + newsletter live (admin read); dual-write on all ops
 [Static HTML/CSS/JS] ◄── Cloudflare Pages
 ```
 
@@ -42,7 +42,7 @@ Cloudflare D1 (buzios-db)    ← clients + inbox live (admin read); dual-write o
 | Static site | HTML / CSS / JS, Cloudflare Pages |
 | API | Cloudflare Worker `buzios-publish` |
 | Catalog (durable) | Cloudinary raw JSON + image assets |
-| Operational data | **Clients + inbox:** D1 (admin read + dual-write). **Newsletter:** dual-write; admin still reads Cloudinary. **Catalog:** Cloudinary |
+| Operational data | **Clients + inbox + newsletter:** D1 (admin read + dual-write). **Catalog:** Cloudinary |
 | Ephemeral draft | Admin `localStorage` (catalog only, dirty flag) |
 | Comms / payments | WhatsApp + bank IBAN (no payment gateway) |
 
@@ -53,7 +53,7 @@ Cloudflare D1 (buzios-db)    ← clients + inbox live (admin read); dual-write o
 | Plans, site texts, image slots | Cloudinary JSON | Rare writes; public site needs a simple file |
 | Clients | D1 (admin read + dual-write) | Daily edits; row-level; no whole-file races |
 | Inscrições / contactos (inbox) | D1 (admin read + dual-write) | Status updates without depending on Cloudinary file |
-| Newsletter | Dual-write D1 + Cloudinary; admin still reads Cloudinary | Same pattern; short next phase |
+| Newsletter | D1 (admin read + dual-write) | Same pattern as inbox |
 
 Worker base: `https://buzios-publish.gymngola.workers.dev`
 
@@ -62,7 +62,7 @@ Worker base: `https://buzios-publish.gymngola.workers.dev`
 | `GET /catalog` | Public + admin | Fresh catalog (bypass CDN) |
 | `POST /submit` | Public | Enrollment, contact, newsletter |
 | `POST /publish` | Admin | Write catalog |
-| `POST /admin/data` | Admin | Read/update store + D1 ops (`d1_status`, `d1_import_from_store`, `d1_get_clients`, `d1_get_submissions`) |
+| `POST /admin/data` | Admin | Read/update store + D1 ops (`d1_status`, `d1_import_from_store`, `d1_get_clients`, `d1_get_submissions`, `d1_get_newsletters`) |
 
 D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
 

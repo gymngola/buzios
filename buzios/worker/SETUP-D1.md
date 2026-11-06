@@ -62,11 +62,10 @@ npx wrangler d1 execute buzios-db --remote \
 ## Current state (2026-11-06)
 
 - Import done (263 clients).
-- Admin **reads** clients from D1.
-- Admin **reads** inbox (submissions) from D1 (`d1_get_submissions` + overlay).
+- Admin **reads** clients, inbox (submissions), and newsletter from D1.
 - Admin client + submission + newsletter **writes** dual-write Cloudinary + D1.
 - Public `/submit` dual-writes to D1 (enrollment → submission + optional client).
-- Admin still **reads** newsletter from Cloudinary — next short phase.
+- Catalog stays on Cloudinary. Optional cutover later (stop writing clients to store.json).
 
 ## Rollback
 
@@ -79,5 +78,5 @@ If D1 looks wrong, fix and re-import (import upserts by `id`).
 |------|------|
 | `migrations/0001_init.sql` | Tables + indexes |
 | `wrangler.toml` | D1 binding |
-| `src/index.js` | Dual-write on `/submit` + client/submission/newsletter admin mutations; `d1_get_clients`, `d1_get_submissions` |
-| `../js/admin.js` | Overlays clients + submissions from D1 after load and relevant mutations |
+| `src/index.js` | Dual-write on `/submit` + client/submission/newsletter admin mutations; `d1_get_clients`, `d1_get_submissions`, `d1_get_newsletters` |
+| `../js/admin.js` | Overlays clients + submissions + newsletters from D1 after load and relevant mutations |

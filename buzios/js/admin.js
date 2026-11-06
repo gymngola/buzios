@@ -409,6 +409,29 @@
     return changed;
   }
 
+  /** Overlay store.clients with D1 list when available (source of truth for clients). */
+  async function overlayClientsFromD1() {
+    try {
+      const res = await fetch(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: ADMIN_PASSWORD, action: 'd1_get_clients' }),
+        cache: 'no-store'
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data.ok || !Array.isArray(data.clients)) return false;
+      // Prefer D1 when it has data (or equal count). Never replace non-empty local with empty D1.
+      if (data.clients.length === 0 && (store.clients || []).length > 0) return false;
+      store.clients = data.clients;
+      renderClients();
+      return true;
+    } catch (e) {
+      console.warn('D1 clients overlay failed', e);
+      return false;
+    }
+  }
+
   async function loadStore(opts) {
     const silent = !!(opts && opts.silent);
     const workerOnly = !!(opts && opts.workerOnly);
@@ -451,11 +474,16 @@
       }
 
       if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
+        // Still refresh clients from D1 on silent polls (row-level source of truth)
+        await overlayClientsFromD1();
         setSyncStatus('ok', 'Sincronizado');
         return false;
       }
 
-      return applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
+      const changed = applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
+      // Clients: D1 is preferred over Cloudinary store once import is done
+      await overlayClientsFromD1();
+      return changed;
     } finally {
       storeFetchInFlight = false;
     }
@@ -932,7 +960,11 @@
           renderContacts();
           renderNewsletters();
           renderClients();
-          broadcastStore(json.store);
+          // Client mutations: re-read from D1 so UI matches row-level source of truth
+          if (action === 'update_client' || action === 'delete_client') {
+            await overlayClientsFromD1();
+          }
+          broadcastStore(store);
           setSyncStatus('ok', 'Sincronizado');
           // Keep prevAt reference to avoid unused lint; own writes never toast remote
           void prevAt;

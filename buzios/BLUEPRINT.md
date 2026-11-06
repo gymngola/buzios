@@ -21,14 +21,18 @@ Live: https://www.buzioshealthclub.com
 [Browser public pages] ──POST /submit──► [Cloudflare Worker]
 [Browser admin.html]  ──POST /admin/data /publish──► [Worker]
          │                        │
-         │                        ├─ Cloudinary first on write (durable + CDN invalidate)
-         │                        ├─ Workers Cache second (per-colo fast path)
-         │                        └─ Read: Cloudinary delivery (source of truth) vs cache → richer wins
-         └── also GET res.cloudinary.com/…/buzios/store.json (admin fallback if Worker thin)
+         │                        ├─ Catalog write → Cloudinary catalog.json (+ invalidate)
+         │                        ├─ Store write  → Cloudinary store.json first, then Workers Cache
+         │                        │                 + store-prev.json backup; refuse empty overwrite
+         │                        ├─ Store read   → Admin API versioned URL / delivery (query bust only)
+         │                        └─ Prefer newer updatedAt, then richness; never empty over data
+         └── admin also dual-reads Cloudinary delivery on first load
 Cloudinary
-  ├─ buzios/store.json   (inbox, clients, newsletter)
-  ├─ buzios/catalog.json (plans, texts, image slots)
+  ├─ buzios/catalog.json     (plans, texts, image slots)     ← long-term stay
+  ├─ buzios/store.json       (inbox, newsletter; clients backup)
+  ├─ buzios/store-prev.json  (last good store snapshot)
   └─ media (unsigned browser uploads)
+Cloudflare D1 (buzios-db)    ← clients live (admin read + dual-write); inbox next phase
 [Static HTML/CSS/JS] ◄── Cloudflare Pages
 ```
 
@@ -36,9 +40,17 @@ Cloudinary
 |-------|------|
 | Static site | HTML / CSS / JS, Cloudflare Pages |
 | API | Cloudflare Worker `buzios-publish` |
-| Durable data | Cloudinary raw JSON + image assets |
+| Catalog (durable) | Cloudinary raw JSON + image assets |
+| Operational data | **Clients:** D1 (admin read + dual-write). **Inbox/newsletter:** Cloudinary until next phase. **Catalog:** Cloudinary |
 | Ephemeral draft | Admin `localStorage` (catalog only, dirty flag) |
 | Comms / payments | WhatsApp + bank IBAN (no payment gateway) |
+
+**Data split (intentional):**
+
+| Data | Storage | Why |
+|------|---------|-----|
+| Plans, site texts, image slots | Cloudinary JSON | Rare writes; public site needs a simple file |
+| Clients, inscrições, contactos, newsletter | D1 (target) | Daily edits; row-level updates; no whole-file races |
 
 Worker base: `https://buzios-publish.gymngola.workers.dev`
 
@@ -47,9 +59,17 @@ Worker base: `https://buzios-publish.gymngola.workers.dev`
 | `GET /catalog` | Public + admin | Fresh catalog (bypass CDN) |
 | `POST /submit` | Public | Enrollment, contact, newsletter |
 | `POST /publish` | Admin | Write catalog |
-| `POST /admin/data` | Admin | Read/update store |
+| `POST /admin/data` | Admin | Read/update store + D1 ops (`d1_status`, `d1_import_from_store`, `d1_get_clients`) |
 
-Details and secrets: see `README.md`.
+D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
+
+### 2.1 Store durability rules (2026-11-06)
+
+- **Never** use `fetch(url, { cache: 'no-store' })` inside the Worker — Cloudflare Workers throws; Cloudinary reads look empty. Bust with `?_=…` only.
+- `saveStore` refuses to write an empty store over a non-empty one; writes `store-prev.json` before the main file.
+- Admin `applyStore` blocks empty remote overwriting a non-empty local client list.
+- `replace_store` ignores empty arrays unless `_forceReplace: true`.
+- Prefer newer `updatedAt`, then record count; never prefer empty over real data.
 
 ---
 
@@ -221,16 +241,26 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 | Path | Role |
 |------|------|
 | `admin.html` | Admin shell + panels markup |
-| `js/admin.js` | Admin logic, clients CRM, bulk, publish |
+| `js/admin.js` | Admin logic, clients CRM, bulk, publish, store guards |
 | `css/admin.css` | Admin layout & Clientes dense UI |
 | `css/styles.css` | Public site + brand logo layout |
 | `js/app.js` / `js/products.js` | Public behaviour / catalog |
-| `worker/src/index.js` | API |
+| `worker/src/index.js` | API (Cloudinary store + D1 helpers) |
+| `worker/wrangler.toml` | Worker + D1 binding |
+| `worker/migrations/0001_init.sql` | D1 schema (clients, submissions, newsletters, audit_log) |
+| `worker/SETUP-D1.md` | D1 create / migrate / import commands |
 | `icons/logo.png` | Brand mark |
 
 ---
 
 ## 9. Change log (blueprint)
+
+### 2026-11-06
+
+- **Empty Clientes bug:** Worker `fetch` with `{ cache: 'no-store' }` throws on CF Workers → Cloudinary load failed → intermittent 0 clients. Removed; query-string cache-bust only.
+- **Store guards:** refuse empty `saveStore`; auto `store-prev.json`; admin blocks empty remote over non-empty local list.
+- **Architecture decision:** catalog stays Cloudinary JSON; operational data (clients/inbox) moves to **Cloudflare D1**. Supabase reserved for multi-tenant Pro product later.
+- **D1 foundation:** schema migration, wrangler binding, `d1_status` / `d1_import_from_store` / `d1_get_clients`. Admin still reads Cloudinary store until switch-over. See `worker/SETUP-D1.md`.
 
 ### 2026-11-04 → 2026-11-05
 

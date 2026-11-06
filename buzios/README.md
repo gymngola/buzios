@@ -20,9 +20,10 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 - **Cloudflare Worker** (`buzios-publish`) — publish, forms, admin inbox, fresh catalog proxy
 - **Cloudinary**
   - Unsigned preset `buzios_unsigned` — browser image/doc uploads only
-  - Signed raw upload (Worker + Root API key) — `buzios/catalog.json` + `buzios/store.json`
+  - Signed raw upload (Worker + Root API key) — `buzios/catalog.json` + `buzios/store.json` (+ `store-prev.json` backup)
   - `invalidate=true` on every signed upload (CDN caches raw files ~30 days otherwise)
-- **localStorage** — admin mid-session drafts only (not cross-browser source of truth)
+- **Cloudflare D1** (`buzios-db`) — **clients live here** (read + dual-write on admin update/delete). Inbox/newsletter still Cloudinary for now. Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
+- **localStorage** — admin mid-session drafts only (catalog dirty flag; not cross-browser source of truth)
 - Orders / leads via WhatsApp (no payment backend)
 - **PWA** — installable as apps (public site + admin)
   - `manifest.json` → public site (“Búzios”)
@@ -83,11 +84,35 @@ Live base: `https://buzios-publish.gymngola.workers.dev`
 | `GET /catalog` | Fresh catalog (bypasses Cloudinary CDN cache) |
 | `POST /submit` | Public — enrollment, contact, newsletter |
 | `POST /publish` | Admin — write `buzios/catalog.json` |
-| `POST /admin/data` | Admin — read/update store (inbox, clients, newsletter) |
+| `POST /admin/data` | Admin — read/update store (inbox, clients, newsletter) + D1 ops |
+
+`POST /admin/data` actions (password required): `get`, `update_*`, `delete_*`, `replace_store`, `debug_store`, **`d1_status`**, **`d1_import_from_store`**, **`d1_get_clients`**.
 
 After any change to `worker/src/index.js`, run `npx wrangler deploy` again from `worker/`.
 
 **Do not** run `npx wrangler deploy` from the project root (it tries to create a static Assets Worker named `buzios`). Static site = Cloudflare Pages only.
+
+### 2b. D1 (clients / inbox) — setup once
+
+Operational data is moving to D1 so membership edits are row-level (no whole-file overwrite). Full steps: **`worker/SETUP-D1.md`**.
+
+```bash
+cd worker
+npx wrangler d1 create buzios-db          # paste database_id into wrangler.toml
+npx wrangler d1 migrations apply buzios-db --remote
+npx wrangler deploy
+
+# status + one-time import from Cloudinary store
+curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"…","action":"d1_status"}'
+curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
+  -H "Content-Type: application/json" \
+  -d '{"password":"…","action":"d1_import_from_store"}'
+```
+
+**Clients:** admin reads from D1 (`d1_get_clients`); admin updates dual-write Cloudinary + D1.  
+Inbox / newsletter still Cloudinary until the next phase.
 
 ### 3. Admin password
 
@@ -147,11 +172,17 @@ Each installs as its own standalone app (different icons and names). The service
 
 ### Store (inscriptions, contact, newsletter, clients)
 
+**Today (live):** still Cloudinary `buzios/store.json`.  
+**Target:** same data in **D1** (row per client); catalog stays on Cloudinary.
+
 1. Public forms → `POST /submit`
-2. Worker **writes**: Cloudinary `buzios/store.json` first (signed upload + `invalidate`), then Workers Cache
-3. Worker **reads**: Cloudinary delivery URL (cache-busted) as source of truth; Workers Cache is a fast path only when it is at least as rich; richer snapshot always wins
-4. Admin `loadStore()` also fetches Cloudinary **directly** from the browser and keeps the richer of Worker response vs Cloudinary (protects UI if a colo cache is stale)
-5. **Backup** (Clientes → Backup) downloads full JSON: store + catalog — use before bulk deletes or re-imports
+2. Worker **writes**: Cloudinary `buzios/store.json` first (signed upload + `invalidate`), then Workers Cache; also writes `buzios/store-prev.json` as last-good backup
+3. Worker **reads**: Admin API versioned URL / delivery (query cache-bust only — **never** `fetch(..., { cache: 'no-store' })` inside Workers; that option throws and made Cloudinary look empty)
+4. Prefer newer `updatedAt`, then richness; **never** prefer an empty snapshot over real data
+5. `saveStore` **refuses** to overwrite a non-empty store with an empty one
+6. Admin `applyStore` **blocks** empty remote overwriting a non-empty local list
+7. Admin `loadStore()` dual-reads Worker + Cloudinary on first load; silent polls use Worker only
+8. **Backup** (Clientes → Backup) downloads full JSON: store + catalog — use before bulk deletes or re-imports
 
 `replace_store` ignores empty `clients` / `submissions` arrays unless `data._forceReplace === true` (recovery/import only).
 ### Site images
@@ -165,7 +196,8 @@ Each installs as its own standalone app (different icons and names). The service
 | Public ID | Written by | Read by |
 |-----------|------------|---------|
 | `buzios/catalog.json` | `POST /publish` | Worker `GET /catalog` → public + admin |
-| `buzios/store.json` | `POST /submit`, `POST /admin/data` | Worker (Cloudinary delivery + cache); admin also reads delivery URL as fallback |
+| `buzios/store.json` | `POST /submit`, `POST /admin/data` | Worker (Admin API versioned + delivery + cache); admin dual-read fallback |
+| `buzios/store-prev.json` | `saveStore` (automatic) | Recovery only |
 
 Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `public_id`, `timestamp` + API secret.
 
@@ -173,10 +205,12 @@ Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `publi
 
 **Invalid Signature:** mismatched key/secret or trailing newline in `CLOUDINARY_API_SECRET` — Worker trims secrets; still paste the exact secret with no extra newline when running `wrangler secret put`.
 
-**CDN lag:** delivery URLs for raw JSON use `max-age=2592000`. Catalog: always use Worker `GET /catalog`. Store: Worker uses cache-busted delivery; admin dual-reads Cloudinary if needed.
+**CDN lag:** delivery URLs for raw JSON use `max-age=2592000`. Catalog: always use Worker `GET /catalog`. Store: versioned Admin API URL when possible; query cache-bust on delivery fallback.
+
+**Workers runtime note:** do **not** pass `{ cache: 'no-store' }` to `fetch` inside the Worker — it throws (`cache` field not implemented) and breaks Cloudinary reads. Bust cache with `?_=timestamp` only.
 
 **Debug store (ops):**  
-`POST /admin/data` with `{"password":"…","action":"debug_store"}` returns secret presence, delivery probe, cache vs Cloudinary scores, and `chosenClients`.
+`POST /admin/data` with `{"password":"…","action":"debug_store"}` returns secret presence, delivery probe, cache vs Cloudinary scores, `cloudLoadDebug`, and `chosenClients`. Healthy: `cloudLoadDebug.step` = `ok_admin` or `ok_delivery`, `cloudinary.clients` > 0.
 ## Brand
 
 - Name: **Búzios** / Health Club  
@@ -231,7 +265,23 @@ Several staff devices can keep admin open:
 - Worker `update_client` re-loads store before write (reduces lost updates across devices)
 - Same client edited at the same time → last write wins
 
-## Recent changes (2026-11-04 → 2026-11-05)
+## Recent changes
+
+### 2026-11-06 — Clients on D1 (read + dual-write)
+
+- Admin **reads clients from D1** (`d1_get_clients` overlay after every store load / client mutation).
+- Admin **update_client / delete_client** dual-write: Cloudinary store (backup) + D1 row upsert/delete.
+- Inbox / newsletter / public `/submit` still Cloudinary-only until next phase.
+- Catalog stays on Cloudinary.
+
+### 2026-11-06 — Store durability + D1 foundation
+
+- **Root cause of empty Clientes:** Worker `fetch(..., { cache: 'no-store' })` throws on Cloudflare Workers runtime → Cloudinary load failed → UI sometimes showed 0 clients. Removed that option; cache-bust via query string only.
+- **Guards:** `saveStore` refuses empty overwrite; auto-writes `buzios/store-prev.json`; admin `applyStore` blocks empty remote over non-empty local list.
+- **D1 foundation:** `worker/migrations/0001_init.sql`, D1 binding in `wrangler.toml`, actions `d1_status` / `d1_import_from_store` / `d1_get_clients`. Setup guide: `worker/SETUP-D1.md`.
+- Long-term split: **catalog → Cloudinary JSON**; **clients/inbox → D1** (row-level).
+
+### 2026-11-04 → 2026-11-05
 
 - **Clientes admin redesign** — denser rows, sticky summary/filters, priority actions, floating bulk bar, keyboard shortcuts, outside-click **Mais** menu
 - **Brand logo** — `icons/logo.png` on public header, drawer, footer; admin nav + login; PWA icons regenerated from logo artwork

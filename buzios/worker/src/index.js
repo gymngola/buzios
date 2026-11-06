@@ -347,14 +347,25 @@ async function handleAdminData(request, env) {
     store = await loadStore(env);
     store.clients = store.clients || [];
     const idx = store.clients.findIndex(c => String(c.id) === clientId);
+    let saved;
     if (idx >= 0) {
-      store.clients[idx] = Object.assign({}, store.clients[idx], clean, { id: clientId });
+      saved = Object.assign({}, store.clients[idx], clean, { id: clientId });
+      store.clients[idx] = saved;
     } else {
-      store.clients.unshift(Object.assign({}, clean, { id: clientId }));
+      saved = Object.assign({}, clean, { id: clientId });
+      store.clients.unshift(saved);
     }
     if (store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
+    // Dual-write to D1 (row-level). Cloudinary remains backup until full cutover.
+    if (env.DB) {
+      try {
+        await d1UpsertClient(env, saved);
+      } catch (e) {
+        console.error('D1 upsert client failed', e && e.message);
+      }
+    }
     return json({ ok: true, store });
   }
 
@@ -377,6 +388,19 @@ async function handleAdminData(request, env) {
     }
     store.updatedAt = new Date().toISOString();
     await saveStore(env, store);
+    // Dual-write to D1
+    if (env.DB) {
+      try {
+        if (hard) {
+          await d1HardDeleteClient(env, clientId);
+        } else {
+          const archived = (store.clients || []).find(c => String(c.id) === clientId);
+          if (archived) await d1UpsertClient(env, archived);
+        }
+      } catch (e) {
+        console.error('D1 delete/archive client failed', e && e.message);
+      }
+    }
     return json({ ok: true, store });
   }
 
@@ -912,6 +936,15 @@ async function d1UpsertClient(env, c) {
       r.membership_status, r.billing_status, r.last_payment_at, r.payments_json, r.notes,
       r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at
     )
+    .run();
+}
+
+async function d1HardDeleteClient(env, clientId) {
+  await env.DB.prepare('DELETE FROM clients WHERE id = ?').bind(String(clientId)).run();
+  await env.DB.prepare(
+    'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(new Date().toISOString(), 'delete_client', 'client', String(clientId), 'hard')
     .run();
 }
 

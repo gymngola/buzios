@@ -18,7 +18,7 @@ Copy the `database_id` from the output and put it in `wrangler.toml`:
 [[d1_databases]]
 binding = "DB"
 database_name = "buzios-db"
-database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # ← paste here
+database_id = "e02a0a4d-a82e-437e-8466-6e985e417eaf"
 migrations_dir = "migrations"
 ```
 
@@ -59,10 +59,17 @@ npx wrangler d1 execute buzios-db --remote \
   --command "SELECT COUNT(*) AS n FROM clients;"
 ```
 
+## Current state (2026-11-06)
+
+- Import done (263 clients).
+- Admin **reads** clients from D1.
+- Admin **update_client / delete_client** dual-write Cloudinary + D1.
+- Public forms (`/submit`) and inbox still Cloudinary-only — next phase.
+
 ## Rollback
 
-Cloudinary `store.json` is **not** deleted. You can keep using it until admin is switched to D1.  
-If D1 import looks wrong, fix and re-import (import upserts by `id`).
+Cloudinary `store.json` is **not** deleted. Dual-write keeps it in sync on admin edits.  
+If D1 looks wrong, fix and re-import (import upserts by `id`).
 
 ## Files
 
@@ -70,4 +77,5 @@ If D1 import looks wrong, fix and re-import (import upserts by `id`).
 |------|------|
 | `migrations/0001_init.sql` | Tables + indexes |
 | `wrangler.toml` | D1 binding |
-| `src/index.js` | Worker routes (D1 helpers added next) |
+| `src/index.js` | Dual-write on client update/delete; `d1_get_clients` |
+| `js/admin.js` | Overlays clients from D1 after load and client mutations |

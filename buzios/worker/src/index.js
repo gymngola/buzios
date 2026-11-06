@@ -274,6 +274,7 @@ async function handleSubmit(request, env) {
 
   // D1 is primary for operational data after cutover.
   // Fail loud: never return ok when the primary write did not succeed.
+  // Multi-row enrollment uses batch() (one transaction) + retries on transient errors.
   const mustWrite = !!(newSubmission || newClient || newNewsletter);
   if (mustWrite) {
     if (!env.DB) {
@@ -287,9 +288,13 @@ async function handleSubmit(request, env) {
       );
     }
     try {
-      if (newSubmission) await d1UpsertSubmission(env, newSubmission);
-      if (newClient) await d1UpsertClient(env, newClient);
-      if (newNewsletter) await d1UpsertNewsletter(env, newNewsletter);
+      await d1BatchWithRetry(env, () => {
+        const stmts = [];
+        if (newSubmission) stmts.push(d1SubmissionUpsertStmt(env, newSubmission));
+        if (newClient) stmts.push(d1ClientUpsertStmt(env, newClient));
+        if (newNewsletter) stmts.push(d1NewsletterUpsertStmt(env, newNewsletter));
+        return stmts;
+      });
     } catch (e) {
       console.error('D1 write on submit failed', e && e.message);
       return json(
@@ -1086,9 +1091,62 @@ async function d1ListNewsletters(env) {
   return (res.results || []).map(rowToNewsletter);
 }
 
-async function d1UpsertClient(env, c) {
+// —— D1 retry + batch (writes are not auto-retried by the platform) ——
+
+/** Transient D1 / DO errors that are safe to retry (per Cloudflare docs). */
+function d1IsRetryableError(err) {
+  const msg = String((err && err.message) || err || '');
+  return (
+    msg.includes('Network connection lost') ||
+    msg.includes('storage caused object to be reset') ||
+    msg.includes('reset because its code was updated') ||
+    msg.includes('Cannot resolve D1 DB due to transient issue') ||
+    msg.includes('D1 DB is overloaded') ||
+    msg.includes('too many requests') ||
+    /SQLITE_BUSY/i.test(msg)
+  );
+}
+
+function d1Sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Run a statement factory with retries + exponential backoff + jitter.
+ * buildStmts() must return a fresh array of bound statements each call
+ * (D1 statements are single-use after bind for batch safety).
+ */
+async function d1BatchWithRetry(env, buildStmts, maxAttempts) {
+  maxAttempts = maxAttempts || 3;
+  let lastErr;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const stmts = buildStmts() || [];
+      if (!stmts.length) return;
+      if (stmts.length === 1) {
+        await stmts[0].run();
+      } else {
+        // batch() is one SQL transaction: all succeed or the sequence rolls back
+        await env.DB.batch(stmts);
+      }
+      return;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < maxAttempts && d1IsRetryableError(e)) {
+        const backoff = 40 * attempt * attempt + Math.floor(Math.random() * 60);
+        console.warn('D1 transient error, retry', attempt, (e && e.message) || e);
+        await d1Sleep(backoff);
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
+function d1ClientUpsertStmt(env, c) {
   const r = clientToRow(c);
-  await env.DB.prepare(
+  return env.DB.prepare(
     `INSERT INTO clients (
       id, member_number, name, phone, email, area, age, schedule, has_card,
       plan_id, plan_name, price, billing_cycle, plan_start, plan_end,
@@ -1120,44 +1178,47 @@ async function d1UpsertClient(env, c) {
       from_import=excluded.from_import,
       from_submission=excluded.from_submission,
       updated_at=excluded.updated_at`
-  )
-    .bind(
-      r.id, r.member_number, r.name, r.phone, r.email, r.area, r.age, r.schedule, r.has_card,
-      r.plan_id, r.plan_name, r.price, r.billing_cycle, r.plan_start, r.plan_end,
-      r.membership_status, r.billing_status, r.last_payment_at, r.payments_json, r.notes,
-      r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at
-    )
-    .run();
+  ).bind(
+    r.id, r.member_number, r.name, r.phone, r.email, r.area, r.age, r.schedule, r.has_card,
+    r.plan_id, r.plan_name, r.price, r.billing_cycle, r.plan_start, r.plan_end,
+    r.membership_status, r.billing_status, r.last_payment_at, r.payments_json, r.notes,
+    r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at
+  );
+}
+
+async function d1UpsertClient(env, c) {
+  await d1BatchWithRetry(env, () => [d1ClientUpsertStmt(env, c)]);
 }
 
 async function d1HardDeleteClient(env, clientId) {
-  await env.DB.prepare('DELETE FROM clients WHERE id = ?').bind(String(clientId)).run();
-  await env.DB.prepare(
-    'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
-  )
-    .bind(new Date().toISOString(), 'delete_client', 'client', String(clientId), 'hard')
-    .run();
+  const id = String(clientId);
+  const at = new Date().toISOString();
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare('DELETE FROM clients WHERE id = ?').bind(id),
+    env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    ).bind(at, 'delete_client', 'client', id, 'hard')
+  ]);
 }
 
 /** Soft-delete: only update membership_status (preserve other columns). */
 async function d1ArchiveClient(env, clientId) {
+  const id = String(clientId);
   const now = new Date().toISOString();
-  await env.DB.prepare(
-    `UPDATE clients SET membership_status = 'arquivado', updated_at = ? WHERE id = ?`
-  )
-    .bind(now, String(clientId))
-    .run();
-  await env.DB.prepare(
-    'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
-  )
-    .bind(now, 'archive_client', 'client', String(clientId), 'soft')
-    .run();
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare(
+      `UPDATE clients SET membership_status = 'arquivado', updated_at = ? WHERE id = ?`
+    ).bind(now, id),
+    env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    ).bind(now, 'archive_client', 'client', id, 'soft')
+  ]);
 }
 
-async function d1UpsertSubmission(env, s) {
+function d1SubmissionUpsertStmt(env, s) {
   const now = new Date().toISOString();
   const payload = JSON.stringify(s);
-  await env.DB.prepare(
+  return env.DB.prepare(
     `INSERT INTO submissions (
       id, type, status, area, plan_id, plan_name, name, phone, email, message, subject,
       prefer_contact, payload_json, from_client_id, created_at, updated_at
@@ -1169,44 +1230,52 @@ async function d1UpsertSubmission(env, s) {
       subject=excluded.subject, prefer_contact=excluded.prefer_contact,
       payload_json=excluded.payload_json, from_client_id=excluded.from_client_id,
       updated_at=excluded.updated_at`
-  )
-    .bind(
-      String(s.id),
-      s.type || null,
-      s.status || null,
-      s.area || null,
-      s.planId || null,
-      s.planName || null,
-      s.name || null,
-      s.phone || null,
-      s.email || null,
-      s.message || null,
-      s.subject || null,
-      s.preferContact || null,
-      payload,
-      s.fromClientId || null,
-      s.createdAt || now,
-      now
-    )
-    .run();
+  ).bind(
+    String(s.id),
+    s.type || null,
+    s.status || null,
+    s.area || null,
+    s.planId || null,
+    s.planName || null,
+    s.name || null,
+    s.phone || null,
+    s.email || null,
+    s.message || null,
+    s.subject || null,
+    s.preferContact || null,
+    payload,
+    s.fromClientId || null,
+    s.createdAt || now,
+    now
+  );
+}
+
+async function d1UpsertSubmission(env, s) {
+  await d1BatchWithRetry(env, () => [d1SubmissionUpsertStmt(env, s)]);
 }
 
 async function d1DeleteSubmission(env, id) {
-  await env.DB.prepare('DELETE FROM submissions WHERE id = ?').bind(String(id)).run();
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare('DELETE FROM submissions WHERE id = ?').bind(String(id))
+  ]);
+}
+
+function d1NewsletterUpsertStmt(env, n) {
+  const id = String(n.id || n.phone || ('nl-' + Date.now()));
+  return env.DB.prepare(
+    `INSERT INTO newsletters (id, phone, name, created_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET phone=excluded.phone, name=excluded.name`
+  ).bind(id, n.phone || null, n.name || null, n.createdAt || new Date().toISOString());
 }
 
 async function d1UpsertNewsletter(env, n) {
-  const id = String(n.id || n.phone || ('nl-' + Date.now()));
-  await env.DB.prepare(
-    `INSERT INTO newsletters (id, phone, name, created_at) VALUES (?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET phone=excluded.phone, name=excluded.name`
-  )
-    .bind(id, n.phone || null, n.name || null, n.createdAt || new Date().toISOString())
-    .run();
+  await d1BatchWithRetry(env, () => [d1NewsletterUpsertStmt(env, n)]);
 }
 
 async function d1DeleteNewsletter(env, id) {
-  await env.DB.prepare('DELETE FROM newsletters WHERE id = ?').bind(String(id)).run();
+  await d1BatchWithRetry(env, () => [
+    env.DB.prepare('DELETE FROM newsletters WHERE id = ?').bind(String(id))
+  ]);
 }
 
 async function d1ImportFromStore(env, store) {

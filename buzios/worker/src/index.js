@@ -11,6 +11,9 @@
  *   CLOUDINARY_CLOUD_NAME
  *   CLOUDINARY_API_KEY
  *   CLOUDINARY_API_SECRET
+ *
+ * Bindings:
+ *   DB  — D1 database (buzios-db) for clients / submissions / newsletter
  */
 
 const CORS = {
@@ -413,6 +416,19 @@ async function handleAdminData(request, env) {
     return json({ ok: true, store });
   }
 
+  // —— D1 setup / migration (does not change Cloudinary store) ——
+  if (action === 'd1_status') {
+    return json(await d1Status(env));
+  }
+  if (action === 'd1_import_from_store') {
+    return json(await d1ImportFromStore(env, store));
+  }
+  if (action === 'd1_get_clients') {
+    if (!env.DB) return json({ error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' }, 500);
+    const clients = await d1ListClients(env);
+    return json({ ok: true, clients, count: clients.length });
+  }
+
   return json({ error: 'Unknown action' }, 400);
 }
 
@@ -743,4 +759,250 @@ async function sha1(message) {
   return Array.from(new Uint8Array(hash))
     .map(function(b) { return b.toString(16).padStart(2, '0'); })
     .join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// D1 — clients / submissions / newsletter
+// Cloudinary store remains source of truth until admin switches.
+// ═══════════════════════════════════════════════════════════
+
+async function d1Status(env) {
+  if (!env.DB) {
+    return {
+      ok: false,
+      bound: false,
+      error: 'D1 not bound. Create DB, set database_id in wrangler.toml, redeploy.'
+    };
+  }
+  try {
+    const clients = await env.DB.prepare('SELECT COUNT(*) AS n FROM clients').first();
+    const submissions = await env.DB.prepare('SELECT COUNT(*) AS n FROM submissions').first();
+    const newsletters = await env.DB.prepare('SELECT COUNT(*) AS n FROM newsletters').first();
+    return {
+      ok: true,
+      bound: true,
+      clients: (clients && clients.n) || 0,
+      submissions: (submissions && submissions.n) || 0,
+      newsletters: (newsletters && newsletters.n) || 0
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      bound: true,
+      error: (e && e.message) || String(e),
+      hint: 'Run: npx wrangler d1 migrations apply buzios-db --remote'
+    };
+  }
+}
+
+function clientToRow(c) {
+  const now = new Date().toISOString();
+  return {
+    id: String(c.id),
+    member_number: c.memberNumber != null ? Number(c.memberNumber) : null,
+    name: c.name || '',
+    phone: c.phone || null,
+    email: c.email || null,
+    area: c.area || null,
+    age: c.age != null && c.age !== '' ? Number(c.age) : null,
+    schedule: c.schedule != null ? (typeof c.schedule === 'string' ? c.schedule : JSON.stringify(c.schedule)) : null,
+    has_card: c.hasCard != null ? String(c.hasCard) : null,
+    plan_id: c.planId || null,
+    plan_name: c.planName || null,
+    price: c.price != null && c.price !== '' ? Number(c.price) : null,
+    billing_cycle: c.billingCycle || null,
+    plan_start: c.planStart || null,
+    plan_end: c.planEnd || null,
+    membership_status: c.membershipStatus || null,
+    billing_status: c.billingStatus || null,
+    last_payment_at: c.lastPaymentAt || null,
+    payments_json: c.payments ? JSON.stringify(c.payments) : null,
+    notes: c.notes || null,
+    emergency_name: c.emergencyName || null,
+    emergency_phone: c.emergencyPhone || null,
+    from_import: c.fromImport ? 1 : 0,
+    from_submission: c.fromSubmission || null,
+    created_at: c.createdAt || now,
+    updated_at: now
+  };
+}
+
+function rowToClient(r) {
+  if (!r) return null;
+  let payments = [];
+  try {
+    payments = r.payments_json ? JSON.parse(r.payments_json) : [];
+  } catch (_) {}
+  let schedule = r.schedule;
+  try {
+    if (schedule && schedule.charAt(0) === '[') schedule = JSON.parse(schedule);
+  } catch (_) {}
+  return {
+    id: r.id,
+    memberNumber: r.member_number,
+    name: r.name,
+    phone: r.phone,
+    email: r.email,
+    area: r.area,
+    age: r.age,
+    schedule: schedule,
+    hasCard: r.has_card,
+    planId: r.plan_id,
+    planName: r.plan_name,
+    price: r.price,
+    billingCycle: r.billing_cycle,
+    planStart: r.plan_start,
+    planEnd: r.plan_end,
+    membershipStatus: r.membership_status,
+    billingStatus: r.billing_status,
+    lastPaymentAt: r.last_payment_at,
+    payments: payments,
+    notes: r.notes,
+    emergencyName: r.emergency_name,
+    emergencyPhone: r.emergency_phone,
+    fromImport: !!r.from_import,
+    fromSubmission: r.from_submission,
+    createdAt: r.created_at
+  };
+}
+
+async function d1ListClients(env) {
+  const res = await env.DB.prepare('SELECT * FROM clients ORDER BY member_number IS NULL, member_number, name').all();
+  return (res.results || []).map(rowToClient);
+}
+
+async function d1UpsertClient(env, c) {
+  const r = clientToRow(c);
+  await env.DB.prepare(
+    `INSERT INTO clients (
+      id, member_number, name, phone, email, area, age, schedule, has_card,
+      plan_id, plan_name, price, billing_cycle, plan_start, plan_end,
+      membership_status, billing_status, last_payment_at, payments_json, notes,
+      emergency_name, emergency_phone, from_import, from_submission, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      member_number=excluded.member_number,
+      name=excluded.name,
+      phone=excluded.phone,
+      email=excluded.email,
+      area=excluded.area,
+      age=excluded.age,
+      schedule=excluded.schedule,
+      has_card=excluded.has_card,
+      plan_id=excluded.plan_id,
+      plan_name=excluded.plan_name,
+      price=excluded.price,
+      billing_cycle=excluded.billing_cycle,
+      plan_start=excluded.plan_start,
+      plan_end=excluded.plan_end,
+      membership_status=excluded.membership_status,
+      billing_status=excluded.billing_status,
+      last_payment_at=excluded.last_payment_at,
+      payments_json=excluded.payments_json,
+      notes=excluded.notes,
+      emergency_name=excluded.emergency_name,
+      emergency_phone=excluded.emergency_phone,
+      from_import=excluded.from_import,
+      from_submission=excluded.from_submission,
+      updated_at=excluded.updated_at`
+  )
+    .bind(
+      r.id, r.member_number, r.name, r.phone, r.email, r.area, r.age, r.schedule, r.has_card,
+      r.plan_id, r.plan_name, r.price, r.billing_cycle, r.plan_start, r.plan_end,
+      r.membership_status, r.billing_status, r.last_payment_at, r.payments_json, r.notes,
+      r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at
+    )
+    .run();
+}
+
+async function d1ImportFromStore(env, store) {
+  if (!env.DB) {
+    return { ok: false, error: 'D1 not bound. Set database_id in wrangler.toml and redeploy.' };
+  }
+
+  const clients = store.clients || [];
+  const submissions = store.submissions || [];
+  const newsletters = store.newsletters || [];
+  let clientCount = 0;
+  let subCount = 0;
+  let newsCount = 0;
+
+  // Batch in chunks to stay under D1 limits
+  const chunk = 50;
+  for (let i = 0; i < clients.length; i += chunk) {
+    const slice = clients.slice(i, i + chunk);
+    for (const c of slice) {
+      await d1UpsertClient(env, c);
+      clientCount++;
+    }
+  }
+
+  for (const s of submissions) {
+    const payload = JSON.stringify(s);
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      `INSERT INTO submissions (
+        id, type, status, area, plan_id, plan_name, name, phone, email, message, subject,
+        prefer_contact, payload_json, from_client_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        type=excluded.type, status=excluded.status, area=excluded.area,
+        plan_id=excluded.plan_id, plan_name=excluded.plan_name, name=excluded.name,
+        phone=excluded.phone, email=excluded.email, message=excluded.message,
+        subject=excluded.subject, prefer_contact=excluded.prefer_contact,
+        payload_json=excluded.payload_json, from_client_id=excluded.from_client_id,
+        updated_at=excluded.updated_at`
+    )
+      .bind(
+        String(s.id),
+        s.type || null,
+        s.status || null,
+        s.area || null,
+        s.planId || null,
+        s.planName || null,
+        s.name || null,
+        s.phone || null,
+        s.email || null,
+        s.message || null,
+        s.subject || null,
+        s.preferContact || null,
+        payload,
+        s.fromClientId || null,
+        s.createdAt || now,
+        now
+      )
+      .run();
+    subCount++;
+  }
+
+  for (const n of newsletters) {
+    const id = String(n.id || n.phone || ('nl-' + Date.now()));
+    await env.DB.prepare(
+      `INSERT INTO newsletters (id, phone, name, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET phone=excluded.phone, name=excluded.name`
+    )
+      .bind(id, n.phone || null, n.name || null, n.createdAt || new Date().toISOString())
+      .run();
+    newsCount++;
+  }
+
+  await env.DB.prepare(
+    'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+  )
+    .bind(
+      new Date().toISOString(),
+      'd1_import_from_store',
+      'store',
+      null,
+      JSON.stringify({ clients: clientCount, submissions: subCount, newsletters: newsCount })
+    )
+    .run();
+
+  return {
+    ok: true,
+    clients: clientCount,
+    submissions: subCount,
+    newsletters: newsCount,
+    message: 'Imported into D1. Cloudinary store unchanged.'
+  };
 }

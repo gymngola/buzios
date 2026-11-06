@@ -96,6 +96,7 @@ Mirrored in admin **Guia** tab. Keep UI and docs in sync.
 
 | Page | Role |
 |------|------|
+| `conta.html` | Client portal — login, register, view own plan (Phase 1) |
 | `index.html` | Home — hero, intro, services, plans teaser |
 | `ginasio.html` | Gym |
 | `natacao.html` | Swimming school |
@@ -315,6 +316,16 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Worker:** `update_client` re-loads store before write (multi-staff safety)
 - **Login flash:** early `admin-authed` class so reload does not show login when session is valid
 - **Public mobile:** tighter layout for ≤600px / ≤380px (iPhone 6s-class); SW `buzios-v3` network-first for HTML/JS/CSS
+
+### 2026-11-07 — Client portal (Phase 1)
+
+- **Page:** `conta.html` — Área do membro (login / criar conta / dashboard read-only)
+- **Auth:** email + password (PBKDF2-SHA256, 100k iter). Account only if email already exists on a D1 client row.
+- **Worker:** `POST /client/auth` actions `register` | `login` | `me` | `change_password`. JWT (HMAC-SHA256, 14d) scoped to `client_id`.
+- **D1 migration:** `worker/migrations/0003_client_portal.sql` — `password_hash`, `photo_url`, `documents_json`, `account_status`, `last_login_at` on `clients` + table `client_requests`.
+- **Files:** `css/client.css`, `js/client.js`
+- **Not yet:** renew requests UI, payment proof upload, documents upload, admin “Pedidos de renovação” panel (Phase 2–3).
+- **Deploy order:** (1) `npx wrangler d1 migrations apply buzios-db --remote` from `worker/` (2) `npx wrangler deploy` (3) publish static Pages including `conta.html`.
 
 ---
 

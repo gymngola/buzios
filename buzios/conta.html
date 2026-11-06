@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Área do Membro — Búzios Health Club</title>
+  <meta name="description" content="Área privada do membro Búzios Health Club. Consulte o seu plano, documentos e pedidos.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#1c1917">
+  <link rel="canonical" href="https://www.buzioshealthclub.com/conta">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=20261107c">
+  <link rel="stylesheet" href="css/client.css?v=20261107c">
+</head>
+<body>
+  <div class="client-shell">
+    <header class="client-header">
+      <div class="client-header-inner">
+        <a class="client-brand" href="/">
+          <img src="/icons/logo.png" alt="" width="36" height="36">
+          <span>Búzios</span>
+        </a>
+        <div class="client-header-actions">
+          <a class="btn-ghost" href="/">Site</a>
+          <button type="button" class="btn-ghost dash-hidden" id="btnLogout">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="client-main">
+      <!-- Auth -->
+      <div id="viewAuth">
+        <div class="auth-wrap">
+          <div class="auth-card">
+            <h1 id="authTitle">Área do membro</h1>
+            <p class="auth-sub" id="authSub">Entre com o email registado no clube.</p>
+
+            <div class="auth-tabs" role="tablist">
+              <button type="button" class="auth-tab is-active" data-tab="login" role="tab">Entrar</button>
+              <button type="button" class="auth-tab" data-tab="register" role="tab">Criar conta</button>
+            </div>
+
+            <div class="auth-error" id="authError" hidden></div>
+
+            <form id="formLogin" class="auth-form" autocomplete="on">
+              <div class="field">
+                <label for="loginEmail">Email</label>
+                <input id="loginEmail" name="email" type="email" inputmode="email" autocomplete="username" required placeholder="o.seu@email.com">
+              </div>
+              <div class="field">
+                <label for="loginPassword">Palavra-passe</label>
+                <input id="loginPassword" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+              </div>
+              <button type="submit" class="btn-primary" id="btnLogin">Entrar</button>
+            </form>
+
+            <form id="formRegister" class="auth-form" autocomplete="on" hidden>
+              <div class="field">
+                <label for="regEmail">Email do sócio</label>
+                <input id="regEmail" name="email" type="email" inputmode="email" autocomplete="username" required placeholder="email usado no registo">
+              </div>
+              <div class="field">
+                <label for="regPassword">Palavra-passe</label>
+                <input id="regPassword" name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="mínimo 6 caracteres">
+              </div>
+              <div class="field">
+                <label for="regConfirm">Confirmar palavra-passe</label>
+                <input id="regConfirm" name="confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="repetir palavra-passe">
+              </div>
+              <button type="submit" class="btn-primary" id="btnRegister">Criar conta</button>
+            </form>
+
+            <p class="auth-hint">
+              A conta só pode ser criada com o email já associado ao seu registo de sócio.
+              Problemas? Contacte a recepção.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="viewDash" class="dash-hidden">
+        <div class="profile-row">
+          <div id="profileAvatar" class="profile-avatar placeholder" aria-hidden="true">?</div>
+          <div class="profile-meta">
+            <h2 id="profileName">—</h2>
+            <p id="profileSub"></p>
+          </div>
+        </div>
+
+        <div class="plan-card">
+          <div class="plan-card-head">
+            <h3 id="planName">—</h3>
+            <div class="plan-badges" id="planBadges"></div>
+          </div>
+          <div class="plan-grid">
+            <div class="plan-field">
+              <label>Preço</label>
+              <span id="planPrice">—</span>
+            </div>
+            <div class="plan-field">
+              <label>Ciclo</label>
+              <span id="planCycle">—</span>
+            </div>
+            <div class="plan-field">
+              <label>Início</label>
+              <span id="planStart">—</span>
+            </div>
+            <div class="plan-field">
+              <label>Fim</label>
+              <span id="planEnd">—</span>
+            </div>
+          </div>
+          <div class="days-pill" id="daysPill" hidden></div>
+        </div>
+
+        <h3 class="section-title">Os seus dados</h3>
+        <dl class="info-list">
+          <div class="info-row"><dt>Telefone</dt><dd id="infoPhone">—</dd></div>
+          <div class="info-row"><dt>Email</dt><dd id="infoEmail">—</dd></div>
+          <div class="info-row"><dt>Área</dt><dd id="infoArea">—</dd></div>
+          <div class="info-row"><dt>Emergência</dt><dd id="infoEmergency">—</dd></div>
+        </dl>
+
+        <h3 class="section-title">Pagamentos recentes</h3>
+        <div id="paymentsList">
+          <p class="empty-note">A carregar…</p>
+        </div>
+
+        <h3 class="section-title">Em breve</h3>
+        <div class="coming-soon">
+          <strong>Renovação, comprovativos e documentos</strong>
+          Pedir renovação do plano, enviar prova de pagamento e gerir documentos (BI, atestado, foto) estarão disponíveis aqui em seguida.
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="clientToast" role="status" aria-live="polite"></div>
+  <script src="js/client.js?v=20261107c"></script>
+</body>
+</html>

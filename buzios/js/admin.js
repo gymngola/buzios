@@ -335,11 +335,24 @@
       Date.now() +
       '&cb=' +
       Math.random().toString(36).slice(2, 8);
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data || typeof data !== 'object') return null;
-    return data;
+    // Timeout — a hung Cloudinary fetch used to leave admin stuck on "Em sincronização"
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
+    try {
+      const res = await fetch(url, {
+        cache: 'no-store',
+        signal: ctrl ? ctrl.signal : undefined
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data || typeof data !== 'object') return null;
+      return data;
+    } catch (e) {
+      console.warn('Cloudinary store fetch failed/timed out', e && e.message);
+      return null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   /** Multi-device + multi-tab sync. */
@@ -454,6 +467,7 @@
 
   /** Overlay store.clients with D1 list when available (source of truth for clients). */
   async function overlayClientsFromD1() {
+    if (!getAdminPassword()) return false;
     try {
       const res = await fetch(ADMIN_DATA_URL, {
         method: 'POST',
@@ -461,7 +475,10 @@
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_clients' }),
         cache: 'no-store'
       });
-      if (!res.ok) return false;
+      if (!res.ok) {
+        console.warn('D1 clients overlay HTTP', res.status);
+        return false;
+      }
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.clients)) return false;
       // Prefer D1 when it has data (or equal count). Never replace non-empty local with empty D1.
@@ -527,6 +544,12 @@
     storeFetchInFlight = true;
     if (!silent) setSyncStatus('syncing');
     try {
+      // No password → cannot call Worker; still try D1 overlays only if we somehow have one
+      if (!getAdminPassword()) {
+        if (!silent) setSyncStatus('error', 'Sessão sem password — volte a entrar');
+        return false;
+      }
+
       let fromWorker = null;
       try {
         const res = await fetch(ADMIN_DATA_URL, {
@@ -535,6 +558,12 @@
           body: JSON.stringify({ password: getAdminPassword(), action: 'get' }),
           cache: 'no-store'
         });
+        if (res.status === 401) {
+          setSessionPassword('');
+          sessionStorage.removeItem(LS.auth);
+          if (!silent) setSyncStatus('error', 'Não autorizado');
+          return false;
+        }
         if (res.ok) {
           const data = await res.json();
           if (data.store) fromWorker = data.store;
@@ -556,26 +585,35 @@
         chosen = preferStoreSnapshot(fromWorker, fromCloud);
       }
 
-      if (!chosen) {
-        if (!silent) setSyncStatus('error');
-        return false;
+      // After cutover, operational data lives in D1. Even if store snapshot is
+      // missing/empty, still overlay from D1 so Clientes/Inscrições appear.
+      if (chosen) {
+        if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
+          await overlayClientsFromD1();
+          await overlaySubmissionsFromD1();
+          await overlayNewslettersFromD1();
+          setSyncStatus('ok', 'Sincronizado');
+          return false;
+        }
+        applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
       }
 
-      if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
-        // Still refresh clients + inbox + newsletter from D1 on silent polls
-        await overlayClientsFromD1();
-        await overlaySubmissionsFromD1();
-        await overlayNewslettersFromD1();
-        setSyncStatus('ok', 'Sincronizado');
-        return false;
-      }
-
-      const changed = applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
-      // Clients + submissions + newsletters: D1 preferred over Cloudinary once import is done
-      await overlayClientsFromD1();
+      const gotClients = await overlayClientsFromD1();
       await overlaySubmissionsFromD1();
       await overlayNewslettersFromD1();
-      return changed;
+
+      if (!chosen && !gotClients && !(store.clients || []).length) {
+        if (!silent) setSyncStatus('error', 'Sem dados do servidor');
+        return false;
+      }
+
+      if (!silent) setSyncStatus('ok', 'Sincronizado');
+      else setSyncStatus('ok', 'Sincronizado');
+      return !!chosen;
+    } catch (e) {
+      console.warn('loadStore failed', e);
+      if (!silent) setSyncStatus('error', 'Erro ao sincronizar');
+      return false;
     } finally {
       storeFetchInFlight = false;
     }

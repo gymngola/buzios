@@ -271,18 +271,45 @@ async function handleSubmit(request, env) {
   if (store.clients && store.clients.length > 3000) store.clients = store.clients.slice(0, 3000);
 
   store.updatedAt = new Date().toISOString();
-  // D1 is primary for operational data after cutover
-  if (env.DB) {
+
+  // D1 is primary for operational data after cutover.
+  // Fail loud: never return ok when the primary write did not succeed.
+  const mustWrite = !!(newSubmission || newClient || newNewsletter);
+  if (mustWrite) {
+    if (!env.DB) {
+      console.error('D1 not bound on /submit — refusing silent success');
+      return json(
+        {
+          error: 'Serviço temporariamente indisponível. Tente novamente em alguns minutos.',
+          code: 'd1_unbound'
+        },
+        503
+      );
+    }
     try {
       if (newSubmission) await d1UpsertSubmission(env, newSubmission);
       if (newClient) await d1UpsertClient(env, newClient);
       if (newNewsletter) await d1UpsertNewsletter(env, newNewsletter);
     } catch (e) {
       console.error('D1 write on submit failed', e && e.message);
+      return json(
+        {
+          error: 'Não foi possível guardar o pedido. Tente novamente.',
+          code: 'd1_write_failed',
+          detail: (e && e.message) || String(e)
+        },
+        500
+      );
     }
   }
+
   if (WRITE_OPS_TO_STORE) {
-    await saveStore(env, store);
+    try {
+      await saveStore(env, store);
+    } catch (e) {
+      // Dual-write path only; D1 already succeeded when mustWrite
+      console.error('Cloudinary store write on submit failed', e && e.message);
+    }
   }
 
   return json({ ok: true, id });

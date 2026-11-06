@@ -273,6 +273,16 @@
           <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar no website</strong>.</p>
           <p><strong>Planos</strong> — organizados por ginásio e natação (mensalidades Bebés / Especial / Hidro / 6–99 anos e planos de férias). Edite preços aqui e publique. O formulário de inscrição e as páginas do site usam este catálogo.</p>
           <p><strong>Publicar no website</strong> — só em Planos, Imagens e Textos. Clientes, inscrições e contactos guardam-se sozinhos (não precisam de publicar).</p>
+
+          <h3>Segurança / dados</h3>
+          <ul>
+            <li>Dados operacionais (clientes, inscrições, contactos, newsletter) vivem no <strong>Cloudflare D1</strong>, não só no Cloudinary.</li>
+            <li><strong>Arquivar</strong> ≠ apagar: o registo fica fora da fila diária e pode ser reactivado. <strong>Lixeira</strong> move para lixo recuperável durante <strong>30 dias</strong>; depois o cron faz purge permanente.</li>
+            <li><strong>Apagar já / Apagar definitivamente</strong> é irreversível no painel (só recuperação via Time Travel do D1 ou último backup).</li>
+            <li>Recomendado: correr <strong>Backup completo</strong> (ou aguardar o backup agendado <code>d1_backup</code>) pelo menos a cada poucos dias.</li>
+            <li>Time Travel do D1 recupera a base nos últimos <strong>7 dias</strong> (plano Free) / <strong>30 dias</strong> (Paid). Os ficheiros datados no Cloudinary (<code>backups/d1-YYYY-MM-DD.json</code>) são a cópia de longa duração.</li>
+          </ul>
+
           <h3>Redeploy do Worker</h3>
           <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>
         </div>

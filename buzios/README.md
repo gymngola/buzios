@@ -119,6 +119,8 @@ curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
 Time Travel alone is only 7 days on Free — keep the Cloudinary snapshots. See `worker/SETUP-D1.md`.  
 **Catalog:** Cloudinary only.
 
+**Segurança / dados (staff):** Operational data is D1-primary. **Arquivar** is reversible status; **Lixeira** is soft-delete with 30-day recovery, then permanent purge on cron. **Apagar já** is irreversible in the UI (Time Travel / last backup only). Recommend Backup completo every few days. Same points appear in admin **Guia** and `BLUEPRINT.md` §2.2.
+
 ### 3. Admin password
 
 Password exists **only** as Worker secret `ADMIN_PASSWORD` (`npx wrangler secret put ADMIN_PASSWORD`).  
@@ -292,6 +294,11 @@ Several staff devices can keep admin open:
 - Same client edited at the same time → last write wins
 
 ## Recent changes
+
+### 2026-11-06 — Admin Guia + safety reminders
+
+- Admin **Guia** tab: visible **Segurança / dados** block (D1 primary, Arquivar vs Lixeira 30d, permanent purge, backup cadence, Time Travel limits).
+- Same points mirrored in `BLUEPRINT.md` §2.2 and this README (backup section).
 
 ### 2026-11-06 — Submit + inbox dual-write to D1
 

@@ -80,6 +80,16 @@ D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
 - Prefer newer `updatedAt`, then record count; never prefer empty over real data.
 - After cutover, operational writes do not call `saveStore`; use `d1_backup` for Cloudinary snapshots.
 
+### 2.2 Segurança / dados (staff)
+
+Mirrored in admin **Guia** tab. Keep UI and docs in sync.
+
+- Operational data (clients, submissions, newsletter) lives in **Cloudflare D1**, not only Cloudinary.
+- **Arquivar** ≠ delete: record leaves the daily queue and can be reactivated. **Lixeira** sets `deleted_at` (soft, recoverable **30 days**); cron permanently purges after 30 days. Migration `0002_trash.sql`.
+- **Apagar já / permanent purge** is irreversible in the panel (recovery only via D1 Time Travel or last Cloudinary backup).
+- Recommend: run **Backup completo** (or wait for scheduled `d1_backup`) at least every few days.
+- D1 Time Travel: **7 days** (Free) / **30 days** (Paid). Long-term copies: `buzios/backups/d1-YYYY-MM-DD.json` + `d1-backup.json` on Cloudinary.
+
 ---
 
 ## 3. Public pages
@@ -268,6 +278,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 
 ### 2026-11-06
 
+- **Admin Guia + safety:** Guia tab **Segurança / dados** block; docs §2.2 + README backup note (D1, Arquivar vs Lixeira 30d, purge, backup cadence, Time Travel).
 - **Empty Clientes bug:** Worker `fetch` with `{ cache: 'no-store' }` throws on CF Workers → Cloudinary load failed → intermittent 0 clients. Removed; query-string cache-bust only.
 - **Store guards:** refuse empty `saveStore`; auto `store-prev.json`; admin blocks empty remote over non-empty local list.
 - **Architecture decision:** catalog stays Cloudinary JSON; operational data moves to **Cloudflare D1**. Supabase reserved for multi-tenant Pro product later.

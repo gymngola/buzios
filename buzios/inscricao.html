@@ -395,6 +395,7 @@
           </div>
 
           <button type="submit" class="btn btn-primary btn-block" id="enrollSubmit">Enviar inscrição</button>
+          <p id="enrollFeedback" class="form-feedback" role="status" aria-live="polite" hidden></p>
           <p class="muted text-center mt-2" style="font-size:0.8rem">Ao enviar, a equipa Búzios recebe os seus dados e entra em contacto.</p>
         </form>
       </div>
@@ -799,9 +800,30 @@
       return data.secure_url;
     }
 
+    function showEnrollFeedback(message) {
+      const el = document.getElementById('enrollFeedback');
+      if (!el) return;
+      el.hidden = false;
+      el.classList.remove('is-success', 'is-error');
+      el.classList.add('is-error');
+      el.textContent = message;
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function clearEnrollFeedback() {
+      const el = document.getElementById('enrollFeedback');
+      if (!el) return;
+      el.hidden = true;
+      el.textContent = '';
+    }
+
     document.getElementById('enrollForm').addEventListener('submit', async function (e) {
       e.preventDefault();
       const btn = document.getElementById('enrollSubmit');
+      clearEnrollFeedback();
       btn.disabled = true;
       btn.textContent = 'A enviar…';
 
@@ -841,7 +863,7 @@
       const docsLater = !!(document.getElementById('eDocsLater') && document.getElementById('eDocsLater').checked);
 
       if (!goals || !medical) {
-        alert('Preencha os objectivos de treino e as condições médicas.');
+        showEnrollFeedback('Preencha os objectivos de treino e as condições médicas.');
         btn.disabled = false;
         btn.textContent = 'Enviar inscrição';
         return;
@@ -852,7 +874,7 @@
           if (f.key === 'paymentProof') continue;
           const el = document.getElementById(f.id);
           if (!el || !el.files || !el.files[0]) {
-            alert('Anexe todos os documentos obrigatórios ou escolha entregar no local.');
+            showEnrollFeedback('Anexe todos os documentos obrigatórios ou escolha entregar no local.');
             btn.disabled = false;
             btn.textContent = 'Enviar inscrição';
             return;
@@ -874,7 +896,7 @@
         }
       } catch (err) {
         console.error(err);
-        alert('Erro ao enviar documentos. Tente novamente ou entregue no local.');
+        showEnrollFeedback('Erro ao enviar documentos. Tente novamente ou entregue no local.');
         btn.disabled = false;
         btn.textContent = 'Enviar inscrição';
         return;
@@ -920,7 +942,7 @@
         document.getElementById('enrollForm').style.display = 'none';
         document.getElementById('successBox').classList.add('show');
       } catch (err) {
-        alert('Não foi possível enviar. Verifique a ligação e tente de novo.');
+        showEnrollFeedback('Não foi possível enviar. Verifique a ligação e tente de novo.');
         btn.disabled = false;
         btn.textContent = 'Enviar inscrição';
       }

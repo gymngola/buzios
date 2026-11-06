@@ -285,6 +285,7 @@
                   <textarea id="cMsg" name="message" required rows="4" placeholder="Ex.: horários de natação para crianças, visita ao ginásio, planos…"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary btn-block" id="contactSubmit">Enviar mensagem</button>
+                <p id="contactFeedback" class="form-feedback" role="status" aria-live="polite" hidden></p>
                 <p class="enroll-hint">Para se inscrever no ginásio ou na natação, use o <a href="inscricao.html">formulário de inscrição</a>.</p>
               </form>
             </div>
@@ -339,9 +340,27 @@
       if (value) sel.value = value;
     })();
 
+    function showContactFeedback(message) {
+      const el = document.getElementById('contactFeedback');
+      if (!el) return;
+      el.hidden = false;
+      el.classList.remove('is-success', 'is-error');
+      el.classList.add('is-error');
+      el.textContent = message;
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     document.getElementById('contactForm').addEventListener('submit', async function (e) {
       e.preventDefault();
       const btn = document.getElementById('contactSubmit');
+      const feedback = document.getElementById('contactFeedback');
+      if (feedback) {
+        feedback.hidden = true;
+        feedback.textContent = '';
+      }
       btn.disabled = true;
       btn.textContent = 'A enviar…';
 
@@ -367,7 +386,7 @@
         document.getElementById('contactFormBlock').style.display = 'none';
         document.getElementById('contactSuccess').classList.add('show');
       } catch (err) {
-        alert('Não foi possível enviar. Tente novamente.');
+        showContactFeedback('Não foi possível enviar. Verifique a ligação e tente novamente.');
         btn.disabled = false;
         btn.textContent = 'Enviar mensagem';
       }

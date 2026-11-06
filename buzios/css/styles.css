@@ -1358,6 +1358,42 @@ body.drawer-open { overflow: hidden; }
 }
 .newsletter-note a { text-decoration: underline; }
 
+/* Inline form feedback (newsletter, contact, inscrição) */
+.newsletter-feedback,
+.form-feedback {
+  margin: 0.75rem 0 0;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  animation: form-feedback-in 0.28s ease;
+}
+.form-feedback {
+  margin: 0.85rem 0 0.5rem;
+}
+.newsletter-feedback[hidden],
+.form-feedback[hidden] {
+  display: none !important;
+}
+.newsletter-feedback.is-success,
+.form-feedback.is-success {
+  color: #1f5c42;
+  background: rgba(47, 107, 79, 0.12);
+  border: 1px solid rgba(47, 107, 79, 0.22);
+}
+.newsletter-feedback.is-error,
+.form-feedback.is-error {
+  color: #9a2222;
+  background: rgba(179, 51, 51, 0.1);
+  border: 1px solid rgba(179, 51, 51, 0.22);
+}
+@keyframes form-feedback-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .footer-social {
   display: flex;
   justify-content: center;

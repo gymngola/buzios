@@ -475,6 +475,18 @@
   }
 
   // —— Newsletter (WhatsApp number) ——
+  function showNewsletterFeedback(kind, message) {
+    const el = $('#newsletterFeedback');
+    if (!el) return;
+    el.hidden = false;
+    el.classList.remove('is-success', 'is-error');
+    el.classList.add(kind === 'error' ? 'is-error' : 'is-success');
+    el.textContent = message;
+    el.style.animation = 'none';
+    void el.offsetWidth;
+    el.style.animation = '';
+  }
+
   function initNewsletter() {
     const form = $('#newsletterForm');
     if (!form) return;
@@ -483,6 +495,11 @@
       const phone = $('#newsletterPhone')?.value?.trim();
       if (!phone) return;
       const btn = form.querySelector('button[type="submit"]');
+      const feedback = $('#newsletterFeedback');
+      if (feedback) {
+        feedback.hidden = true;
+        feedback.textContent = '';
+      }
       if (btn) { btn.disabled = true; btn.textContent = 'A enviar…'; }
       try {
         const res = await fetch(SUBMIT_URL, {
@@ -496,9 +513,9 @@
         });
         if (!res.ok) throw new Error('fail');
         form.reset();
-        alert('Obrigado! Vamos enviar novidades para o seu WhatsApp.');
+        showNewsletterFeedback('success', 'Obrigado! Vamos enviar novidades para o seu WhatsApp.');
       } catch (err) {
-        alert('Não foi possível registar agora. Tente novamente ou use o formulário de contacto.');
+        showNewsletterFeedback('error', 'Não foi possível registar agora. Tente novamente ou use Contacto.');
       }
       if (btn) { btn.disabled = false; btn.textContent = 'Subscrever'; }
     });

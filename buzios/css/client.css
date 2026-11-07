@@ -481,3 +481,22 @@
     padding-top: 2.25rem;
   }
 }
+
+
+.auth-hint-help {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.auth-hint a {
+  color: var(--color-accent);
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--t-fast);
+}
+
+.auth-hint a:hover {
+  border-bottom-color: var(--color-accent);
+}

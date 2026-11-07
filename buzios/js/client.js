@@ -319,7 +319,13 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     bind();
-    switchTab('login');
+    var params = new URLSearchParams(window.location.search || '');
+    var tab = params.get('tab') || '';
+    if (tab === 'register' || window.location.hash === '#register') {
+      switchTab('register');
+    } else {
+      switchTab('login');
+    }
     bootstrap();
   });
 })();

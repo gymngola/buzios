@@ -142,16 +142,95 @@
 
   /* ——— Views ——— */
 
+  var SECTION_TITLES = {
+    plan: 'Plano',
+    account: 'Minha conta',
+    payments: 'Pagamentos'
+  };
+
   function showAuth() {
+    document.body.classList.remove('is-dash');
+    closeDrawer();
     $('#viewAuth').classList.remove('dash-hidden');
     $('#viewDash').classList.add('dash-hidden');
-    $('#btnLogout').classList.add('dash-hidden');
+    $$('.dash-only').forEach(function (el) { el.classList.add('dash-hidden'); });
+    $$('.auth-only').forEach(function (el) { el.classList.remove('dash-hidden'); });
   }
 
   function showDash() {
+    document.body.classList.add('is-dash');
     $('#viewAuth').classList.add('dash-hidden');
     $('#viewDash').classList.remove('dash-hidden');
-    $('#btnLogout').classList.remove('dash-hidden');
+    $$('.dash-only').forEach(function (el) { el.classList.remove('dash-hidden'); });
+    $$('.auth-only').forEach(function (el) { el.classList.add('dash-hidden'); });
+    showSection('plan');
+  }
+
+  function showSection(id) {
+    if (!SECTION_TITLES[id]) id = 'plan';
+    $$('.dash-section').forEach(function (sec) {
+      var active = sec.getAttribute('data-section') === id;
+      sec.classList.toggle('is-active', active);
+      if (active) sec.removeAttribute('hidden');
+      else sec.setAttribute('hidden', '');
+    });
+    $$('.client-nav-link[data-section]').forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.getAttribute('data-section') === id);
+    });
+    var title = $('#dashPageTitle');
+    if (title) title.textContent = SECTION_TITLES[id];
+    closeDrawer();
+    try {
+      if (history.replaceState) {
+        var url = new URL(window.location.href);
+        url.hash = id === 'plan' ? '' : id;
+        history.replaceState(null, '', url.pathname + url.search + (url.hash || ''));
+      }
+    } catch (_) {}
+  }
+
+  function openDrawer() {
+    var drawer = $('#clientDrawer');
+    var overlay = $('#clientDrawerOverlay');
+    var btn = $('#clientHamburger');
+    if (!drawer) return;
+    drawer.classList.add('is-open');
+    drawer.setAttribute('aria-hidden', 'false');
+    if (overlay) {
+      overlay.hidden = false;
+      overlay.classList.add('is-open');
+    }
+    if (btn) {
+      btn.classList.add('is-open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+    document.body.classList.add('client-drawer-open');
+  }
+
+  function closeDrawer() {
+    var drawer = $('#clientDrawer');
+    var overlay = $('#clientDrawerOverlay');
+    var btn = $('#clientHamburger');
+    if (!drawer) return;
+    drawer.classList.remove('is-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    if (overlay) {
+      overlay.classList.remove('is-open');
+      setTimeout(function () {
+        if (!overlay.classList.contains('is-open')) overlay.hidden = true;
+      }, 350);
+    }
+    if (btn) {
+      btn.classList.remove('is-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+    document.body.classList.remove('client-drawer-open');
+  }
+
+  function toggleDrawer() {
+    var drawer = $('#clientDrawer');
+    if (drawer && drawer.classList.contains('is-open')) closeDrawer();
+    else openDrawer();
   }
 
   function renderClient(c) {
@@ -376,22 +455,48 @@
     bindPasswordToggles();
     $('#formLogin').addEventListener('submit', onLogin);
     $('#formRegister').addEventListener('submit', onRegister);
-    $('#btnLogout').addEventListener('click', logout);
-    var dashOut = $('#btnLogoutDash');
-    if (dashOut) dashOut.addEventListener('click', logout);
+
+    var logoutIds = ['btnLogout', 'btnLogoutDash', 'btnLogoutDrawer'];
+    logoutIds.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('click', logout);
+    });
+
     var delBtn = $('#btnDeleteAccount');
     if (delBtn) delBtn.addEventListener('click', deleteAccount);
+
+    var ham = $('#clientHamburger');
+    if (ham) ham.addEventListener('click', toggleDrawer);
+    var closeBtn = $('#clientDrawerClose');
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    var overlay = $('#clientDrawerOverlay');
+    if (overlay) overlay.addEventListener('click', closeDrawer);
+
+    $$('.client-nav-link[data-section]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        showSection(btn.getAttribute('data-section'));
+      });
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeDrawer();
+    });
   }
 
   document.addEventListener('DOMContentLoaded', function () {
     bind();
     var params = new URLSearchParams(window.location.search || '');
     var tab = params.get('tab') || '';
-    if (tab === 'register' || window.location.hash === '#register') {
+    var hash = (window.location.hash || '').replace(/^#/, '');
+    if (tab === 'register' || hash === 'register') {
       switchTab('register');
     } else {
       switchTab('login');
     }
-    bootstrap();
+    bootstrap().then(function () {
+      if (document.body.classList.contains('is-dash') && SECTION_TITLES[hash]) {
+        showSection(hash);
+      }
+    });
   });
 })();

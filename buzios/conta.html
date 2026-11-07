@@ -13,8 +13,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261107c">
-  <link rel="stylesheet" href="css/client.css?v=20261107c">
+  <link rel="stylesheet" href="css/styles.css?v=20261107d">
+  <link rel="stylesheet" href="css/client.css?v=20261107d">
 </head>
 <body>
   <div class="client-shell">
@@ -25,11 +25,37 @@
           <span>Búzios</span>
         </a>
         <div class="client-header-actions">
-          <a class="btn-ghost" href="/">Site</a>
-          <button type="button" class="btn-ghost dash-hidden" id="btnLogout">Sair</button>
+          <a class="btn-ghost auth-only" href="/">Site</a>
+          <button type="button" class="btn-ghost dash-only dash-hidden" id="btnLogout">Sair</button>
+          <button type="button" class="client-hamburger dash-only dash-hidden" id="clientHamburger" aria-label="Menu" aria-expanded="false" aria-controls="clientDrawer">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
       </div>
     </header>
+
+    <!-- Client drawer -->
+    <div class="client-drawer-overlay" id="clientDrawerOverlay" hidden></div>
+    <aside class="client-drawer" id="clientDrawer" aria-hidden="true">
+      <div class="client-drawer-head">
+        <span class="client-drawer-title">Área do membro</span>
+        <button type="button" class="client-drawer-close" id="clientDrawerClose" aria-label="Fechar menu">
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+      <nav class="client-drawer-nav" aria-label="Secções">
+        <button type="button" class="client-nav-link is-active" data-section="plan">Plano</button>
+        <button type="button" class="client-nav-link" data-section="account">Minha conta</button>
+        <button type="button" class="client-nav-link" data-section="payments">Pagamentos</button>
+      </nav>
+      <div class="client-drawer-footer">
+        <a class="client-nav-link client-nav-external" href="index.html">Ver o website</a>
+        <button type="button" class="client-nav-link client-nav-logout" id="btnLogoutDrawer">Sair da conta</button>
+      </div>
+    </aside>
 
     <main class="client-main">
       <!-- Auth -->
@@ -102,73 +128,93 @@
 
       <!-- Dashboard -->
       <div id="viewDash" class="dash-hidden">
-        <div class="profile-row">
-          <div id="profileAvatar" class="profile-avatar placeholder" aria-hidden="true">?</div>
-          <div class="profile-meta">
-            <h2 id="profileName">—</h2>
-            <p id="profileSub"></p>
-          </div>
+        <div class="dash-page-head">
+          <h1 class="dash-page-title" id="dashPageTitle">Plano</h1>
         </div>
 
-        <div class="plan-card">
-          <div class="plan-card-head">
-            <h3 id="planName">—</h3>
-            <div class="plan-badges" id="planBadges"></div>
-          </div>
-          <div class="plan-grid">
-            <div class="plan-field">
-              <label>Preço</label>
-              <span id="planPrice">—</span>
-            </div>
-            <div class="plan-field">
-              <label>Ciclo</label>
-              <span id="planCycle">—</span>
-            </div>
-            <div class="plan-field">
-              <label>Início</label>
-              <span id="planStart">—</span>
-            </div>
-            <div class="plan-field">
-              <label>Fim</label>
-              <span id="planEnd">—</span>
+        <!-- Section: Plano -->
+        <section id="sectionPlan" class="dash-section is-active" data-section="plan" aria-labelledby="dashPageTitle">
+          <div class="profile-row">
+            <div id="profileAvatar" class="profile-avatar placeholder" aria-hidden="true">?</div>
+            <div class="profile-meta">
+              <h2 id="profileName">—</h2>
+              <p id="profileSub"></p>
             </div>
           </div>
-          <div class="days-pill" id="daysPill" hidden></div>
-        </div>
 
-        <h3 class="section-title">Os seus dados</h3>
-        <dl class="info-list">
-          <div class="info-row"><dt>Telefone</dt><dd id="infoPhone">—</dd></div>
-          <div class="info-row"><dt>Email</dt><dd id="infoEmail">—</dd></div>
-          <div class="info-row"><dt>Área</dt><dd id="infoArea">—</dd></div>
-          <div class="info-row"><dt>Emergência</dt><dd id="infoEmergency">—</dd></div>
-        </dl>
+          <div class="plan-card">
+            <div class="plan-card-head">
+              <h3 id="planName">—</h3>
+              <div class="plan-badges" id="planBadges"></div>
+            </div>
+            <div class="plan-grid">
+              <div class="plan-field">
+                <label>Preço</label>
+                <span id="planPrice">—</span>
+              </div>
+              <div class="plan-field">
+                <label>Ciclo</label>
+                <span id="planCycle">—</span>
+              </div>
+              <div class="plan-field">
+                <label>Início</label>
+                <span id="planStart">—</span>
+              </div>
+              <div class="plan-field">
+                <label>Fim</label>
+                <span id="planEnd">—</span>
+              </div>
+            </div>
+            <div class="days-pill" id="daysPill" hidden></div>
+          </div>
 
-        <h3 class="section-title">Pagamentos recentes</h3>
-        <div id="paymentsList">
-          <p class="empty-note">A carregar…</p>
-        </div>
+          <div class="coming-soon">
+            <strong>Renovação e comprovativos</strong>
+            Pedir renovação do plano e enviar prova de pagamento estarão disponíveis aqui em seguida.
+          </div>
+        </section>
 
-        <h3 class="section-title">Em breve</h3>
-        <div class="coming-soon">
-          <strong>Renovação, comprovativos e documentos</strong>
-          Pedir renovação do plano, enviar prova de pagamento e gerir documentos (BI, atestado, foto) estarão disponíveis aqui em seguida.
-        </div>
+        <!-- Section: Minha conta -->
+        <section id="sectionAccount" class="dash-section" data-section="account" hidden>
+          <h3 class="section-title">Os seus dados</h3>
+          <dl class="info-list">
+            <div class="info-row"><dt>Telefone</dt><dd id="infoPhone">—</dd></div>
+            <div class="info-row"><dt>Email</dt><dd id="infoEmail">—</dd></div>
+            <div class="info-row"><dt>Área</dt><dd id="infoArea">—</dd></div>
+            <div class="info-row"><dt>Emergência</dt><dd id="infoEmergency">—</dd></div>
+          </dl>
 
-        <div class="account-actions">
-          <a class="btn-ghost" href="index.html">Ver o website</a>
-          <button type="button" class="btn-ghost" id="btnLogoutDash">Sair da conta</button>
-          <button type="button" class="btn-danger" id="btnDeleteAccount">Eliminar a minha conta</button>
-          <p class="account-actions-note">
-            Eliminar a conta remove apenas o acesso online (email e palavra-passe).
-            O seu registo de sócio no ginásio mantém-se. Para cancelar a mensalidade, contacte a recepção.
-          </p>
-        </div>
+          <div class="coming-soon" style="margin-top: 1.25rem;">
+            <strong>Documentos</strong>
+            Gerir BI, atestado médico e fotografia de perfil estarão disponíveis em breve.
+          </div>
+
+          <div class="account-actions">
+            <button type="button" class="btn-ghost" id="btnLogoutDash">Sair da conta</button>
+            <button type="button" class="btn-danger" id="btnDeleteAccount">Eliminar a minha conta</button>
+            <p class="account-actions-note">
+              Eliminar a conta remove apenas o acesso online (email e palavra-passe).
+              O seu registo de sócio no ginásio mantém-se. Para cancelar a mensalidade, contacte a recepção.
+            </p>
+          </div>
+        </section>
+
+        <!-- Section: Pagamentos -->
+        <section id="sectionPayments" class="dash-section" data-section="payments" hidden>
+          <h3 class="section-title">Pagamentos recentes</h3>
+          <div id="paymentsList">
+            <p class="empty-note">A carregar…</p>
+          </div>
+          <div class="coming-soon" style="margin-top: 1.25rem;">
+            <strong>Comprovativos</strong>
+            Enviar e consultar comprovativos de pagamento estará disponível em breve.
+          </div>
+        </section>
       </div>
     </main>
   </div>
 
   <div class="toast" id="clientToast" role="status" aria-live="polite"></div>
-  <script src="js/client.js?v=20261107c"></script>
+  <script src="js/client.js?v=20261107d"></script>
 </body>
 </html>

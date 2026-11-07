@@ -128,6 +128,11 @@
   gap: 1rem;
 }
 
+/* display:flex above would otherwise override the HTML hidden attribute */
+.auth-form[hidden] {
+  display: none !important;
+}
+
 .field {
   display: flex;
   flex-direction: column;

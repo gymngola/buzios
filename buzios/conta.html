@@ -14,24 +14,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css?v=20261107d">
-  <link rel="stylesheet" href="css/client.css?v=20261107d">
+  <link rel="stylesheet" href="css/client.css?v=20261107e">
 </head>
 <body>
   <div class="client-shell">
     <header class="client-header">
       <div class="client-header-inner">
-        <a class="client-brand" href="/">
-          <img src="/icons/logo.png" alt="" width="36" height="36">
-          <span>Búzios</span>
-        </a>
-        <div class="client-header-actions">
-          <a class="btn-ghost auth-only" href="/">Site</a>
-          <button type="button" class="btn-ghost dash-only dash-hidden" id="btnLogout">Sair</button>
+        <div class="client-header-left">
           <button type="button" class="client-hamburger dash-only dash-hidden" id="clientHamburger" aria-label="Menu" aria-expanded="false" aria-controls="clientDrawer">
             <span></span>
             <span></span>
             <span></span>
           </button>
+          <a class="client-brand" href="/">
+            <img src="/icons/logo.png" alt="" width="36" height="36">
+            <span>Búzios</span>
+          </a>
+        </div>
+        <div class="client-header-actions">
+          <a class="btn-ghost auth-only" href="/">Site</a>
+          <button type="button" class="btn-ghost dash-only dash-hidden" id="btnLogout">Sair</button>
         </div>
       </div>
     </header>

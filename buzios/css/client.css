@@ -25,7 +25,7 @@
 .client-header-inner {
   width: 100%;
   max-width: 720px;
-  margin: 0;
+  margin: 0 auto;
   padding: 0 1.25rem;
   display: flex;
   align-items: center;
@@ -53,6 +53,13 @@
   border: 1px solid var(--color-border);
 }
 
+.client-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
 .client-header-actions {
   display: flex;
   align-items: center;
@@ -63,7 +70,7 @@
   flex: 1;
   width: 100%;
   max-width: 720px;
-  margin: 0;
+  margin: 0 auto;
   padding: 1.75rem 1.25rem 3.5rem;
   text-align: left;
 }
@@ -71,7 +78,7 @@
 /* —— Auth card —— */
 .auth-wrap {
   max-width: 400px;
-  margin: 2rem 0 0;
+  margin: 2rem auto 0;
 }
 
 .auth-card {
@@ -697,16 +704,16 @@ body.is-dash .client-hamburger.dash-only {
 .client-drawer {
   position: fixed;
   top: 0;
-  right: 0;
+  left: 0;
   bottom: 0;
   width: min(280px, 86vw);
   z-index: 100;
   background: var(--color-surface);
-  border-left: 1px solid var(--color-border);
-  box-shadow: -8px 0 32px var(--color-shadow-lg);
+  border-right: 1px solid var(--color-border);
+  box-shadow: 8px 0 32px var(--color-shadow-lg);
   display: flex;
   flex-direction: column;
-  transform: translateX(100%);
+  transform: translateX(-100%);
   transition: transform var(--t-med);
   padding: 0;
 }

@@ -9,6 +9,7 @@ Product and architecture blueprint for the public site and staff admin.
 ## 1. Purpose
 
 - **Public site:** brochure + enrollment/contact for Búzios Health Club (ginásio + escola de natação) in Kifica, Luanda.
+- **Client portal (`conta.html`):** members log in with email + password to see their plan, status, and payments (Phase 1).
 - **Admin:** password-gated staff panel for leads, clients/membership, plans, site images/texts, and publishing.
 
 Live: https://www.buzioshealthclub.com
@@ -19,6 +20,7 @@ Live: https://www.buzioshealthclub.com
 
 ```
 [Browser public pages] ──POST /submit──► [Cloudflare Worker]
+[Browser conta.html]  ──POST /client/auth──► [Worker]  (JWT, D1 clients)
 [Browser admin.html]  ──POST /admin/data /publish──► [Worker]
          │                        │
          │                        ├─ Catalog write → Cloudinary catalog.json (+ invalidate)
@@ -66,6 +68,7 @@ Worker base: `https://buzios-publish.gymngola.workers.dev`
 | `POST /submit` | Public | Enrollment, contact, newsletter → D1 |
 | `POST /publish` | Admin | Write catalog |
 | `POST /admin/data` | Admin | Auth, D1 ops, legacy store (`auth`, `d1_status`, `d1_import_from_store`, `d1_get_*`, `d1_backup`, mutations) |
+| `POST /client/auth` | Client | `register` / `login` / `me` / `change_password` / `delete_account` (email+password, JWT) |
 
 D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
 
@@ -110,8 +113,55 @@ Mirrored in admin **Guia** tab. Keep UI and docs in sync.
 - Header: logo (`icons/logo.png`) + “Búzios / Health Club”
 - Mobile drawer: same
 - Footer: logo + © Búzios Health Club · La Casa de Ferro
+- Nav / drawer: **Entrar** → `conta.html`, **Criar conta** → `conta.html?tab=register`
+- Footer link: **Área do membro** → `conta.html`
 
 ---
+
+
+---
+
+## 3.1 Client portal (`conta.html`) — Phase 1
+
+Members access the same D1 client row the admin edits. Client never writes membership state directly.
+
+### Auth
+
+| Item | Detail |
+|------|--------|
+| Identifier | Email (must already exist on a `clients` row to register) |
+| Password | PBKDF2-SHA256, 100 000 iterations; stored in `clients.password_hash` |
+| Session | JWT HS256, 14 days; `sub` = `client_id` |
+| JWT secret | `CLIENT_JWT_SECRET` or fallback **`ADMIN_PASSWORD`** |
+| Stay logged in | Checkbox on login: on → `localStorage`, off → `sessionStorage` |
+| Delete account | Clears `password_hash` + `account_status` only; membership remains |
+
+### UI
+
+- Tabs: **Entrar** / **Criar conta** (query `?tab=register` opens register)
+- Show / hide password on all password fields
+- Hint if email forgotten → Contacto page or visit the gym
+- Dashboard: name, member number, plan, price, cycle, start/end, days-left pill, membership + billing badges, contact block, recent payments
+- Actions: Ver o website, Sair da conta, Eliminar a minha conta
+- Header: Site + Sair when logged in
+
+### Data (D1)
+
+Migration `0003_client_portal.sql`:
+
+- `clients`: `password_hash`, `photo_url`, `documents_json`, `account_status`, `last_login_at`
+- Table `client_requests` (Phase 2: renew / payment_proof / documents)
+- **No unique email index** (duplicates exist in import data)
+
+### Files
+
+`conta.html`, `css/client.css`, `js/client.js`, Worker `/client/auth` in `worker/src/index.js`
+
+### Phase 2+ (not built)
+
+- Profile photo + document uploads
+- Request plan renewal + payment proof
+- Admin panel: Pedidos de renovação (approve/reject → same logic as admin Renovar)
 
 ## 4. Admin panel (`admin.html`)
 
@@ -266,7 +316,9 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 | `css/admin.css` | Admin layout & Clientes dense UI |
 | `css/styles.css` | Public site + brand logo layout |
 | `js/app.js` / `js/products.js` | Public behaviour / catalog |
-| `worker/src/index.js` | API (Cloudinary store + D1 helpers) |
+| `conta.html` / `css/client.css` / `js/client.js` | Client portal (auth + dashboard) |
+| `worker/src/index.js` | API (Cloudinary store + D1 helpers + `/client/auth`) |
+| `worker/migrations/0003_client_portal.sql` | Client portal columns + `client_requests` |
 | `worker/wrangler.toml` | Worker + D1 binding |
 | `worker/migrations/0001_init.sql` | D1 schema (clients, submissions, newsletters, audit_log) |
 | `worker/migrations/0002_trash.sql` | `deleted_at` for 30-day trash |
@@ -319,13 +371,15 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 
 ### 2026-11-07 — Client portal (Phase 1)
 
-- **Page:** `conta.html` — Área do membro (login / criar conta / dashboard read-only)
-- **Auth:** email + password (PBKDF2-SHA256, 100k iter). Account only if email already exists on a D1 client row.
-- **Worker:** `POST /client/auth` actions `register` | `login` | `me` | `change_password`. JWT (HMAC-SHA256, 14d) scoped to `client_id`.
-- **D1 migration:** `worker/migrations/0003_client_portal.sql` — `password_hash`, `photo_url`, `documents_json`, `account_status`, `last_login_at` on `clients` + table `client_requests`.
-- **Files:** `css/client.css`, `js/client.js`
-- **Not yet:** renew requests UI, payment proof upload, documents upload, admin “Pedidos de renovação” panel (Phase 2–3).
-- **Deploy order:** (1) `npx wrangler d1 migrations apply buzios-db --remote` from `worker/` (2) `npx wrangler deploy` (3) publish static Pages including `conta.html`.
+- **Page:** `conta.html` — Área do membro (login / criar conta / dashboard)
+- **Auth:** email + password (PBKDF2-SHA256, 100k). Register only if email exists on D1 client. JWT 14d (`CLIENT_JWT_SECRET` or `ADMIN_PASSWORD`).
+- **Worker:** `POST /client/auth` — `register` | `login` | `me` | `change_password` | `delete_account`
+- **D1:** migration `0003_client_portal.sql` (password/profile columns + `client_requests`); unique email index skipped (duplicate emails in import)
+- **UX:** show/hide password; Manter sessão iniciada; forgot-email hint (Contacto / recepção); eliminar conta online only
+- **Public nav:** Entrar + Criar conta on desktop nav and mobile drawer; footer Área do membro
+- **Files:** `conta.html`, `css/client.css`, `js/client.js`
+- **Deploy:** migrate D1 → deploy Worker → publish Pages
+- **Not yet (Phase 2+):** renew requests, payment proof, documents/photo upload, admin Pedidos de renovação
 
 ---
 

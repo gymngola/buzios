@@ -1918,6 +1918,40 @@
     updateBulkBar('clients');
   }
 
+  const PAY_METHOD_LABELS = {
+    cash: 'Numerário',
+    transfer: 'Transferência',
+    multicaixa: 'Multicaixa',
+    other: 'Outro'
+  };
+
+  function payMethodLabel(code) {
+    if (!code) return '';
+    return PAY_METHOD_LABELS[code] || code;
+  }
+
+  function formatPayDay(iso) {
+    if (!iso) return '';
+    try {
+      const day = String(iso).slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day)) return formatDatePT(day);
+      return new Date(iso).toLocaleDateString('pt');
+    } catch (e) {
+      return String(iso).slice(0, 10);
+    }
+  }
+
+  function monthLabelPT(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso.slice(0, 10) + 'T12:00:00');
+      const label = d.toLocaleDateString('pt', { month: 'long', year: 'numeric' });
+      return label.charAt(0).toUpperCase() + label.slice(1);
+    } catch (e) {
+      return '';
+    }
+  }
+
   function renderPayHistory(payments) {
     const el = $('#cPayHistory');
     if (!el) return;
@@ -1927,12 +1961,59 @@
       return;
     }
     el.innerHTML = list.slice(0, 20).map(p => {
-      const when = p.paidAt ? new Date(p.paidAt).toLocaleString('pt') : '';
-      const amt = p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '';
-      const method = p.method || '';
-      const note = p.note ? ' — ' + escapeHtml(p.note) : '';
-      return `<li><strong>${amt}</strong> · ${escapeHtml(method)} · ${when}${note}</li>`;
+      const amt = p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '—';
+      const method = payMethodLabel(p.method);
+      const when = formatPayDay(p.paidAt);
+      const note = p.note ? escapeHtml(p.note) : '';
+      let period = '';
+      if (p.periodStart || p.periodEnd) {
+        if (p.periodStart && p.periodEnd && p.periodStart.slice(0, 7) === p.periodEnd.slice(0, 7)) {
+          period = monthLabelPT(p.periodStart);
+        } else {
+          period = (p.periodStart ? formatDatePT(p.periodStart) : '—') + ' → ' + (p.periodEnd ? formatDatePT(p.periodEnd) : '—');
+        }
+      }
+      const metaParts = [method, when].filter(Boolean).join(' · ');
+      return `<li>
+        <strong>${amt}</strong>${metaParts ? ' · ' + escapeHtml(metaParts) : ''}
+        ${period ? '<span class="pay-meta pay-period">Período: ' + escapeHtml(period) + '</span>' : ''}
+        ${note ? '<span class="pay-meta">' + note + '</span>' : ''}
+      </li>`;
     }).join('');
+  }
+
+  function computeRenewEnd() {
+    const cycle = ($('#cCycle') && $('#cCycle').value) || 'mensal';
+    const months = CYCLE_MONTHS[cycle] || 1;
+    const currentEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || '';
+    const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
+    const end = addMonthsISO(start, months);
+    return { start, end, months, cycle };
+  }
+
+  function updatePayRenewPreview() {
+    const box = $('#payRenewPreview');
+    const text = $('#payRenewPreviewText');
+    if (!box || !text) return;
+    if (!editingClientId) {
+      box.hidden = true;
+      return;
+    }
+    const { start, end, months, cycle } = computeRenewEnd();
+    const cycleLabel = cycle === 'mensal' ? '1 mês' : cycle === 'trimestral' ? '3 meses' : cycle === 'anual' ? '12 meses' : (months + ' mês(es)');
+    text.textContent = 'Novo fim do plano: ' + formatDatePT(end) + '  ·  +' + cycleLabel +
+      (start !== todayISO() ? '  (a partir de ' + formatDatePT(start) + ')' : '');
+    box.hidden = false;
+  }
+
+  function syncPayAmountFromPrice() {
+    const priceEl = $('#cPrice');
+    const amountEl = $('#cPayAmount');
+    if (!priceEl || !amountEl) return;
+    const price = priceEl.value;
+    if (price !== '' && amountEl.value === '') {
+      amountEl.value = price;
+    }
   }
 
   function updateDupWarn(phone, excludeId) {
@@ -2039,12 +2120,17 @@
     $('#cBilling').value = (c?.billingStatus === 'atrasado' ? 'em_divida' : (c?.billingStatus || 'em_dia'));
     $('#cEmergencyName').value = c?.emergencyName || '';
     $('#cEmergencyPhone').value = c?.emergencyPhone || '';
-    $('#cPayAmount').value = c?.price != null ? c.price : '';
+    if ($('#cPayAmount')) {
+      $('#cPayAmount').value = c?.price != null ? c.price : '';
+      delete $('#cPayAmount').dataset.touched;
+    }
     $('#cPayMethod').value = 'cash';
     $('#cPayNote').value = '';
+    if ($('#cPayDate')) $('#cPayDate').value = todayISO();
     renderPayHistory(c?.payments);
     const payBlock = $('#paymentBlock');
     if (payBlock) payBlock.style.display = id ? '' : 'none';
+    updatePayRenewPreview();
     const archBtn = $('#archiveClientBtn');
     const delBtn = $('#deleteClientBtn');
     if (archBtn) archBtn.style.display = id ? '' : 'none';
@@ -2444,34 +2530,45 @@
     }
   });
 
+  function buildPaymentFromForm(existing, withPeriod) {
+    const amountStr = $('#cPayAmount').value;
+    const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
+    const method = ($('#cPayMethod') && $('#cPayMethod').value) || 'cash';
+    const note = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
+    const dateVal = ($('#cPayDate') && $('#cPayDate').value) || todayISO();
+    const paidAt = /^\d{4}-\d{2}-\d{2}$/.test(dateVal)
+      ? dateVal + 'T12:00:00.000Z'
+      : new Date().toISOString();
+    const payment = {
+      id: 'pay-' + Date.now(),
+      amount: amount,
+      paidAt: paidAt,
+      method: method,
+      note: note
+    };
+    if (withPeriod) {
+      const { start, end } = computeRenewEnd();
+      payment.periodStart = start;
+      payment.periodEnd = end;
+    }
+    return payment;
+  }
+
   $('#payRenewBtn')?.addEventListener('click', async () => {
     if (!editingClientId) return toast('Guarde o cliente primeiro');
     const existing = (store.clients || []).find(x => x.id === editingClientId);
     if (!existing) return;
-    const amountStr = $('#cPayAmount').value;
-    const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
-    const cycle = $('#cCycle').value || existing.billingCycle || 'mensal';
-    const months = CYCLE_MONTHS[cycle] || 1;
-    const currentEnd = $('#cPlanEnd').value || existing.planEnd;
-    const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
-    const end = addMonthsISO(start, months);
-    const payment = {
-      id: 'pay-' + Date.now(),
-      amount: amount,
-      paidAt: new Date().toISOString(),
-      method: $('#cPayMethod').value,
-      note: $('#cPayNote').value.trim(),
-      periodStart: start,
-      periodEnd: end
-    };
+    const payment = buildPaymentFromForm(existing, true);
+    const { start, end } = computeRenewEnd();
+    const cycle = ($('#cCycle') && $('#cCycle').value) || existing.billingCycle || 'mensal';
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
     // Sync form dates before save
-    $('#cPlanStart').value = $('#cPlanStart').value || start;
-    $('#cPlanEnd').value = end;
-    $('#cMembership').value = 'activo';
-    $('#cBilling').value = 'em_dia';
-    if (amount && !$('#cPrice').value) $('#cPrice').value = amount;
+    if ($('#cPlanStart')) $('#cPlanStart').value = $('#cPlanStart').value || start;
+    if ($('#cPlanEnd')) $('#cPlanEnd').value = end;
+    if ($('#cMembership')) $('#cMembership').value = 'activo';
+    if ($('#cBilling')) $('#cBilling').value = 'em_dia';
+    if (payment.amount && $('#cPrice') && !$('#cPrice').value) $('#cPrice').value = payment.amount;
     const data = readClientForm(Object.assign({}, existing, { payments: payments.slice(0, 50), lastPaymentAt: payment.paidAt }));
     data.planStart = data.planStart || start;
     data.planEnd = end;
@@ -2480,10 +2577,46 @@
     data.lastPaymentAt = payment.paidAt;
     data.payments = payments.slice(0, 50);
     data.billingCycle = cycle;
-    if (amount) data.price = amount;
+    if (payment.amount) data.price = payment.amount;
     await adminAction('update_client', data);
     toast('Pagamento registado · válido até ' + formatDatePT(end));
     openClientModal(editingClientId);
+  });
+
+  $('#payOnlyBtn')?.addEventListener('click', async () => {
+    if (!editingClientId) return toast('Guarde o cliente primeiro');
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    const payment = buildPaymentFromForm(existing, false);
+    if (!payment.amount && payment.amount !== 0) return toast('Indique o valor pago');
+    const payments = (existing.payments || []).slice();
+    payments.unshift(payment);
+    const data = readClientForm(Object.assign({}, existing, { payments: payments.slice(0, 50), lastPaymentAt: payment.paidAt }));
+    data.lastPaymentAt = payment.paidAt;
+    data.payments = payments.slice(0, 50);
+    await adminAction('update_client', data);
+    toast('Pagamento registado (' + Number(payment.amount).toLocaleString('pt') + ' Kz)');
+    openClientModal(editingClientId);
+  });
+
+  // Live preview + auto-fill amount when cycle/price/end change
+  ['cCycle', 'cPlanEnd', 'cPrice'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', function () {
+      if (id === 'cPrice' || id === 'cCycle') {
+        const amountEl = $('#cPayAmount');
+        const priceEl = $('#cPrice');
+        if (amountEl && priceEl && priceEl.value !== '') {
+          // Keep amount in sync with plan price when staff hasn't typed a custom value
+          if (!amountEl.dataset.touched) amountEl.value = priceEl.value;
+        }
+      }
+      updatePayRenewPreview();
+    });
+  });
+  $('#cPayAmount')?.addEventListener('input', function () {
+    this.dataset.touched = '1';
   });
 
   // —— Products ——

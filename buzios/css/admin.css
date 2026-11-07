@@ -1545,21 +1545,48 @@ a { color: var(--admin-accent); }
   background: #f0fdf4;
 }
 
+.pay-renew-preview {
+  margin: 0.35rem 0 0;
+  padding: 0.55rem 0.75rem;
+  background: #fdf8f4;
+  border: 1px solid rgba(196, 92, 38, 0.22);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #7a3d1a;
+  line-height: 1.4;
+}
+
+.pay-renew-preview[hidden] {
+  display: none !important;
+}
+
 .pay-history {
   font-size: 0.8rem;
   color: var(--admin-muted);
   margin-top: 0.5rem;
-  max-height: 140px;
+  max-height: 180px;
   overflow-y: auto;
   padding: 0;
 }
 
 .pay-history li {
-  padding: 0.4rem 0;
+  padding: 0.55rem 0;
   border-bottom: 1px solid var(--admin-border);
   list-style: none;
+  line-height: 1.35;
 }
 
 .pay-history li strong { color: var(--admin-text); }
+
+.pay-history .pay-meta {
+  display: block;
+  font-size: 0.74rem;
+  color: #888;
+  margin-top: 0.15rem;
+}
+
+.pay-history .pay-period {
+  color: #5a6f78;
+}
 
 .hidden { display: none !important; }

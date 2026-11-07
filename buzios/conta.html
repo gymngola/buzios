@@ -53,8 +53,15 @@
               </div>
               <div class="field">
                 <label for="loginPassword">Palavra-passe</label>
-                <input id="loginPassword" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+                <div class="password-wrap">
+                  <input id="loginPassword" name="password" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••">
+                  <button type="button" class="password-toggle" data-target="loginPassword" aria-label="Mostrar palavra-passe">Mostrar</button>
+                </div>
               </div>
+              <label class="check-stay">
+                <input type="checkbox" id="loginStay" checked>
+                <span>Manter sessão iniciada</span>
+              </label>
               <button type="submit" class="btn-primary" id="btnLogin">Entrar</button>
             </form>
 
@@ -65,11 +72,17 @@
               </div>
               <div class="field">
                 <label for="regPassword">Palavra-passe</label>
-                <input id="regPassword" name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="mínimo 6 caracteres">
+                <div class="password-wrap">
+                  <input id="regPassword" name="password" type="password" autocomplete="new-password" required minlength="6" placeholder="mínimo 6 caracteres">
+                  <button type="button" class="password-toggle" data-target="regPassword" aria-label="Mostrar palavra-passe">Mostrar</button>
+                </div>
               </div>
               <div class="field">
                 <label for="regConfirm">Confirmar palavra-passe</label>
-                <input id="regConfirm" name="confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="repetir palavra-passe">
+                <div class="password-wrap">
+                  <input id="regConfirm" name="confirm" type="password" autocomplete="new-password" required minlength="6" placeholder="repetir palavra-passe">
+                  <button type="button" class="password-toggle" data-target="regConfirm" aria-label="Mostrar palavra-passe">Mostrar</button>
+                </div>
               </div>
               <button type="submit" class="btn-primary" id="btnRegister">Criar conta</button>
             </form>

@@ -8,28 +8,51 @@
   var WORKER = 'https://buzios-publish.gymngola.workers.dev';
   var TOKEN_KEY = 'buzios_client_token';
   var CLIENT_KEY = 'buzios_client_cache';
+  var STAY_KEY = 'buzios_client_stay';
 
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
 
-  function getToken() {
-    try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; }
-  }
-  function setToken(t) {
+  function persistStore() {
     try {
-      if (t) localStorage.setItem(TOKEN_KEY, t);
-      else localStorage.removeItem(TOKEN_KEY);
+      if (localStorage.getItem(STAY_KEY) === '0') return sessionStorage;
+    } catch (_) {}
+    return localStorage;
+  }
+
+  function getToken() {
+    try {
+      return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '';
+    } catch (_) { return ''; }
+  }
+  function setToken(t, stayLoggedIn) {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      if (!t) {
+        localStorage.removeItem(STAY_KEY);
+        return;
+      }
+      if (stayLoggedIn === false) {
+        localStorage.setItem(STAY_KEY, '0');
+        sessionStorage.setItem(TOKEN_KEY, t);
+      } else {
+        localStorage.setItem(STAY_KEY, '1');
+        localStorage.setItem(TOKEN_KEY, t);
+      }
     } catch (_) {}
   }
   function cacheClient(c) {
     try {
-      if (c) localStorage.setItem(CLIENT_KEY, JSON.stringify(c));
-      else localStorage.removeItem(CLIENT_KEY);
+      localStorage.removeItem(CLIENT_KEY);
+      sessionStorage.removeItem(CLIENT_KEY);
+      if (!c) return;
+      persistStore().setItem(CLIENT_KEY, JSON.stringify(c));
     } catch (_) {}
   }
   function readCachedClient() {
     try {
-      var raw = localStorage.getItem(CLIENT_KEY);
+      var raw = localStorage.getItem(CLIENT_KEY) || sessionStorage.getItem(CLIENT_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch (_) { return null; }
   }
@@ -234,8 +257,11 @@
     var password = $('#loginPassword').value;
     btn.disabled = true;
     try {
+      var stay = true;
+      var stayEl = $('#loginStay');
+      if (stayEl) stay = !!stayEl.checked;
       var data = await api('login', { email: email, password: password });
-      setToken(data.token);
+      setToken(data.token, stay);
       renderClient(data.client);
       showDash();
       toast('Sessão iniciada');
@@ -260,7 +286,7 @@
     btn.disabled = true;
     try {
       var data = await api('register', { email: email, password: password });
-      setToken(data.token);
+      setToken(data.token, true);
       renderClient(data.client);
       showDash();
       toast('Conta criada com sucesso');
@@ -327,12 +353,27 @@
     }
   }
 
+  function bindPasswordToggles() {
+    $$('.password-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-target');
+        var input = id ? document.getElementById(id) : null;
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.textContent = show ? 'Ocultar' : 'Mostrar';
+        btn.setAttribute('aria-label', show ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe');
+      });
+    });
+  }
+
   function bind() {
     $$('.auth-tab').forEach(function (btn) {
       btn.addEventListener('click', function () {
         switchTab(btn.getAttribute('data-tab'));
       });
     });
+    bindPasswordToggles();
     $('#formLogin').addEventListener('submit', onLogin);
     $('#formRegister').addEventListener('submit', onRegister);
     $('#btnLogout').addEventListener('click', logout);

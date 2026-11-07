@@ -1142,7 +1142,8 @@
   function renderClientDocsBlock(c) {
     const items = clientAttachments(c);
     if (!items.length) {
-      return '<div id="cDocsBlock" class="client-docs-block" style="display:none"></div>';
+      return '<div id="cDocsBlock" class="client-docs-block client-docs-empty">' +
+        '<div class="meta" style="color:#999">Sem documentos associados a este cliente.</div></div>';
     }
     const chips = items.map(a => {
       const href = escapeHtml(fixAttachmentUrl(a.url));
@@ -1158,7 +1159,7 @@
       return `<a class="client-doc-file" href="${href}" target="_blank" rel="noopener" title="${full}">📄 ${label}</a>`;
     }).join('');
     return `<div id="cDocsBlock" class="client-docs-block">
-      <div class="meta" style="margin-bottom:0.4rem"><strong>Documentos da inscrição (${items.length})</strong></div>
+      <div class="meta" style="margin-bottom:0.4rem"><strong>Documentos (${items.length})</strong></div>
       <div class="client-docs-grid">${chips}</div>
     </div>`;
   }
@@ -2111,7 +2112,8 @@
     );
     $('#cNotes').value = usedNotesFallback ? meta.cleanedNotes : (c?.notes || '');
 
-    $('#cPlan').value = c?.planName || c?.planId || '';
+    populatePlanSelect(c);
+    $('#cPlan').value = c?.planName || (c?.planId ? friendlyPlanName(c.planId) : '') || '';
     $('#cPrice').value = c?.price != null ? c.price : '';
     $('#cCycle').value = c?.billingCycle || 'mensal';
     $('#cPlanStart').value = c?.planStart || '';
@@ -2129,7 +2131,7 @@
     if ($('#cPayDate')) $('#cPayDate').value = todayISO();
     renderPayHistory(c?.payments);
     const payBlock = $('#paymentBlock');
-    if (payBlock) payBlock.style.display = id ? '' : 'none';
+    if (payBlock) payBlock.style.display = id ? 'block' : 'none';
     updatePayRenewPreview();
     const archBtn = $('#archiveClientBtn');
     const delBtn = $('#deleteClientBtn');
@@ -2145,22 +2147,187 @@
         subLink.innerHTML = '';
       }
     }
-    // Documents from client record or linked enrollment
-    let docsHost = $('#cDocsHost');
-    if (!docsHost) {
-      docsHost = document.createElement('div');
-      docsHost.id = 'cDocsHost';
-      const notesRow = $('#cNotes') && $('#cNotes').closest('.form-row');
-      if (notesRow && notesRow.parentNode) {
-        notesRow.parentNode.insertBefore(docsHost, notesRow.nextSibling);
-      } else {
-        const pay = $('#paymentBlock');
-        if (pay && pay.parentNode) pay.parentNode.insertBefore(docsHost, pay);
-      }
-    }
-    docsHost.innerHTML = renderClientDocsBlock(c);
+    const docsHost = $('#cDocsHost');
+    if (docsHost) docsHost.innerHTML = renderClientDocsBlock(c);
     updateDupWarn(c?.phone || '', id);
+    renderClientStatusSummary(c);
+    updateStatusHint(c);
+    bindClientQuickActions(c);
     $('#clientModal').classList.add('open');
+  }
+
+  function populatePlanSelect(c) {
+    const sel = $('#cPlanSelect');
+    if (!sel) return;
+    const list = (products || []).filter(p => p && p.id && p.active !== false);
+    const currentId = c?.planId || '';
+    let html = '<option value="">— escolher ou personalizado —</option>';
+    list.forEach(p => {
+      const price = p.price != null ? Number(p.price).toLocaleString('pt') + ' Kz' : '';
+      const period = p.period ? ' · ' + p.period : '';
+      html += '<option value="' + escapeHtml(p.id) + '"' + (p.id === currentId ? ' selected' : '') + '>' +
+        escapeHtml(p.name || p.id) + (price ? ' — ' + price : '') + escapeHtml(period) + '</option>';
+    });
+    if (currentId && !list.some(p => p.id === currentId)) {
+      html += '<option value="' + escapeHtml(currentId) + '" selected>' +
+        escapeHtml(c?.planName || friendlyPlanName(currentId) || currentId) + ' (actual)</option>';
+    }
+    sel.innerHTML = html;
+    if (currentId) sel.value = currentId;
+    else sel.value = '';
+  }
+
+  function membershipBadgeClass(status) {
+    const map = {
+      activo: 'status-activo',
+      pendente: 'status-pendente',
+      expirado: 'status-expirado',
+      suspenso: 'status-suspenso',
+      cancelado: 'status-cancelado',
+      arquivado: 'status-arquivado'
+    };
+    return map[status] || '';
+  }
+
+  function billingBadgeClass(status) {
+    const map = {
+      em_dia: 'status-em_dia',
+      em_divida: 'status-em_divida',
+      atrasado: 'status-atrasado',
+      isento: 'status-isento'
+    };
+    return map[status] || '';
+  }
+
+  function renderClientStatusSummary(c) {
+    const el = $('#clientStatusSummary');
+    if (!el) return;
+    if (!c) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    const enriched = enrichClient(Object.assign({}, c));
+    const mem = enriched.membershipStatus || 'pendente';
+    const bill = enriched.billingStatus === 'atrasado' ? 'em_divida' : (enriched.billingStatus || 'em_dia');
+    const days = enriched._daysLeft;
+    let daysLabel = '';
+    if (days != null) {
+      if (days < 0) daysLabel = 'expirou há ' + Math.abs(days) + 'd';
+      else if (days === 0) daysLabel = 'vence hoje';
+      else daysLabel = days + ' dias restantes';
+    }
+    const plan = enriched.planName || friendlyPlanName(enriched.planId) || '';
+    const num = enriched.memberNumber != null ? 'Nº ' + enriched.memberNumber : '';
+    const labelize = function (s) { return String(s || '').replace(/_/g, ' '); };
+    el.innerHTML =
+      '<span class="status-badge ' + membershipBadgeClass(mem) + '">' + escapeHtml(labelize(mem)) + '</span>' +
+      '<span class="status-badge ' + billingBadgeClass(bill) + '">' + escapeHtml(labelize(bill)) + '</span>' +
+      (daysLabel ? '<span class="status-meta">' + escapeHtml(daysLabel) + '</span>' : '') +
+      (num ? '<span class="status-meta">' + escapeHtml(num) + '</span>' : '') +
+      (plan ? '<span class="status-meta">' + escapeHtml(plan) + '</span>' : '') +
+      (enriched.planEnd ? '<span class="status-meta">até ' + formatDatePT(enriched.planEnd) + '</span>' : '');
+    el.hidden = false;
+  }
+
+  function suggestedStatusesFromDates() {
+    const end = ($('#cPlanEnd') && $('#cPlanEnd').value) || '';
+    const currentMem = ($('#cMembership') && $('#cMembership').value) || '';
+    const currentBill = ($('#cBilling') && $('#cBilling').value) || '';
+    if (currentMem === 'suspenso' || currentMem === 'cancelado' || currentMem === 'arquivado' || currentMem === 'pendente') {
+      return null;
+    }
+    if (currentBill === 'isento') return null;
+    const days = daysUntil(end);
+    if (days === null) return null;
+    let suggestedMem = currentMem;
+    let suggestedBill = currentBill;
+    if (days < 0) {
+      suggestedMem = 'expirado';
+      suggestedBill = 'em_divida';
+    } else if (currentMem === 'expirado' && days >= 0) {
+      suggestedMem = 'activo';
+      suggestedBill = currentBill === 'em_divida' ? 'em_dia' : currentBill;
+    }
+    if (suggestedMem === currentMem && suggestedBill === currentBill) return null;
+    return { membership: suggestedMem, billing: suggestedBill, days: days };
+  }
+
+  function updateStatusHint() {
+    const el = $('#cStatusHint');
+    if (!el) return;
+    if (!editingClientId) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    const sug = suggestedStatusesFromDates();
+    if (!sug) {
+      el.hidden = true;
+      el.innerHTML = '';
+      return;
+    }
+    const daysNote = sug.days < 0
+      ? 'Fim do plano passou há ' + Math.abs(sug.days) + ' dias.'
+      : 'Fim do plano ainda válido (' + sug.days + 'd).';
+    el.innerHTML = daysNote + ' Estados sugeridos: <strong>' +
+      escapeHtml(sug.membership) + '</strong> / <strong>' + escapeHtml(sug.billing) +
+      '</strong> <button type="button" id="cApplySuggestedStatus">Aplicar</button>';
+    el.hidden = false;
+    const btn = $('#cApplySuggestedStatus');
+    if (btn) {
+      btn.onclick = function () {
+        if ($('#cMembership')) $('#cMembership').value = sug.membership;
+        if ($('#cBilling')) $('#cBilling').value = sug.billing;
+        updateStatusHint();
+        renderClientStatusSummary({
+          membershipStatus: sug.membership,
+          billingStatus: sug.billing,
+          planEnd: $('#cPlanEnd') && $('#cPlanEnd').value,
+          planName: $('#cPlan') && $('#cPlan').value,
+          planId: $('#cPlanSelect') && $('#cPlanSelect').value,
+          memberNumber: $('#cMemberNumber') && $('#cMemberNumber').value
+        });
+      };
+    }
+  }
+
+  function bindClientQuickActions(c) {
+    const bar = $('#clientQuickActions');
+    if (!bar) return;
+    if (!c || !editingClientId) {
+      bar.hidden = true;
+      return;
+    }
+    bar.hidden = false;
+    const wa = $('#cQuickWhatsApp');
+    const copy = $('#cQuickCopyPhone');
+    const renew = $('#cQuickRenew');
+    if (wa) {
+      wa.onclick = function () {
+        const phone = ($('#cPhone') && $('#cPhone').value) || c.phone || '';
+        const url = whatsappUrl(phone);
+        if (!url) return toast('Telefone em falta');
+        window.open(url, '_blank', 'noopener');
+      };
+    }
+    if (copy) {
+      copy.onclick = async function () {
+        const phone = (($('#cPhone') && $('#cPhone').value) || c.phone || '').trim();
+        if (!phone) return toast('Telefone em falta');
+        try {
+          await navigator.clipboard.writeText(phone);
+          toast('Telefone copiado');
+        } catch (e) {
+          toast(phone);
+        }
+      };
+    }
+    if (renew) {
+      renew.onclick = function () {
+        if (editingClientId) quickRenewClient(editingClientId);
+      };
+    }
   }
 
   function readClientForm(existing) {
@@ -2180,7 +2347,7 @@
       schedule: scheduleVal || '',
       hasCard: hasCardVal || '',
       planName: $('#cPlan').value.trim(),
-      planId: existing?.planId || '',
+      planId: ($('#cPlanSelect') && $('#cPlanSelect').value) || existing?.planId || '',
       price: priceVal === '' ? null : Number(priceVal),
       billingCycle: $('#cCycle').value,
       planStart: $('#cPlanStart').value || null,
@@ -2238,6 +2405,7 @@
     }));
     await adminAction('update_client', data);
     toast('Período renovado até ' + formatDatePT(end));
+    if (editingClientId === id) openClientModal(id);
   }
 
   /** Create or update client from an enrollment submission. */
@@ -2613,10 +2781,43 @@
         }
       }
       updatePayRenewPreview();
+      if (id === 'cPlanEnd') updateStatusHint();
     });
   });
   $('#cPayAmount')?.addEventListener('input', function () {
     this.dataset.touched = '1';
+  });
+
+  // Plan catalogue → fill name, price, cycle
+  $('#cPlanSelect')?.addEventListener('change', function () {
+    const id = this.value;
+    if (!id) return;
+    const p = (products || []).find(x => x.id === id);
+    if (!p) return;
+    if ($('#cPlan')) $('#cPlan').value = p.name || id;
+    if (p.price != null && $('#cPrice')) {
+      $('#cPrice').value = p.price;
+      const amountEl = $('#cPayAmount');
+      if (amountEl && !amountEl.dataset.touched) amountEl.value = p.price;
+    }
+    if (p.period && $('#cCycle')) {
+      const period = String(p.period).toLowerCase();
+      if (period.indexOf('mensal') !== -1 || period === 'mês' || period === 'mes') $('#cCycle').value = 'mensal';
+      else if (period.indexOf('trimes') !== -1) $('#cCycle').value = 'trimestral';
+      else if (period.indexOf('anual') !== -1 || period.indexOf('ano') !== -1) $('#cCycle').value = 'anual';
+      else if (period.indexOf('pacote') !== -1 || period.indexOf('única') !== -1 || period.indexOf('unica') !== -1 || period.indexOf('cartão') !== -1) {
+        $('#cCycle').value = 'pacote';
+      }
+    }
+    updatePayRenewPreview();
+  });
+
+  ['cMembership', 'cBilling'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', function () {
+      updateStatusHint();
+    });
   });
 
   // —— Products ——

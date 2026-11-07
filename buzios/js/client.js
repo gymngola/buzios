@@ -150,7 +150,6 @@
 
   function showAuth() {
     document.body.classList.remove('is-dash');
-    closeDrawer();
     $('#viewAuth').classList.remove('dash-hidden');
     $('#viewDash').classList.add('dash-hidden');
     $$('.dash-only').forEach(function (el) { el.classList.add('dash-hidden'); });
@@ -179,7 +178,6 @@
     });
     var title = $('#dashPageTitle');
     if (title) title.textContent = SECTION_TITLES[id];
-    closeDrawer();
     try {
       if (history.replaceState) {
         var url = new URL(window.location.href);
@@ -187,50 +185,6 @@
         history.replaceState(null, '', url.pathname + url.search + (url.hash || ''));
       }
     } catch (_) {}
-  }
-
-  function openDrawer() {
-    var drawer = $('#clientDrawer');
-    var overlay = $('#clientDrawerOverlay');
-    var btn = $('#clientHamburger');
-    if (!drawer) return;
-    drawer.classList.add('is-open');
-    drawer.setAttribute('aria-hidden', 'false');
-    if (overlay) {
-      overlay.hidden = false;
-      overlay.classList.add('is-open');
-    }
-    if (btn) {
-      btn.classList.add('is-open');
-      btn.setAttribute('aria-expanded', 'true');
-    }
-    document.body.classList.add('client-drawer-open');
-  }
-
-  function closeDrawer() {
-    var drawer = $('#clientDrawer');
-    var overlay = $('#clientDrawerOverlay');
-    var btn = $('#clientHamburger');
-    if (!drawer) return;
-    drawer.classList.remove('is-open');
-    drawer.setAttribute('aria-hidden', 'true');
-    if (overlay) {
-      overlay.classList.remove('is-open');
-      setTimeout(function () {
-        if (!overlay.classList.contains('is-open')) overlay.hidden = true;
-      }, 350);
-    }
-    if (btn) {
-      btn.classList.remove('is-open');
-      btn.setAttribute('aria-expanded', 'false');
-    }
-    document.body.classList.remove('client-drawer-open');
-  }
-
-  function toggleDrawer() {
-    var drawer = $('#clientDrawer');
-    if (drawer && drawer.classList.contains('is-open')) closeDrawer();
-    else openDrawer();
   }
 
   function renderClient(c) {
@@ -456,7 +410,7 @@
     $('#formLogin').addEventListener('submit', onLogin);
     $('#formRegister').addEventListener('submit', onRegister);
 
-    var logoutIds = ['btnLogout', 'btnLogoutDash', 'btnLogoutDrawer'];
+    var logoutIds = ['btnLogout', 'btnLogoutDash'];
     logoutIds.forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('click', logout);
@@ -465,21 +419,10 @@
     var delBtn = $('#btnDeleteAccount');
     if (delBtn) delBtn.addEventListener('click', deleteAccount);
 
-    var ham = $('#clientHamburger');
-    if (ham) ham.addEventListener('click', toggleDrawer);
-    var closeBtn = $('#clientDrawerClose');
-    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-    var overlay = $('#clientDrawerOverlay');
-    if (overlay) overlay.addEventListener('click', closeDrawer);
-
     $$('.client-nav-link[data-section]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         showSection(btn.getAttribute('data-section'));
       });
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') closeDrawer();
     });
   }
 

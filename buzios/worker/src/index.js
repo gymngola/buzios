@@ -1921,5 +1921,30 @@ async function handleClientAuth(request, env) {
     return json({ ok: true, message: 'Palavra-passe actualizada' });
   }
 
-  return json({ error: 'Acção desconhecida. Use register, login, me ou change_password.' }, 400);
+  // —— delete_account (authenticated): remove online login only, keep membership row ——
+  if (action === 'delete_account') {
+    const token = body.token || (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    const payload = await verifyClientToken(token, env);
+    if (!payload) return json({ error: 'Sessão inválida ou expirada' }, 401);
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+      `UPDATE clients SET
+         password_hash = NULL,
+         account_status = NULL,
+         photo_url = COALESCE(photo_url, photo_url),
+         updated_at = ?
+       WHERE id = ?`
+    ).bind(now, String(payload.sub)).run();
+
+    try {
+      await env.DB.prepare(
+        'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+      ).bind(now, 'client_delete_account', 'client', String(payload.sub), 'online account cleared').run();
+    } catch (_) {}
+
+    return json({ ok: true, message: 'Conta online eliminada' });
+  }
+
+  return json({ error: 'Acção desconhecida. Use register, login, me, change_password ou delete_account.' }, 400);
 }

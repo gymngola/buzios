@@ -279,6 +279,27 @@
     toast('Sessão terminada');
   }
 
+  async function deleteAccount() {
+    var ok = window.confirm(
+      'Eliminar a sua conta online?\n\nIsto remove o acesso com email e palavra-passe. O registo de sócio no ginásio não é apagado.'
+    );
+    if (!ok) return;
+    var btn = $('#btnDeleteAccount');
+    if (btn) btn.disabled = true;
+    try {
+      await api('delete_account', { token: getToken() });
+      setToken('');
+      cacheClient(null);
+      showAuth();
+      switchTab('login');
+      toast('Conta online eliminada');
+    } catch (err) {
+      toast(err.message || 'Não foi possível eliminar a conta');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function bootstrap() {
     var token = getToken();
     if (!token) {
@@ -315,6 +336,10 @@
     $('#formLogin').addEventListener('submit', onLogin);
     $('#formRegister').addEventListener('submit', onRegister);
     $('#btnLogout').addEventListener('click', logout);
+    var dashOut = $('#btnLogoutDash');
+    if (dashOut) dashOut.addEventListener('click', logout);
+    var delBtn = $('#btnDeleteAccount');
+    if (delBtn) delBtn.addEventListener('click', deleteAccount);
   }
 
   document.addEventListener('DOMContentLoaded', function () {

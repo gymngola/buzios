@@ -25,7 +25,7 @@
 .client-header-inner {
   width: 100%;
   max-width: 720px;
-  margin: 0 auto;
+  margin: 0;
   padding: 0 1.25rem;
   display: flex;
   align-items: center;
@@ -63,14 +63,15 @@
   flex: 1;
   width: 100%;
   max-width: 720px;
-  margin: 0 auto;
+  margin: 0;
   padding: 1.75rem 1.25rem 3.5rem;
+  text-align: left;
 }
 
 /* —— Auth card —— */
 .auth-wrap {
   max-width: 400px;
-  margin: 2rem auto 0;
+  margin: 2rem 0 0;
 }
 
 .auth-card {

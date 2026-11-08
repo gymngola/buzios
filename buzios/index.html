@@ -188,6 +188,25 @@
         <div class="intro-grid">
           <div class="intro-media reveal">
             <img data-site-img="intro" src="https://res.cloudinary.com/ogtzpc3v/image/upload/v1793111100/buzios/kswmggmwz9lwwvnwembp.jpg" alt="Área de treino">
+            <script>
+              (function () {
+                try {
+                  var cache = {};
+                  try { cache = JSON.parse(localStorage.getItem('buzios_images_cache') || '{}'); } catch (e) {}
+                  var override = {};
+                  try { override = JSON.parse(localStorage.getItem('buzios_images_override') || '{}'); } catch (e) {}
+                  var images = Object.assign({}, cache, override);
+                  var media = document.currentScript.previousElementSibling;
+                  if (!media || media.tagName !== 'IMG') return;
+                  var key = media.getAttribute('data-site-img');
+                  if (key && images[key]) {
+                    media.src = images[key];
+                    media.hidden = false;
+                    media.removeAttribute('hidden');
+                  }
+                } catch (e) {}
+              })();
+            </script>
           </div>
           <div class="intro-content reveal reveal-delay-1">
             <p class="section-eyebrow" data-i18n="intro.eyebrow">Sobre nós</p>

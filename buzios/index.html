@@ -36,7 +36,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261108j">
+  <link rel="stylesheet" href="css/styles.css?v=20261109a">
   <!-- Structured data: LocalBusiness -->
   <script type="application/ld+json">
   {
@@ -276,7 +276,7 @@
               <p class="plan-badge">Natação</p>
               <h3 class="card-title" data-i18n="services.swimTitle">Escola de Natação Búzios</h3>
               <p class="card-text" data-i18n="services.swimText">Piscina aquecida. Aulas para bebés, crianças, adolescentes e adultos. Hidroginástica, hidroterapia e planos de férias. Turmas reduzidas (máx. 7 alunos).</p>
-              <a href="natacao.html" class="btn btn-outline btn-sm mt-2" data-i18n="services.swimCta">Ver natação</a>
+              <a href="#natacao" class="btn btn-outline btn-sm mt-2" data-i18n="services.swimCta">Ver natação</a>
             </div>
           </article>
         </div>
@@ -348,8 +348,8 @@
             </button>
           </div>
           <div class="gym-showcase-meta" aria-live="polite">
-            <strong id="gymShowcaseTitle">Sala de força</strong>
-            <span id="gymShowcaseText">Equipamento completo para treinos de hipertrofia e condicionamento</span>
+            <strong class="gym-showcase-title" id="gymShowcaseTitle">Sala de força</strong>
+            <span class="gym-showcase-text" id="gymShowcaseText">Equipamento completo para treinos de hipertrofia e condicionamento</span>
           </div>
         </div>
 
@@ -439,6 +439,152 @@
 
         <div class="gym-explore-footer reveal">
           <a href="ginasio.html" class="btn btn-outline">Página completa do ginásio</a>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Natação explore (homepage) -->
+    <section class="section section-pool-explore" id="natacao">
+      <div class="container">
+        <div class="section-header reveal">
+          <p class="section-eyebrow">Escola de natação</p>
+          <h2 class="section-title">Piscina aquecida em Kifica</h2>
+          <p class="section-desc">Aulas para bebés, crianças, adolescentes e adultos. Turmas reduzidas, água tratada todas as manhãs e monitor certificado — com a piscina aberta mesmo no frio.</p>
+        </div>
+
+        <div class="pool-facts reveal">
+          <div class="pool-fact">
+            <p class="pool-fact-value">12 × 10 m</p>
+            <p class="pool-fact-label">Comprimento × largura</p>
+          </div>
+          <div class="pool-fact">
+            <p class="pool-fact-value">1,10 – 2,18 m</p>
+            <p class="pool-fact-label">Profundidade (rasa → funda)</p>
+          </div>
+          <div class="pool-fact">
+            <p class="pool-fact-value">Aquecida</p>
+            <p class="pool-fact-label">Bomba de calor — aberta no frio</p>
+          </div>
+        </div>
+
+        <div class="gym-showcase reveal" id="poolShowcase" aria-roledescription="carousel" aria-label="Imagens da escola de natação Búzios">
+          <div class="gym-showcase-viewport">
+            <div class="gym-showcase-track">
+              <div class="gym-showcase-slide is-active" data-caption-title="Aulas na água" data-caption-text="Acompanhamento próximo, do primeiro contacto com a água aos estilos completos">
+                <img src="images/pool/aula-familia.jpg" alt="Aula de natação com crianças na piscina Búzios" width="941" height="1672" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Piscina do clube" data-caption-text="Pátio tropical em Kifica — 12 metros de comprimento por 10 de largura">
+                <img src="images/pool/piscina-vista.jpg" alt="Vista da piscina aquecida do Búzios Health Club" width="1400" height="1050" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Material de treino" data-caption-text="Pranchas, cilindros e noodles para educativos de pernas, braços e técnica">
+                <img src="images/pool/equipamento.jpg" alt="Material de natação junto à piscina" width="1400" height="787" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Diversão e segurança" data-caption-text="Turmas reduzidas e ambiente familiar para todas as idades">
+                <img src="images/pool/criancas-piscina.jpg" alt="Crianças e familiares na piscina Búzios" width="941" height="1672" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Espaço exterior" data-caption-text="Corredores, jardim e zonas de espera à volta da piscina">
+                <img src="images/pool/varanda.jpg" alt="Varanda e corredor junto à escola de natação" width="1086" height="1448" loading="lazy">
+              </div>
+            </div>
+            <button type="button" class="gym-showcase-nav gym-showcase-prev" aria-label="Imagem anterior">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button type="button" class="gym-showcase-nav gym-showcase-next" aria-label="Imagem seguinte">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+          <div class="gym-showcase-meta" aria-live="polite">
+            <strong class="gym-showcase-title">Aulas na água</strong>
+            <span class="gym-showcase-text">Acompanhamento próximo, do primeiro contacto com a água aos estilos completos</span>
+          </div>
+        </div>
+
+        <div class="gym-equip-grid">
+          <article class="gym-equip-card is-trainer reveal">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/amarildo.jpg" alt="Amarildo Salvador Kadaff, monitor de natação Búzios" width="1100" height="687" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Monitor de natação</p>
+            <h3 class="gym-equip-card-title">Amarildo Salvador Kadaff</h3>
+            <p class="gym-equip-card-text">Monitor nível 1 e 2 · Curso de professores e treinador · Curso de nadador salvador (Bombeiros). Aulas com método e segurança, para todas as idades.</p>
+          </article>
+
+          <article class="gym-equip-card reveal reveal-delay-1">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/aquecedor.jpg" alt="Bomba de calor da piscina Búzios" width="1086" height="1448" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Conforto</p>
+            <h3 class="gym-equip-card-title">Piscina aquecida</h3>
+            <p class="gym-equip-card-text">Bomba de calor mantém a água confortável o ano inteiro. A escola funciona também no frio, sem interromper o progresso dos alunos.</p>
+          </article>
+
+          <article class="gym-equip-card reveal reveal-delay-2">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/pranchas.jpg" alt="Pranchas e material de educativos de natação" width="1200" height="900" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Material didáctico</p>
+            <h3 class="gym-equip-card-title">Pranchas e cilindros</h3>
+            <p class="gym-equip-card-text">Cilindros para trabalho de braços, pranchas para educativos de pernas e material para todos os tipos de exercícios técnicos na água.</p>
+          </article>
+
+          <article class="gym-equip-card reveal">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/aula-familia-2.jpg" alt="Monitor a ensinar uma criança na piscina" width="720" height="1280" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Método</p>
+            <h3 class="gym-equip-card-title">Turmas reduzidas</h3>
+            <p class="gym-equip-card-text">Grupos pequenos para atenção individual. Da adaptação à água até aos estilos, com ritmo adequado a cada idade e nível.</p>
+          </article>
+
+          <article class="gym-equip-card reveal reveal-delay-1">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/vestiario-f-porta.jpg" alt="Entrada dos balneários femininos" width="1000" height="1333" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Instalações</p>
+            <h3 class="gym-equip-card-title">Balneários</h3>
+            <p class="gym-equip-card-text">Vestiários masculino e feminino, com zonas de muda e sanitários. Chuveiro exterior no jardim para enxaguar antes e depois da aula.</p>
+          </article>
+
+          <article class="gym-equip-card reveal reveal-delay-2">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/vestiario-m.jpg" alt="Interior do vestiário masculino" width="1000" height="1333" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">O que trazer</p>
+            <h3 class="gym-equip-card-title">Material do aluno</h3>
+            <p class="gym-equip-card-text"><strong>Homens:</strong> sunga ou calção, touca, óculos e chinelos.<br><strong>Mulheres:</strong> fato de banho completo, touca, óculos e chinelos.</p>
+          </article>
+
+          <article class="gym-equip-card reveal">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/chuveiro.jpg" alt="Chuveiro exterior de mosaico azul no jardim" width="1000" height="1333" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Higiene</p>
+            <h3 class="gym-equip-card-title">Água tratada</h3>
+            <p class="gym-equip-card-text">A água é tratada regularmente e testada todas as manhãs por um profissional da área — prioridade à saúde de alunos e equipa.</p>
+          </article>
+
+          <article class="gym-equip-card reveal reveal-delay-1">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/gabinete.jpg" alt="Gabinete do monitor junto à piscina" width="1200" height="900" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Apoio</p>
+            <h3 class="gym-equip-card-title">Gabinete do monitor</h3>
+            <p class="gym-equip-card-text">Espaço de apoio junto à piscina para organização das aulas, material e contacto com pais e alunos.</p>
+          </article>
+
+          <article class="gym-equip-card reveal reveal-delay-2">
+            <div class="gym-equip-card-media">
+              <img src="images/pool/corredor.jpg" alt="Corredor com banco de madeira junto aos balneários" width="1200" height="900" loading="lazy">
+            </div>
+            <p class="gym-equip-card-label">Ambiente</p>
+            <h3 class="gym-equip-card-title">Pátio e corredores</h3>
+            <p class="gym-equip-card-text">Zonas de espera com bancos e sombra, num ambiente acolhedor à volta da piscina — ideal para famílias durante as aulas.</p>
+          </article>
+        </div>
+
+        <div class="gym-explore-footer reveal">
+          <a href="natacao.html" class="btn btn-outline">Página completa da natação</a>
         </div>
       </div>
     </section>

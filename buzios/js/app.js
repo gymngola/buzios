@@ -287,28 +287,25 @@
   }
 
 
-  // —— Homepage gym showcase carousel (FS side-peek) ——
-  let gymShowcaseTimer = null;
-  function initGymShowcase() {
-    const root = document.getElementById('gymShowcase');
-    if (!root) return;
+  // —— Editorial showcases (gym + pool, FS side-peek) ——
+  const showcaseTimers = new WeakMap();
 
-    if (gymShowcaseTimer) {
-      clearInterval(gymShowcaseTimer);
-      gymShowcaseTimer = null;
-    }
+  function initOneShowcase(root) {
+    if (!root || root.dataset.showcaseReady === '1') return;
+    root.dataset.showcaseReady = '1';
 
     const viewport = root.querySelector('.gym-showcase-viewport') || root;
     const track = root.querySelector('.gym-showcase-track');
     const slides = Array.from(root.querySelectorAll('.gym-showcase-slide'));
     const prev = root.querySelector('.gym-showcase-prev');
     const next = root.querySelector('.gym-showcase-next');
-    const titleEl = document.getElementById('gymShowcaseTitle');
-    const textEl = document.getElementById('gymShowcaseText');
+    const titleEl = root.querySelector('.gym-showcase-title') || root.querySelector('#gymShowcaseTitle');
+    const textEl = root.querySelector('.gym-showcase-text') || root.querySelector('#gymShowcaseText');
     if (!track || slides.length < 1) return;
 
     let idx = slides.findIndex(s => s.classList.contains('is-active'));
     if (idx < 0) idx = 0;
+    let timer = null;
 
     function updateCaption(i) {
       const s = slides[i];
@@ -323,7 +320,6 @@
       const slideW = slide.getBoundingClientRect().width;
       const gap = parseFloat(getComputedStyle(track).gap) || 0;
       const vpW = viewport.getBoundingClientRect().width;
-      // center active slide in viewport
       const offset = (vpW - slideW) / 2 - idx * (slideW + gap);
       track.style.transform = 'translate3d(' + offset + 'px,0,0)';
     }
@@ -340,12 +336,14 @@
     if (next) next.onclick = (e) => { e.stopPropagation(); goTo(idx + 1); restart(); };
 
     function startAuto() {
-      if (gymShowcaseTimer) clearInterval(gymShowcaseTimer);
+      if (timer) clearInterval(timer);
       if (slides.length < 2) return;
-      gymShowcaseTimer = setInterval(() => goTo(idx + 1), 5200);
+      timer = setInterval(() => goTo(idx + 1), 5200);
+      showcaseTimers.set(root, timer);
     }
     function stopAuto() {
-      if (gymShowcaseTimer) { clearInterval(gymShowcaseTimer); gymShowcaseTimer = null; }
+      if (timer) { clearInterval(timer); timer = null; }
+      showcaseTimers.delete(root);
     }
     function restart() { stopAuto(); startAuto(); }
 
@@ -355,7 +353,6 @@
     root.addEventListener('focusout', startAuto);
     window.addEventListener('resize', layout);
 
-    // touch swipe
     let touchX = null;
     viewport.addEventListener('touchstart', (e) => {
       touchX = e.changedTouches[0].clientX;
@@ -370,10 +367,13 @@
     }, { passive: true });
 
     updateCaption(idx);
-    // layout after images may affect width
     layout();
     requestAnimationFrame(layout);
     startAuto();
+  }
+
+  function initGymShowcase() {
+    document.querySelectorAll('.gym-showcase').forEach(initOneShowcase);
   }
 
   // —— Gym image lightbox (full uncropped view) ——
@@ -436,9 +436,8 @@
       if (e.key === 'Escape' && lb.classList.contains('is-open')) close();
     });
 
-    // Showcase slides
-    const showcase = document.getElementById('gymShowcase');
-    if (showcase) {
+    // Showcase slides (gym + pool)
+    document.querySelectorAll('.gym-showcase').forEach((showcase) => {
       showcase.querySelectorAll('.gym-showcase-slide').forEach((slide) => {
         const img = slide.querySelector('img');
         if (!img) return;
@@ -452,7 +451,7 @@
         };
         slide.addEventListener('click', openFromSlide);
       });
-    }
+    });
 
     // Equipment grid cards
     document.querySelectorAll('.gym-equip-card-media').forEach((media) => {

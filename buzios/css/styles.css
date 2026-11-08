@@ -1001,9 +1001,11 @@ body.drawer-open { overflow: hidden; }
   border-radius: var(--radius-card);
   overflow: hidden;
   border: 1px solid var(--color-border);
-  aspect-ratio: 4 / 3;
   box-shadow: 0 8px 28px var(--color-shadow);
   position: relative;
+  /* Box sizes to the photo — full image, no crop, no empty bars */
+  width: 100%;
+  line-height: 0;
 }
 .intro-media::after {
   content: "";
@@ -1015,30 +1017,25 @@ body.drawer-open { overflow: hidden; }
 }
 .intro-media img {
   width: 100%;
-  height: 100%;
+  height: auto;
+  display: block;
   object-fit: contain;
   object-position: center center;
-  display: block;
 }
-/* Desktop: image matches text-column height and shows the full scene */
+/* Desktop: two columns; image uses full column width at natural aspect ratio */
 @media (min-width: 900px) {
   .intro-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 4rem;
-    align-items: stretch;
+    align-items: center;
   }
   .intro-media {
-    aspect-ratio: auto;
-    align-self: stretch;
-    min-height: 100%;
+    width: 100%;
   }
   .intro-media img {
-    position: absolute;
-    inset: 0;
     width: 100%;
-    height: 100%;
-    object-fit: contain;
-    object-position: center center;
+    height: auto;
+    position: static;
   }
 }
 .intro-content .section-title {

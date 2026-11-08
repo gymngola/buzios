@@ -280,6 +280,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 
 ### 2026-11-08
 
+- **Hero density on laptops:** tighter vertical rhythm + slightly wider title (`max-width: 18–20ch`) for viewports ≤920px tall so the hero text no longer feels crowded on common Lenovo / 14″ screens. Tall desktops keep the previous spacious treatment (85vh + larger type).
 - **Worker fetch timeouts (admin):** `fetchWithTimeout` 12s on login, `loadStore`, D1 overlays, mutations, publish. Sync pill + Clientes empty state distinguish network failure from empty data (gym Wi‑Fi case).
 - **Public form UX:** no native `alert()` — inline feedback on newsletter (home), contacto, inscrição. Success panels unchanged where they already existed.
 - **Sync status visibility:** pill badge styles for syncing / ok / error under admin section title.

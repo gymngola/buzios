@@ -716,7 +716,7 @@ body.drawer-open { overflow: hidden; }
   margin: 0 auto;
 }
 @media (min-width: 768px) {
-  .hero-content { padding: 0 2rem 6.5rem; }
+  .hero-content { padding: 0 2rem 5rem; }
 }
 .hero-eyebrow {
   font-size: 0.72rem;
@@ -732,21 +732,49 @@ body.drawer-open { overflow: hidden; }
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
-  max-width: 16ch;
-  margin-bottom: 1.3rem;
+  max-width: 18ch;
+  margin-bottom: 1.15rem;
 }
 .hero-sub {
   font-size: 0.98rem;
   font-weight: var(--fw-light);
-  max-width: 34ch;
+  max-width: 36ch;
   opacity: 0.9;
-  margin-bottom: 2.1rem;
-  line-height: 1.6;
+  margin-bottom: 1.75rem;
+  line-height: 1.55;
 }
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.9rem;
+}
+
+/* Laptop / shorter viewports: reduce vertical footprint so hero text does not feel crowded */
+@media (min-width: 768px) and (max-height: 920px) {
+  .hero {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .hero-content {
+    padding-bottom: 3.75rem;
+  }
+  .hero-eyebrow {
+    margin-bottom: 0.65rem;
+  }
+  .hero-title {
+    font-size: clamp(1.85rem, 5.2vw, 2.75rem);
+    max-width: 20ch;
+    margin-bottom: 0.9rem;
+    line-height: 1.12;
+  }
+  .hero-sub {
+    font-size: 0.95rem;
+    margin-bottom: 1.4rem;
+    line-height: 1.5;
+  }
+  .hero-actions {
+    gap: 0.75rem;
+  }
 }
 
 /* ========== SECTIONS ========== */
@@ -1795,12 +1823,15 @@ body.drawer-open { overflow: hidden; }
   }
 }
 
-/* Desktop: gentler crop + keep subjects higher in frame */
-@media (min-width: 900px) {
+/* Desktop: gentler crop + keep subjects higher in frame.
+   Only shorten hero height on tall viewports so laptop screens stay full-bleed. */
+@media (min-width: 900px) and (min-height: 921px) {
   .hero {
     min-height: 85vh;
     min-height: 85dvh;
   }
+}
+@media (min-width: 900px) {
   .hero-media img,
   .hero-media video {
     object-position: center 28%;

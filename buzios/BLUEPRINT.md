@@ -9,7 +9,6 @@ Product and architecture blueprint for the public site and staff admin.
 ## 1. Purpose
 
 - **Public site:** brochure + enrollment/contact for Búzios Health Club (ginásio + escola de natação) in Kifica, Luanda.
-- **Client portal (`conta.html`):** members log in with email + password to see their plan, status, and payments (Phase 1).
 - **Admin:** password-gated staff panel for leads, clients/membership, plans, site images/texts, and publishing.
 
 Live: https://www.buzioshealthclub.com
@@ -20,7 +19,6 @@ Live: https://www.buzioshealthclub.com
 
 ```
 [Browser public pages] ──POST /submit──► [Cloudflare Worker]
-[Browser conta.html]  ──POST /client/auth──► [Worker]  (JWT, D1 clients)
 [Browser admin.html]  ──POST /admin/data /publish──► [Worker]
          │                        │
          │                        ├─ Catalog write → Cloudinary catalog.json (+ invalidate)
@@ -68,7 +66,6 @@ Worker base: `https://buzios-publish.gymngola.workers.dev`
 | `POST /submit` | Public | Enrollment, contact, newsletter → D1 |
 | `POST /publish` | Admin | Write catalog |
 | `POST /admin/data` | Admin | Auth, D1 ops, legacy store (`auth`, `d1_status`, `d1_import_from_store`, `d1_get_*`, `d1_backup`, mutations) |
-| `POST /client/auth` | Client | `register` / `login` / `me` / `change_password` / `delete_account` (email+password, JWT) |
 
 D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
 
@@ -82,6 +79,8 @@ D1 setup: `worker/SETUP-D1.md`. Details and secrets: `README.md`.
 - `replace_store` ignores empty arrays unless `_forceReplace: true`.
 - Prefer newer `updatedAt`, then record count; never prefer empty over real data.
 - After cutover, operational writes do not call `saveStore`; use `d1_backup` for Cloudinary snapshots.
+- **Admin browser → Worker:** all `/admin/data`, `/publish`, and login calls use **`fetchWithTimeout` (12s)** in `js/admin.js`. Cloudinary store snapshot fetch stays at **8s**. Timeouts surface as sync error (“Sem ligação ao servidor” / “Servidor não respondeu”), not endless “A sincronizar…”.
+- **Restrictive networks:** Pages static UI can load while `buzios-publish.*.workers.dev` is blocked — Clientes stays empty until the Worker is reachable (try hotspot; open `/catalog` as a smoke test).
 
 ### 2.2 Segurança / dados (staff)
 
@@ -99,13 +98,12 @@ Mirrored in admin **Guia** tab. Keep UI and docs in sync.
 
 | Page | Role |
 |------|------|
-| `conta.html` | Client portal — login, register, view own plan (Phase 1) |
 | `index.html` | Home — hero, intro, services, plans teaser |
 | `ginasio.html` | Gym |
 | `natacao.html` | Swimming school |
 | `planos.html` | All plans & prices |
-| `inscricao.html` | Enrollment form → store |
-| `contacto.html` | Contact form → store |
+| `inscricao.html` | Enrollment form → Worker `/submit` → D1 |
+| `contacto.html` | Contact form → Worker `/submit` → D1 |
 | PWA | `manifest.json` + `sw.js` + `/icons/` |
 
 **Brand on every public page**
@@ -113,55 +111,8 @@ Mirrored in admin **Guia** tab. Keep UI and docs in sync.
 - Header: logo (`icons/logo.png`) + “Búzios / Health Club”
 - Mobile drawer: same
 - Footer: logo + © Búzios Health Club · La Casa de Ferro
-- Nav / drawer: **Entrar** → `conta.html`, **Criar conta** → `conta.html?tab=register`
-- Footer link: **Área do membro** → `conta.html`
 
 ---
-
-
----
-
-## 3.1 Client portal (`conta.html`) — Phase 1
-
-Members access the same D1 client row the admin edits. Client never writes membership state directly.
-
-### Auth
-
-| Item | Detail |
-|------|--------|
-| Identifier | Email (must already exist on a `clients` row to register) |
-| Password | PBKDF2-SHA256, 100 000 iterations; stored in `clients.password_hash` |
-| Session | JWT HS256, 14 days; `sub` = `client_id` |
-| JWT secret | `CLIENT_JWT_SECRET` or fallback **`ADMIN_PASSWORD`** |
-| Stay logged in | Checkbox on login: on → `localStorage`, off → `sessionStorage` |
-| Delete account | Clears `password_hash` + `account_status` only; membership remains |
-
-### UI
-
-- Tabs: **Entrar** / **Criar conta** (query `?tab=register` opens register)
-- Show / hide password on all password fields
-- Hint if email forgotten → Contacto page or visit the gym
-- Dashboard: name, member number, plan, price, cycle, start/end, days-left pill, membership + billing badges, contact block, recent payments
-- Actions: Ver o website, Sair da conta, Eliminar a minha conta
-- Header: Site + Sair when logged in
-
-### Data (D1)
-
-Migration `0003_client_portal.sql`:
-
-- `clients`: `password_hash`, `photo_url`, `documents_json`, `account_status`, `last_login_at`
-- Table `client_requests` (Phase 2: renew / payment_proof / documents)
-- **No unique email index** (duplicates exist in import data)
-
-### Files
-
-`conta.html`, `css/client.css`, `js/client.js`, Worker `/client/auth` in `worker/src/index.js`
-
-### Phase 2+ (not built)
-
-- Profile photo + document uploads
-- Request plan renewal + payment proof
-- Admin panel: Pedidos de renovação (approve/reject → same logic as admin Renovar)
 
 ## 4. Admin panel (`admin.html`)
 
@@ -316,9 +267,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 | `css/admin.css` | Admin layout & Clientes dense UI |
 | `css/styles.css` | Public site + brand logo layout |
 | `js/app.js` / `js/products.js` | Public behaviour / catalog |
-| `conta.html` / `css/client.css` / `js/client.js` | Client portal (auth + dashboard) |
-| `worker/src/index.js` | API (Cloudinary store + D1 helpers + `/client/auth`) |
-| `worker/migrations/0003_client_portal.sql` | Client portal columns + `client_requests` |
+| `worker/src/index.js` | API (Cloudinary store + D1 helpers) |
 | `worker/wrangler.toml` | Worker + D1 binding |
 | `worker/migrations/0001_init.sql` | D1 schema (clients, submissions, newsletters, audit_log) |
 | `worker/migrations/0002_trash.sql` | `deleted_at` for 30-day trash |
@@ -328,6 +277,12 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 ---
 
 ## 9. Change log (blueprint)
+
+### 2026-11-08
+
+- **Worker fetch timeouts (admin):** `fetchWithTimeout` 12s on login, `loadStore`, D1 overlays, mutations, publish. Sync pill + Clientes empty state distinguish network failure from empty data (gym Wi‑Fi case).
+- **Public form UX:** no native `alert()` — inline feedback on newsletter (home), contacto, inscrição. Success panels unchanged where they already existed.
+- **Sync status visibility:** pill badge styles for syncing / ok / error under admin section title.
 
 ### 2026-11-06
 
@@ -341,7 +296,7 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Admin load hardening:** Cloudinary store fetch 8s timeout; always overlay clients/submissions/newsletters from D1 so Clientes cannot stay empty if store snapshot stalls.
 - **Admin chrome:** sidebar **Website** (public site), **Sair** (logout clears session password + auth).
 - **Scheduled ops backup:** Worker cron `0 3 1,7,13,19,25 * *` (~every 6 days, 03:00 UTC) runs `d1BackupToCloudinary`. Writes `buzios/backups/d1-YYYY-MM-DD.json` (dated history) + `d1-backup.json` + `store.json`. Complements D1 Time Travel (7d Free / 30d Paid). Docs: `SETUP-D1.md`, README, this blueprint.
-- **/submit fail-loud:** After cutover D1 is primary. If DB is unbound or any upsert throws, `/submit` returns 5xx (never silent `{ok:true}`). Public forms already check `res.ok` and show error alerts.
+- **/submit fail-loud:** After cutover D1 is primary. If DB is unbound or any upsert throws, `/submit` returns 5xx (never silent `{ok:true}`). Public forms check `res.ok` and show **inline** error feedback (not `alert()`).
 - **D1 batch + retries:** Multi-row writes (enrollment submission+client, delete+audit) use `DB.batch()` as one transaction. Transient errors (network lost, DO reset, SQLITE_BUSY, overloaded) retry up to 3× with exponential backoff + jitter. Platform only auto-retries reads.
 - **30-day trash:** “Apagar/Lixeira” sets `deleted_at` (soft). Filter **Lixeira (30d)** + Restaurar. Permanent purge after 30 days on backup cron. Migration `0002_trash.sql`. Arquivar remains separate.
 
@@ -368,18 +323,6 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 - **Worker:** `update_client` re-loads store before write (multi-staff safety)
 - **Login flash:** early `admin-authed` class so reload does not show login when session is valid
 - **Public mobile:** tighter layout for ≤600px / ≤380px (iPhone 6s-class); SW `buzios-v3` network-first for HTML/JS/CSS
-
-### 2026-11-07 — Client portal (Phase 1)
-
-- **Page:** `conta.html` — Área do membro (login / criar conta / dashboard)
-- **Auth:** email + password (PBKDF2-SHA256, 100k). Register only if email exists on D1 client. JWT 14d (`CLIENT_JWT_SECRET` or `ADMIN_PASSWORD`).
-- **Worker:** `POST /client/auth` — `register` | `login` | `me` | `change_password` | `delete_account`
-- **D1:** migration `0003_client_portal.sql` (password/profile columns + `client_requests`); unique email index skipped (duplicate emails in import)
-- **UX:** show/hide password; Manter sessão iniciada; forgot-email hint (Contacto / recepção); eliminar conta online only
-- **Public nav:** Entrar + Criar conta on desktop nav and mobile drawer; footer Área do membro
-- **Files:** `conta.html`, `css/client.css`, `js/client.js`
-- **Deploy:** migrate D1 → deploy Worker → publish Pages
-- **Not yet (Phase 2+):** renew requests, payment proof, documents/photo upload, admin Pedidos de renovação
 
 ---
 

@@ -23,8 +23,7 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
   - Signed raw upload (Worker + Root API key) — `buzios/catalog.json` + `buzios/store.json` (+ `store-prev.json` backup)
   - `invalidate=true` on every signed upload (CDN caches raw files ~30 days otherwise)
 - **Cloudflare D1** (`buzios-db`) — clients + inbox/submissions + newsletter (admin read + dual-write). Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
-- **localStorage / sessionStorage** — admin drafts; client portal JWT (`Manter sessão iniciada` → localStorage, else sessionStorage)
-- **Client portal** — `conta.html` email+password auth against D1 membership rows (`POST /client/auth`)
+- **localStorage** — admin mid-session drafts only (catalog dirty flag; not cross-browser source of truth)
 - Orders / leads via WhatsApp (no payment backend)
 - **PWA** — installable as apps (public site + admin)
   - `manifest.json` → public site (“Búzios”)
@@ -42,7 +41,6 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
 | `planos.html` | All plans & prices |
 | `inscricao.html` | Enrollment form |
 | `contacto.html` | Contact form |
-| `conta.html` | **Área do membro** — login / criar conta / dashboard (plan, status, payments) |
 | `admin.html` | Staff panel (password-gated, noindex) |
 | `robots.txt` | Search engine crawl rules |
 | `sitemap.xml` | XML sitemap for Google |
@@ -87,7 +85,6 @@ Live base: `https://buzios-publish.gymngola.workers.dev`
 | `POST /submit` | Public — enrollment, contact, newsletter |
 | `POST /publish` | Admin — write `buzios/catalog.json` |
 | `POST /admin/data` | Admin — read/update store (inbox, clients, newsletter) + D1 ops |
-| `POST /client/auth` | Client portal — `register` / `login` / `me` / `change_password` / `delete_account` |
 
 `POST /admin/data` actions (password required): `auth`, `get`, `update_*`, `delete_*`, `replace_store`, `debug_store`, **`d1_status`**, **`d1_import_from_store`**, **`d1_get_clients`**, **`d1_get_submissions`**, **`d1_get_newsletters`**, **`d1_backup`**.
 
@@ -188,62 +185,6 @@ After deploy, both the public site and the admin panel can be installed:
 
 Each installs as its own standalone app (different icons and names). The service worker caches the shell so the UI opens offline; live data (catalog, forms) still needs network.
 
-## Client portal (Área do membro)
-
-**URL:** https://www.buzioshealthclub.com/conta  
-**Nav:** every public page desktop nav + mobile drawer → **Entrar** / **Criar conta** (footer: **Área do membro**).
-
-### Auth model
-
-- **Email + password** only. Register succeeds only if that email already exists on a D1 `clients` row (membership on file).
-- Passwords: PBKDF2-SHA256, 100 000 iterations (Web Crypto in Worker). Hash stored in `clients.password_hash`.
-- Session: JWT (HMAC-SHA256, 14 days). Secret = `CLIENT_JWT_SECRET` if set, else **`ADMIN_PASSWORD`**.
-- **Manter sessão iniciada** (login): checked → `localStorage`; unchecked → `sessionStorage` (cleared when the browser session ends).
-- **Eliminar a minha conta** clears online login only (`password_hash` / `account_status` → null). Membership row stays for the gym.
-
-### Worker actions (`POST /client/auth`)
-
-| action | Auth | Role |
-|--------|------|------|
-| `register` | Public | Create password if email matches a client without account |
-| `login` | Public | Email + password → JWT |
-| `me` | JWT | Own profile + plan + payments (no password hash) |
-| `change_password` | JWT | Requires current password |
-| `delete_account` | JWT | Clear online credentials only |
-
-### D1 migration
-
-```bash
-cd worker
-npx wrangler d1 migrations apply buzios-db --remote   # applies 0003_client_portal.sql
-npx wrangler deploy
-```
-
-`0003_client_portal.sql` adds on `clients`: `password_hash`, `photo_url`, `documents_json`, `account_status`, `last_login_at`, and creates `client_requests` (for Phase 2 renewals).  
-**No unique email index** — existing data has duplicate emails; login uses `lower(email) LIMIT 1`.
-
-### Files
-
-| Path | Role |
-|------|------|
-| `conta.html` | Portal shell (auth + dashboard) |
-| `css/client.css` | Portal styles |
-| `js/client.js` | Auth UI, session, dashboard render |
-| `worker/migrations/0003_client_portal.sql` | Schema |
-| `worker/src/index.js` | `/client/auth` handlers |
-
-### Smoke test (client)
-
-1. Open `/conta` → **Criar conta** with an email that exists on a client in admin.
-2. Dashboard shows plan name, dates, status, days left, payments.
-3. **Sair** → **Entrar** again with the same credentials.
-4. Unknown email on register → clear error (use Contacto / go to the gym).
-5. **Eliminar a minha conta** → login fails until they register again with the same email.
-
-### Not yet (Phase 2+)
-
-Renewal requests, payment proof upload, documents/photo upload, admin “Pedidos de renovação” queue.
-
 ## How data flows
 
 ### Catalog (plans, texts, site images)
@@ -264,12 +205,16 @@ Renewal requests, payment proof upload, documents/photo upload, admin “Pedidos
 
 1. Public forms → `POST /submit` → **D1** only (`WRITE_OPS_TO_STORE = false`)
 2. Admin mutations (clients / inbox / newsletter) → **D1** only
-3. Admin `loadStore()` reads Worker store snapshot (legacy) + optional Cloudinary (8s timeout), then **always overlays** clients + submissions + newsletters from D1
-4. Prefer newer `updatedAt`, then richness; **never** prefer empty over real data
-5. `saveStore` **refuses** empty overwrite (still used if flag is re-enabled or by `d1_backup`)
-6. **Backup** (Clientes → Backup) downloads full JSON; server-side `d1_backup` writes Cloudinary snapshots
+3. Admin `loadStore()` reads Worker store snapshot (legacy) + optional Cloudinary (**8s** timeout), then **always overlays** clients + submissions + newsletters from D1
+4. All admin → Worker fetches (`/admin/data`, `/publish`, login, D1 overlays) use **`fetchWithTimeout` (12s)**. On timeout/network failure the sync pill shows **Sem ligação ao servidor** / **Servidor não respondeu** instead of hanging on “A sincronizar…”. Empty Clientes distinguishes load failure from a truly empty list.
+5. Prefer newer `updatedAt`, then richness; **never** prefer empty over real data
+6. `saveStore` **refuses** empty overwrite (still used if flag is re-enabled or by `d1_backup`)
+7. **Backup** (Clientes → Backup) downloads full JSON; server-side `d1_backup` writes Cloudinary snapshots
 
 `replace_store` ignores empty `clients` / `submissions` arrays unless `data._forceReplace === true` (recovery/import only).
+
+**Gym / restrictive Wi‑Fi:** Static admin (Pages) can load while `*.workers.dev` is slow or blocked. Symptom: UI OK, Clientes empty, sync error after ~12s. Test `https://buzios-publish.gymngola.workers.dev/catalog` on that network; try hotspot if blocked.
+
 ### Site images
 
 - Upload to Cloudinary with unsigned preset (or pick from media library)
@@ -354,6 +299,12 @@ Several staff devices can keep admin open:
 
 ## Recent changes
 
+### 2026-11-08 — Admin Worker timeouts + public form feedback
+
+- Admin: **12s timeout** on all Worker fetches (`fetchWithTimeout`). Sync status becomes a visible error pill on hang/block (e.g. gym Wi‑Fi); Clientes empty state explains load failure.
+- Sync status UI: pill badge (syncing pulse / ok / error) under section title.
+- Public forms: native `alert()` removed — newsletter, contacto, and inscrição use **inline** success/error banners (`.form-feedback` / `.newsletter-feedback`).
+
 ### 2026-11-06 — Admin Guia + safety reminders
 
 - Admin **Guia** tab: visible **Segurança / dados** block (D1 primary, Arquivar vs Lixeira 30d, permanent purge, backup cadence, Time Travel limits).
@@ -407,12 +358,3 @@ Several staff devices can keep admin open:
 - Keep `public_id` paths as `buzios/catalog.json` and `buzios/store.json` (with extension)
 - After significant product/UX/infra changes: update **README.md** and **BLUEPRINT.md** in the same change set
 - Deploy: **Pages** = static root; **Worker** = always `cd worker && npx wrangler deploy` (never from project root)
-
-### 2026-11-07 — Client portal (Phase 1)
-
-- **`conta.html`** Área do membro: login / criar conta / dashboard (plan, status, payments).
-- **Auth:** email + password; register only if email exists on D1 client; JWT 14d; stay-logged-in toggle.
-- **Worker** `POST /client/auth`: register, login, me, change_password, delete_account.
-- **D1** migration `0003_client_portal.sql` (password + profile columns, `client_requests` table).
-- Public nav/drawer: **Entrar** + **Criar conta**; footer **Área do membro**.
-- UX: show/hide password, forgot-email hint → Contacto / recepção, eliminar conta online only.

@@ -5,7 +5,6 @@
  *   POST /publish          — admin: publish catalog (password)
  *   POST /submit           — public: enrollment / contact / newsletter
  *   POST /admin/data       — admin: get or update submissions + clients (password)
- *   POST /client/auth      — client: register | login | me (email + password)
  *
  * Cron (wrangler.toml [triggers]):
  *   0 3 1,7,13,19,25 * *  — every ~6 days at 03:00 UTC → d1BackupToCloudinary
@@ -15,7 +14,6 @@
  *   CLOUDINARY_CLOUD_NAME
  *   CLOUDINARY_API_KEY
  *   CLOUDINARY_API_SECRET
- *   CLIENT_JWT_SECRET      — optional; falls back to ADMIN_PASSWORD for HMAC
  *
  * Bindings:
  *   DB  — D1 database (buzios-db) for clients / submissions / newsletter
@@ -60,9 +58,6 @@ export default {
       }
       if (request.method === 'POST' && path === '/admin/data') {
         return await handleAdminData(request, env);
-      }
-      if (request.method === 'POST' && path === '/client/auth') {
-        return await handleClientAuth(request, env);
       }
       return json({ error: 'Not found', path }, 404);
     } catch (err) {
@@ -1061,12 +1056,7 @@ function clientToRow(c) {
     from_import: c.fromImport ? 1 : 0,
     from_submission: c.fromSubmission || null,
     created_at: c.createdAt || now,
-    updated_at: now,
-    password_hash: c.passwordHash != null ? c.passwordHash : undefined,
-    photo_url: c.photoUrl != null ? c.photoUrl : null,
-    documents_json: c.documents ? JSON.stringify(c.documents) : (c.documentsJson != null ? c.documentsJson : null),
-    account_status: c.accountStatus != null ? c.accountStatus : null,
-    last_login_at: c.lastLoginAt != null ? c.lastLoginAt : null
+    updated_at: now
   };
 }
 
@@ -1079,10 +1069,6 @@ function rowToClient(r) {
   let schedule = r.schedule;
   try {
     if (schedule && schedule.charAt(0) === '[') schedule = JSON.parse(schedule);
-  } catch (_) {}
-  let documents = [];
-  try {
-    documents = r.documents_json ? JSON.parse(r.documents_json) : [];
   } catch (_) {}
   return {
     id: r.id,
@@ -1110,12 +1096,7 @@ function rowToClient(r) {
     fromImport: !!r.from_import,
     fromSubmission: r.from_submission,
     createdAt: r.created_at,
-    deletedAt: r.deleted_at || null,
-    photoUrl: r.photo_url || null,
-    documents: documents,
-    accountStatus: r.account_status || null,
-    lastLoginAt: r.last_login_at || null,
-    hasPassword: !!(r.password_hash)
+    deletedAt: r.deleted_at || null
   };
 }
 
@@ -1230,15 +1211,13 @@ async function d1BatchWithRetry(env, buildStmts, maxAttempts) {
 
 function d1ClientUpsertStmt(env, c) {
   const r = clientToRow(c);
-  // password_hash is never set via admin upsert — only via /client/auth
   return env.DB.prepare(
     `INSERT INTO clients (
       id, member_number, name, phone, email, area, age, schedule, has_card,
       plan_id, plan_name, price, billing_cycle, plan_start, plan_end,
       membership_status, billing_status, last_payment_at, payments_json, notes,
-      emergency_name, emergency_phone, from_import, from_submission, created_at, updated_at,
-      photo_url, documents_json, account_status, last_login_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      emergency_name, emergency_phone, from_import, from_submission, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       member_number=excluded.member_number,
       name=excluded.name,
@@ -1263,17 +1242,12 @@ function d1ClientUpsertStmt(env, c) {
       emergency_phone=excluded.emergency_phone,
       from_import=excluded.from_import,
       from_submission=excluded.from_submission,
-      updated_at=excluded.updated_at,
-      photo_url=COALESCE(excluded.photo_url, clients.photo_url),
-      documents_json=COALESCE(excluded.documents_json, clients.documents_json),
-      account_status=COALESCE(excluded.account_status, clients.account_status),
-      last_login_at=COALESCE(excluded.last_login_at, clients.last_login_at)`
+      updated_at=excluded.updated_at`
   ).bind(
     r.id, r.member_number, r.name, r.phone, r.email, r.area, r.age, r.schedule, r.has_card,
     r.plan_id, r.plan_name, r.price, r.billing_cycle, r.plan_start, r.plan_end,
     r.membership_status, r.billing_status, r.last_payment_at, r.payments_json, r.notes,
-    r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at,
-    r.photo_url, r.documents_json, r.account_status, r.last_login_at
+    r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at
   );
 }
 
@@ -1620,331 +1594,4 @@ async function d1BackupToCloudinary(env, opts) {
   } catch (e) {
     return { ok: false, error: (e && e.message) || String(e) };
   }
-}
-
-// ═══════════════════════════════════════════════════════════
-// Client portal auth (email + password)
-// POST /client/auth  { action: "register"|"login"|"me"|"change_password", ... }
-// ═══════════════════════════════════════════════════════════
-
-const CLIENT_TOKEN_TTL_SEC = 60 * 60 * 24 * 14; // 14 days
-
-function clientJwtSecret(env) {
-  return String(env.CLIENT_JWT_SECRET || env.ADMIN_PASSWORD || 'buzios-client-dev').trim();
-}
-
-function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase();
-}
-
-async function pbkdf2Hash(password, saltB64) {
-  const enc = new TextEncoder();
-  const salt = saltB64
-    ? Uint8Array.from(atob(saltB64), function (c) { return c.charCodeAt(0); })
-    : crypto.getRandomValues(new Uint8Array(16));
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(password),
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
-    keyMaterial,
-    256
-  );
-  const hashB64 = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(bits))));
-  const saltOut = btoa(String.fromCharCode.apply(null, Array.from(salt)));
-  return saltOut + ':' + hashB64;
-}
-
-async function pbkdf2Verify(password, stored) {
-  if (!stored || stored.indexOf(':') < 0) return false;
-  const parts = stored.split(':');
-  const saltB64 = parts[0];
-  const expected = parts[1];
-  const computed = await pbkdf2Hash(password, saltB64);
-  return computed === saltB64 + ':' + expected;
-}
-
-function b64urlEncode(buf) {
-  var str;
-  if (typeof buf === 'string') {
-    str = btoa(unescape(encodeURIComponent(buf)));
-  } else {
-    str = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(buf))));
-  }
-  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function b64urlDecodeToString(str) {
-  str = str.replace(/-/g, '+').replace(/_/g, '/');
-  while (str.length % 4) str += '=';
-  return decodeURIComponent(escape(atob(str)));
-}
-
-async function signClientToken(payload, env) {
-  const header = b64urlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = b64urlEncode(JSON.stringify(payload));
-  const data = header + '.' + body;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(clientJwtSecret(env)),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
-  return data + '.' + b64urlEncode(sig);
-}
-
-async function verifyClientToken(token, env) {
-  if (!token || typeof token !== 'string') return null;
-  const parts = token.split('.');
-  if (parts.length !== 3) return null;
-  const data = parts[0] + '.' + parts[1];
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(clientJwtSecret(env)),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify']
-  );
-  var sigBytes;
-  try {
-    var sigB64 = parts[2].replace(/-/g, '+').replace(/_/g, '/');
-    while (sigB64.length % 4) sigB64 += '=';
-    sigBytes = Uint8Array.from(atob(sigB64), function (c) { return c.charCodeAt(0); });
-  } catch (_) {
-    return null;
-  }
-  const ok = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(data));
-  if (!ok) return null;
-  try {
-    const payload = JSON.parse(b64urlDecodeToString(parts[1]));
-    if (!payload || !payload.sub || !payload.exp) return null;
-    if (payload.exp * 1000 < Date.now()) return null;
-    return payload;
-  } catch (_) {
-    return null;
-  }
-}
-
-function publicClientView(c) {
-  if (!c) return null;
-  return {
-    id: c.id,
-    memberNumber: c.memberNumber,
-    name: c.name,
-    phone: c.phone,
-    email: c.email,
-    area: c.area,
-    age: c.age,
-    schedule: c.schedule,
-    hasCard: c.hasCard,
-    planId: c.planId,
-    planName: c.planName,
-    price: c.price,
-    billingCycle: c.billingCycle,
-    planStart: c.planStart,
-    planEnd: c.planEnd,
-    membershipStatus: c.membershipStatus,
-    billingStatus: c.billingStatus,
-    lastPaymentAt: c.lastPaymentAt,
-    payments: c.payments || [],
-    emergencyName: c.emergencyName,
-    emergencyPhone: c.emergencyPhone,
-    photoUrl: c.photoUrl || null,
-    documents: c.documents || [],
-    accountStatus: c.accountStatus || null,
-    lastLoginAt: c.lastLoginAt || null,
-    createdAt: c.createdAt
-  };
-}
-
-async function d1FindClientByEmail(env, email) {
-  const em = normalizeEmail(email);
-  if (!em) return null;
-  const row = await env.DB.prepare(
-    'SELECT * FROM clients WHERE lower(email) = ? AND (deleted_at IS NULL OR deleted_at = "") LIMIT 1'
-  ).bind(em).first();
-  return rowToClient(row);
-}
-
-async function d1GetClientById(env, id) {
-  const row = await env.DB.prepare(
-    'SELECT * FROM clients WHERE id = ? AND (deleted_at IS NULL OR deleted_at = "") LIMIT 1'
-  ).bind(String(id)).first();
-  return rowToClient(row);
-}
-
-async function d1SetClientPassword(env, clientId, passwordHash, accountStatus) {
-  const now = new Date().toISOString();
-  await env.DB.prepare(
-    `UPDATE clients SET password_hash = ?, account_status = ?, updated_at = ? WHERE id = ?`
-  ).bind(passwordHash, accountStatus || 'active', now, String(clientId)).run();
-}
-
-async function d1TouchClientLogin(env, clientId) {
-  const now = new Date().toISOString();
-  await env.DB.prepare(
-    `UPDATE clients SET last_login_at = ?, updated_at = ? WHERE id = ?`
-  ).bind(now, now, String(clientId)).run();
-}
-
-async function issueClientSession(env, client) {
-  const nowSec = Math.floor(Date.now() / 1000);
-  const token = await signClientToken(
-    {
-      sub: client.id,
-      email: client.email || null,
-      iat: nowSec,
-      exp: nowSec + CLIENT_TOKEN_TTL_SEC
-    },
-    env
-  );
-  await d1TouchClientLogin(env, client.id);
-  return { token: token, client: publicClientView(client), expiresIn: CLIENT_TOKEN_TTL_SEC };
-}
-
-async function handleClientAuth(request, env) {
-  if (!env.DB) {
-    return json({ error: 'Serviço indisponível (D1)' }, 503);
-  }
-
-  let body;
-  try {
-    body = await request.json();
-  } catch (_) {
-    return json({ error: 'JSON inválido' }, 400);
-  }
-
-  const action = String((body && body.action) || '').trim();
-
-  // —— me (requires token) ——
-  if (action === 'me') {
-    const token = body.token || (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    const payload = await verifyClientToken(token, env);
-    if (!payload) return json({ error: 'Sessão inválida ou expirada' }, 401);
-    const client = await d1GetClientById(env, payload.sub);
-    if (!client) return json({ error: 'Conta não encontrada' }, 404);
-    if (client.accountStatus === 'locked') return json({ error: 'Conta bloqueada' }, 403);
-    return json({ ok: true, client: publicClientView(client) });
-  }
-
-  // —— register ——
-  if (action === 'register') {
-    const email = normalizeEmail(body.email);
-    const password = String(body.password || '');
-    if (!email || email.indexOf('@') < 1) {
-      return json({ error: 'Email inválido' }, 400);
-    }
-    if (password.length < 6) {
-      return json({ error: 'A palavra-passe deve ter pelo menos 6 caracteres' }, 400);
-    }
-
-    const existing = await d1FindClientByEmail(env, email);
-    if (!existing) {
-      return json({
-        error: 'Não encontramos um membro com este email. Use o email registado no clube ou contacte a recepção.',
-        code: 'EMAIL_NOT_MEMBER'
-      }, 404);
-    }
-    if (existing.hasPassword) {
-      return json({
-        error: 'Já existe uma conta com este email. Faça login ou recupere a palavra-passe.',
-        code: 'ALREADY_REGISTERED'
-      }, 409);
-    }
-
-    const hash = await pbkdf2Hash(password);
-    await d1SetClientPassword(env, existing.id, hash, 'active');
-    const refreshed = await d1GetClientById(env, existing.id);
-    const session = await issueClientSession(env, refreshed || existing);
-    return json({ ok: true, registered: true, token: session.token, client: session.client, expiresIn: session.expiresIn });
-  }
-
-  // —— login ——
-  if (action === 'login') {
-    const email = normalizeEmail(body.email);
-    const password = String(body.password || '');
-    if (!email || !password) {
-      return json({ error: 'Email e palavra-passe são obrigatórios' }, 400);
-    }
-
-    const client = await d1FindClientByEmail(env, email);
-    // Generic message to avoid account enumeration
-    if (!client || !client.hasPassword) {
-      return json({ error: 'Email ou palavra-passe incorrectos' }, 401);
-    }
-    if (client.accountStatus === 'locked') {
-      return json({ error: 'Conta bloqueada. Contacte a recepção.' }, 403);
-    }
-
-    // Need raw password_hash from DB
-    const row = await env.DB.prepare(
-      'SELECT password_hash FROM clients WHERE id = ? LIMIT 1'
-    ).bind(client.id).first();
-    const ok = row && row.password_hash ? await pbkdf2Verify(password, row.password_hash) : false;
-    if (!ok) {
-      return json({ error: 'Email ou palavra-passe incorrectos' }, 401);
-    }
-
-    const session = await issueClientSession(env, client);
-    return json({ ok: true, token: session.token, client: session.client, expiresIn: session.expiresIn });
-  }
-
-  // —— change_password (authenticated) ——
-  if (action === 'change_password') {
-    const token = body.token || (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    const payload = await verifyClientToken(token, env);
-    if (!payload) return json({ error: 'Sessão inválida ou expirada' }, 401);
-
-    const currentPassword = String(body.currentPassword || '');
-    const newPassword = String(body.newPassword || '');
-    if (newPassword.length < 6) {
-      return json({ error: 'A nova palavra-passe deve ter pelo menos 6 caracteres' }, 400);
-    }
-
-    const row = await env.DB.prepare(
-      'SELECT password_hash FROM clients WHERE id = ? LIMIT 1'
-    ).bind(payload.sub).first();
-    if (!row || !row.password_hash) {
-      return json({ error: 'Conta sem palavra-passe definida' }, 400);
-    }
-    const valid = await pbkdf2Verify(currentPassword, row.password_hash);
-    if (!valid) return json({ error: 'Palavra-passe actual incorrecta' }, 401);
-
-    const hash = await pbkdf2Hash(newPassword);
-    await d1SetClientPassword(env, payload.sub, hash, 'active');
-    return json({ ok: true, message: 'Palavra-passe actualizada' });
-  }
-
-  // —— delete_account (authenticated): remove online login only, keep membership row ——
-  if (action === 'delete_account') {
-    const token = body.token || (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    const payload = await verifyClientToken(token, env);
-    if (!payload) return json({ error: 'Sessão inválida ou expirada' }, 401);
-
-    const now = new Date().toISOString();
-    await env.DB.prepare(
-      `UPDATE clients SET
-         password_hash = NULL,
-         account_status = NULL,
-         photo_url = COALESCE(photo_url, photo_url),
-         updated_at = ?
-       WHERE id = ?`
-    ).bind(now, String(payload.sub)).run();
-
-    try {
-      await env.DB.prepare(
-        'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
-      ).bind(now, 'client_delete_account', 'client', String(payload.sub), 'online account cleared').run();
-    } catch (_) {}
-
-    return json({ ok: true, message: 'Conta online eliminada' });
-  }
-
-  return json({ error: 'Acção desconhecida. Use register, login, me, change_password ou delete_account.' }, 400);
 }

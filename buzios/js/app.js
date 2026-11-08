@@ -315,13 +315,17 @@
     }
 
     function layout() {
-      const slide = slides[0];
+      const slide = slides[idx] || slides[0];
       if (!slide) return;
-      const slideW = slide.getBoundingClientRect().width;
-      const gap = parseFloat(getComputedStyle(track).gap) || 0;
-      const vpW = viewport.getBoundingClientRect().width;
+      // offsetWidth = layout width (stable); getBoundingClientRect would include any transform
+      const slideW = slide.offsetWidth;
+      if (!slideW) return;
+      const styles = getComputedStyle(track);
+      const gap = parseFloat(styles.columnGap || styles.gap) || 0;
+      const vpW = viewport.clientWidth;
+      // Center the active slide in the viewport; neighbors peek on left & right
       const offset = (vpW - slideW) / 2 - idx * (slideW + gap);
-      track.style.transform = 'translate3d(' + offset + 'px,0,0)';
+      track.style.transform = 'translate3d(' + Math.round(offset) + 'px,0,0)';
     }
 
     function goTo(n) {
@@ -367,8 +371,17 @@
     }, { passive: true });
 
     updateCaption(idx);
-    layout();
-    requestAnimationFrame(layout);
+    function relayout() {
+      layout();
+      requestAnimationFrame(layout);
+    }
+    relayout();
+    // After images load, widths can settle — keep active centered
+    slides.forEach((s) => {
+      const img = s.querySelector('img');
+      if (img && !img.complete) img.addEventListener('load', relayout, { once: true });
+    });
+    window.addEventListener('load', relayout, { once: true });
     startAuto();
   }
 

@@ -716,7 +716,7 @@ body.drawer-open { overflow: hidden; }
   margin: 0 auto;
 }
 @media (min-width: 768px) {
-  .hero-content { padding: 0 2rem 6.5rem; }
+  .hero-content { padding: 0 2rem 5rem; }
 }
 .hero-eyebrow {
   font-size: 0.72rem;
@@ -1017,10 +1017,10 @@ body.drawer-open { overflow: hidden; }
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 30%;
+  object-position: center center;
   display: block;
 }
-/* Desktop: image fills same height as the text column */
+/* Desktop: image matches text-column height and shows the full scene */
 @media (min-width: 900px) {
   .intro-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1030,12 +1030,15 @@ body.drawer-open { overflow: hidden; }
   .intro-media {
     aspect-ratio: auto;
     align-self: stretch;
+    min-height: 100%;
   }
   .intro-media img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    object-fit: cover;
+    object-position: center center;
   }
 }
 .intro-content .section-title {
@@ -1870,7 +1873,6 @@ body.drawer-open { overflow: hidden; }
   .hero-media video {
     object-position: center 28%;
   }
-  .intro-media img,
   .equip-slide img {
     object-position: center 28%;
   }

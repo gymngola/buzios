@@ -286,6 +286,58 @@
     startAuto();
   }
 
+
+  // —— Homepage gym showcase carousel ——
+  let gymShowcaseTimer = null;
+  function initGymShowcase() {
+    const root = document.getElementById('gymShowcase');
+    if (!root) return;
+
+    if (gymShowcaseTimer) {
+      clearInterval(gymShowcaseTimer);
+      gymShowcaseTimer = null;
+    }
+
+    const slides = Array.from(root.querySelectorAll('.gym-showcase-slide'));
+    const dots = Array.from(root.querySelectorAll('.gym-showcase-dot'));
+    const prev = root.querySelector('.gym-showcase-prev');
+    const next = root.querySelector('.gym-showcase-next');
+    if (slides.length < 1) return;
+
+    let idx = slides.findIndex(s => s.classList.contains('is-active'));
+    if (idx < 0) idx = 0;
+
+    function goTo(n) {
+      slides[idx]?.classList.remove('is-active');
+      dots[idx]?.classList.remove('is-active');
+      idx = (n + slides.length) % slides.length;
+      slides[idx]?.classList.add('is-active');
+      dots[idx]?.classList.add('is-active');
+    }
+
+    if (prev) prev.onclick = () => { goTo(idx - 1); restart(); };
+    if (next) next.onclick = () => { goTo(idx + 1); restart(); };
+    dots.forEach((d, i) => {
+      d.onclick = () => { goTo(i); restart(); };
+    });
+
+    function startAuto() {
+      if (gymShowcaseTimer) clearInterval(gymShowcaseTimer);
+      if (slides.length < 2) return;
+      gymShowcaseTimer = setInterval(() => goTo(idx + 1), 5200);
+    }
+    function stopAuto() {
+      if (gymShowcaseTimer) { clearInterval(gymShowcaseTimer); gymShowcaseTimer = null; }
+    }
+    function restart() { stopAuto(); startAuto(); }
+
+    root.onmouseenter = stopAuto;
+    root.onmouseleave = startAuto;
+    root.addEventListener('focusin', stopAuto);
+    root.addEventListener('focusout', startAuto);
+    startAuto();
+  }
+
   // —— Catalog load ——
   // Order: defaults → image cache (no flash) → optional same-browser draft → remote catalog wins.
   async function loadCatalog() {
@@ -692,6 +744,7 @@
     initInstallSite();
     initNewsletter();
     initReveal();
+    initGymShowcase();
     loadCatalog();
   });
 

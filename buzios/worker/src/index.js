@@ -5,6 +5,7 @@
  *   POST /publish          — admin: publish catalog (password)
  *   POST /submit           — public: enrollment / contact / newsletter
  *   POST /admin/data       — admin: get or update submissions + clients (password)
+ *   POST /client/auth      — member portal: login / register / me / delete_account
  *
  * Cron (wrangler.toml [triggers]):
  *   0 3 1,7,13,19,25 * *  — every ~6 days at 03:00 UTC → d1BackupToCloudinary
@@ -58,6 +59,9 @@ export default {
       }
       if (request.method === 'POST' && path === '/admin/data') {
         return await handleAdminData(request, env);
+      }
+      if (request.method === 'POST' && path === '/client/auth') {
+        return await handleClientAuth(request, env);
       }
       return json({ error: 'Not found', path }, 404);
     } catch (err) {
@@ -1096,7 +1100,10 @@ function rowToClient(r) {
     fromImport: !!r.from_import,
     fromSubmission: r.from_submission,
     createdAt: r.created_at,
-    deletedAt: r.deleted_at || null
+    deletedAt: r.deleted_at || null,
+    photoUrl: r.photo_url || null,
+    accountStatus: r.account_status || null,
+    lastLoginAt: r.last_login_at || null
   };
 }
 
@@ -1593,5 +1600,284 @@ async function d1BackupToCloudinary(env, opts) {
     };
   } catch (e) {
     return { ok: false, error: (e && e.message) || String(e) };
+  }
+}
+
+/* ========== Member portal (/client/auth) ========== */
+
+function b64url(bytes) {
+  let s;
+  if (typeof bytes === 'string') {
+    s = btoa(bytes);
+  } else {
+    let bin = '';
+    const arr = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    for (let i = 0; i < arr.length; i++) bin += String.fromCharCode(arr[i]);
+    s = btoa(bin);
+  }
+  return s.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function fromB64url(str) {
+  const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + pad;
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function hmacKey(env) {
+  const secret = String(env.CLIENT_TOKEN_SECRET || env.ADMIN_PASSWORD || 'buzios-client').trim();
+  const raw = new TextEncoder().encode(secret);
+  return crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+async function signToken(env, clientId, ttlSec) {
+  const exp = Math.floor(Date.now() / 1000) + (ttlSec || 60 * 60 * 24 * 30);
+  const payload = b64url(String(clientId)) + '.' + b64url(String(exp));
+  const key = await hmacKey(env);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return payload + '.' + b64url(new Uint8Array(sig));
+}
+
+async function verifyToken(env, token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const payload = parts[0] + '.' + parts[1];
+  const key = await hmacKey(env);
+  let sigBytes;
+  try {
+    sigBytes = fromB64url(parts[2]);
+  } catch (_) {
+    return null;
+  }
+  const ok = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(payload));
+  if (!ok) return null;
+  let clientId;
+  let exp;
+  try {
+    clientId = new TextDecoder().decode(fromB64url(parts[0]));
+    exp = parseInt(new TextDecoder().decode(fromB64url(parts[1])), 10);
+  } catch (_) {
+    return null;
+  }
+  if (!clientId || !exp || exp * 1000 < Date.now()) return null;
+  return clientId;
+}
+
+async function hashPassword(password, saltB64) {
+  const enc = new TextEncoder();
+  let salt;
+  if (saltB64) {
+    salt = fromB64url(saltB64);
+  } else {
+    salt = crypto.getRandomValues(new Uint8Array(16));
+  }
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: salt, iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  );
+  return b64url(salt) + '$' + b64url(new Uint8Array(bits));
+}
+
+async function verifyPassword(password, stored) {
+  if (!stored || stored.indexOf('$') < 0) return false;
+  const saltB64 = stored.split('$')[0];
+  const check = await hashPassword(password, saltB64);
+  return check === stored;
+}
+
+function publicClient(c) {
+  if (!c) return null;
+  return {
+    id: c.id,
+    memberNumber: c.memberNumber,
+    name: c.name,
+    phone: c.phone,
+    email: c.email,
+    area: c.area,
+    planId: c.planId,
+    planName: c.planName,
+    price: c.price,
+    billingCycle: c.billingCycle,
+    planStart: c.planStart,
+    planEnd: c.planEnd,
+    membershipStatus: c.membershipStatus,
+    billingStatus: c.billingStatus,
+    lastPaymentAt: c.lastPaymentAt,
+    payments: c.payments || [],
+    emergencyName: c.emergencyName,
+    emergencyPhone: c.emergencyPhone,
+    photoUrl: c.photoUrl || null,
+    accountStatus: c.accountStatus || null
+  };
+}
+
+async function d1FindClientByEmail(env, email) {
+  const normalized = String(email || '').trim().toLowerCase();
+  if (!normalized) return null;
+  const res = await env.DB.prepare(
+    `SELECT * FROM clients
+     WHERE lower(email) = ?
+       AND (deleted_at IS NULL OR deleted_at = '')
+     LIMIT 1`
+  )
+    .bind(normalized)
+    .first();
+  return res ? rowToClient(res) : null;
+}
+
+async function d1FindClientById(env, id) {
+  if (!id) return null;
+  const res = await env.DB.prepare(
+    `SELECT * FROM clients WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '') LIMIT 1`
+  )
+    .bind(String(id))
+    .first();
+  return res ? rowToClient(res) : null;
+}
+
+async function d1GetPasswordHash(env, id) {
+  const res = await env.DB.prepare(
+    `SELECT password_hash FROM clients WHERE id = ? LIMIT 1`
+  )
+    .bind(String(id))
+    .first();
+  return res && res.password_hash ? String(res.password_hash) : null;
+}
+
+async function d1SetPasswordHash(env, id, hash) {
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE clients SET password_hash = ?, account_status = 'active', last_login_at = ?, updated_at = ? WHERE id = ?`
+  )
+    .bind(hash, now, now, String(id))
+    .run();
+}
+
+async function d1ClearPassword(env, id) {
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE clients SET password_hash = NULL, account_status = NULL, updated_at = ? WHERE id = ?`
+  )
+    .bind(now, String(id))
+    .run();
+}
+
+async function d1TouchLogin(env, id) {
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE clients SET last_login_at = ?, updated_at = ? WHERE id = ?`
+  )
+    .bind(now, now, String(id))
+    .run();
+}
+
+async function handleClientAuth(request, env) {
+  if (!env.DB) {
+    return json({ error: 'Base de dados indisponível' }, 503);
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (_) {
+    return json({ error: 'Pedido inválido' }, 400);
+  }
+
+  const action = body && body.action;
+  if (!action) return json({ error: 'Acção em falta' }, 400);
+
+  try {
+    if (action === 'login') {
+      const email = String((body.email || '')).trim();
+      const password = String(body.password || '');
+      if (!email || !password) return json({ error: 'Email e palavra-passe são obrigatórios' }, 400);
+      const client = await d1FindClientByEmail(env, email);
+      if (!client) return json({ error: 'Email ou palavra-passe incorrectos' }, 401);
+      const hash = await d1GetPasswordHash(env, client.id);
+      if (!hash) {
+        return json({
+          error: 'Ainda não tem conta online. Use «Criar conta» com o email do registo de sócio.'
+        }, 401);
+      }
+      const ok = await verifyPassword(password, hash);
+      if (!ok) return json({ error: 'Email ou palavra-passe incorrectos' }, 401);
+      await d1TouchLogin(env, client.id);
+      const token = await signToken(env, client.id);
+      return json({ ok: true, token: token, client: publicClient(client) });
+    }
+
+    if (action === 'register') {
+      const email = String((body.email || '')).trim();
+      const password = String(body.password || '');
+      if (!email || !password) return json({ error: 'Email e palavra-passe são obrigatórios' }, 400);
+      if (password.length < 6) return json({ error: 'A palavra-passe deve ter pelo menos 6 caracteres' }, 400);
+      const client = await d1FindClientByEmail(env, email);
+      if (!client) {
+        return json({
+          error: 'Este email não está associado a um registo de sócio. Contacte o ginásio.'
+        }, 404);
+      }
+      const existing = await d1GetPasswordHash(env, client.id);
+      if (existing) {
+        return json({
+          error: 'Já existe uma conta online para este email. Use «Entrar».'
+        }, 409);
+      }
+      const hash = await hashPassword(password);
+      await d1SetPasswordHash(env, client.id, hash);
+      const token = await signToken(env, client.id);
+      const refreshed = await d1FindClientById(env, client.id);
+      return json({ ok: true, token: token, client: publicClient(refreshed || client) });
+    }
+
+    if (action === 'me') {
+      const clientId = await verifyToken(env, body.token);
+      if (!clientId) return json({ error: 'Sessão inválida ou expirada' }, 401);
+      const client = await d1FindClientById(env, clientId);
+      if (!client) return json({ error: 'Sessão inválida' }, 401);
+      return json({ ok: true, client: publicClient(client) });
+    }
+
+    if (action === 'change_password') {
+      const clientId = await verifyToken(env, body.token);
+      if (!clientId) return json({ error: 'Sessão inválida ou expirada' }, 401);
+      const current = String(body.currentPassword || body.oldPassword || '');
+      const next = String(body.newPassword || body.password || '');
+      if (!current || !next) return json({ error: 'Palavras-passe em falta' }, 400);
+      if (next.length < 6) return json({ error: 'A nova palavra-passe deve ter pelo menos 6 caracteres' }, 400);
+      const hash = await d1GetPasswordHash(env, clientId);
+      if (!hash || !(await verifyPassword(current, hash))) {
+        return json({ error: 'Palavra-passe actual incorrecta' }, 401);
+      }
+      const newHash = await hashPassword(next);
+      await d1SetPasswordHash(env, clientId, newHash);
+      return json({ ok: true });
+    }
+
+    if (action === 'delete_account') {
+      const clientId = await verifyToken(env, body.token);
+      if (!clientId) return json({ error: 'Sessão inválida ou expirada' }, 401);
+      await d1ClearPassword(env, clientId);
+      return json({ ok: true });
+    }
+
+    return json({ error: 'Acção desconhecida' }, 400);
+  } catch (err) {
+    const msg = (err && err.message) || String(err);
+    // Missing portal columns → migration not applied yet
+    if (/no such column|password_hash|account_status|photo_url/i.test(msg)) {
+      return json({
+        error: 'Portal do membro ainda não está activo no servidor. Peça à equipa para aplicar a migração 0003_client_portal.',
+        code: 'migration_required'
+      }, 503);
+    }
+    console.error('client/auth', msg);
+    return json({ error: 'Erro no servidor' }, 500);
   }
 }

@@ -36,7 +36,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=20261108h">
+  <link rel="stylesheet" href="css/styles.css?v=20261108j">
   <!-- Structured data: LocalBusiness -->
   <script type="application/ld+json">
   {
@@ -322,55 +322,34 @@
 
         <!-- Editorial showcase -->
         <div class="gym-showcase reveal" id="gymShowcase" aria-roledescription="carousel" aria-label="Imagens do ginásio Búzios">
-          <div class="gym-showcase-track">
-            <div class="gym-showcase-slide is-active">
-              <img src="images/gym/sala-forca.jpg" alt="Sala de musculação Búzios com equipamento Technogym" width="1400" height="1050" loading="lazy">
-              <div class="gym-showcase-caption">
-                <strong>Sala de força</strong>
-                <span>Equipamento completo para treinos de hipertrofia e condicionamento</span>
+          <div class="gym-showcase-viewport">
+            <div class="gym-showcase-track">
+              <div class="gym-showcase-slide is-active" data-caption-title="Sala de força" data-caption-text="Equipamento completo para treinos de hipertrofia e condicionamento">
+                <img src="images/gym/sala-forca.jpg" alt="Sala de musculação Búzios com equipamento Technogym" width="1400" height="1050" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Luz natural" data-caption-text="Treine com vista para a piscina e o jardim tropical de Kifica">
+                <img src="images/gym/corredor.jpg" alt="Corredor do ginásio com vista para a piscina e jardim tropical" width="1400" height="1050" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Technogym" data-caption-text="Máquinas profissionais para todos os grupos musculares">
+                <img src="images/gym/technogym-row.jpg" alt="Linha de máquinas Technogym junto às janelas" width="1400" height="1050" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Recepção" data-caption-text="A equipa acompanha a sua evolução desde o primeiro dia">
+                <img src="images/gym/recepcao.jpg" alt="Recepção do ginásio Búzios Health Club" width="1400" height="1050" loading="lazy">
+              </div>
+              <div class="gym-showcase-slide" data-caption-title="Cardio" data-caption-text="Tapetes de corrida, elípticas e spinning para resistência e perda de peso">
+                <img src="images/gym/tapetes.jpg" alt="Fila de tapetes de corrida profissionais" width="1200" height="900" loading="lazy">
               </div>
             </div>
-            <div class="gym-showcase-slide">
-              <img src="images/gym/corredor.jpg" alt="Corredor do ginásio com vista para a piscina e jardim tropical" width="1400" height="1050" loading="lazy">
-              <div class="gym-showcase-caption">
-                <strong>Luz natural</strong>
-                <span>Treine com vista para a piscina e o jardim tropical de Kifica</span>
-              </div>
-            </div>
-            <div class="gym-showcase-slide">
-              <img src="images/gym/technogym-row.jpg" alt="Linha de máquinas Technogym junto às janelas" width="1400" height="1050" loading="lazy">
-              <div class="gym-showcase-caption">
-                <strong>Technogym</strong>
-                <span>Máquinas profissionais para todos os grupos musculares</span>
-              </div>
-            </div>
-            <div class="gym-showcase-slide">
-              <img src="images/gym/recepcao.jpg" alt="Recepção do ginásio Búzios Health Club" width="1400" height="1050" loading="lazy">
-              <div class="gym-showcase-caption">
-                <strong>Recepção</strong>
-                <span>A equipa acompanha a sua evolução desde o primeiro dia</span>
-              </div>
-            </div>
-            <div class="gym-showcase-slide">
-              <img src="images/gym/tapetes.jpg" alt="Fila de tapetes de corrida profissionais" width="1200" height="900" loading="lazy">
-              <div class="gym-showcase-caption">
-                <strong>Cardio</strong>
-                <span>Tapetes de corrida, elípticas e spinning para resistência e perda de peso</span>
-              </div>
-            </div>
+            <button type="button" class="gym-showcase-nav gym-showcase-prev" aria-label="Imagem anterior">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <button type="button" class="gym-showcase-nav gym-showcase-next" aria-label="Imagem seguinte">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
           </div>
-          <button type="button" class="gym-showcase-nav gym-showcase-prev" aria-label="Imagem anterior">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          <button type="button" class="gym-showcase-nav gym-showcase-next" aria-label="Imagem seguinte">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-          <div class="gym-showcase-dots" role="tablist" aria-label="Slides do ginásio">
-            <button type="button" class="gym-showcase-dot is-active" aria-label="Slide 1" data-gym-dot="0"></button>
-            <button type="button" class="gym-showcase-dot" aria-label="Slide 2" data-gym-dot="1"></button>
-            <button type="button" class="gym-showcase-dot" aria-label="Slide 3" data-gym-dot="2"></button>
-            <button type="button" class="gym-showcase-dot" aria-label="Slide 4" data-gym-dot="3"></button>
-            <button type="button" class="gym-showcase-dot" aria-label="Slide 5" data-gym-dot="4"></button>
+          <div class="gym-showcase-meta" aria-live="polite">
+            <strong id="gymShowcaseTitle">Sala de força</strong>
+            <span id="gymShowcaseText">Equipamento completo para treinos de hipertrofia e condicionamento</span>
           </div>
         </div>
 
@@ -560,6 +539,18 @@
         <button type="button" class="btn btn-primary" id="installSiteConfirmBtn" hidden>Instalar agora</button>
         <button type="button" class="btn btn-ghost" id="installSiteDismissBtn">Fechar</button>
       </div>
+    </div>
+  </div>
+
+
+  <!-- Gym image lightbox -->
+  <div class="gym-lightbox" id="gymLightbox" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Imagem ampliada">
+    <button type="button" class="gym-lightbox-close" id="gymLightboxClose" aria-label="Fechar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+    <div class="gym-lightbox-inner">
+      <img id="gymLightboxImg" src="" alt="">
+      <p class="gym-lightbox-caption" id="gymLightboxCaption" hidden></p>
     </div>
   </div>
 

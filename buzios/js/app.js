@@ -287,7 +287,7 @@
   }
 
 
-  // —— Homepage gym showcase carousel ——
+  // —— Homepage gym showcase carousel (FS side-peek) ——
   let gymShowcaseTimer = null;
   function initGymShowcase() {
     const root = document.getElementById('gymShowcase');
@@ -298,28 +298,46 @@
       gymShowcaseTimer = null;
     }
 
+    const viewport = root.querySelector('.gym-showcase-viewport') || root;
+    const track = root.querySelector('.gym-showcase-track');
     const slides = Array.from(root.querySelectorAll('.gym-showcase-slide'));
-    const dots = Array.from(root.querySelectorAll('.gym-showcase-dot'));
     const prev = root.querySelector('.gym-showcase-prev');
     const next = root.querySelector('.gym-showcase-next');
-    if (slides.length < 1) return;
+    const titleEl = document.getElementById('gymShowcaseTitle');
+    const textEl = document.getElementById('gymShowcaseText');
+    if (!track || slides.length < 1) return;
 
     let idx = slides.findIndex(s => s.classList.contains('is-active'));
     if (idx < 0) idx = 0;
 
-    function goTo(n) {
-      slides[idx]?.classList.remove('is-active');
-      dots[idx]?.classList.remove('is-active');
-      idx = (n + slides.length) % slides.length;
-      slides[idx]?.classList.add('is-active');
-      dots[idx]?.classList.add('is-active');
+    function updateCaption(i) {
+      const s = slides[i];
+      if (!s) return;
+      if (titleEl) titleEl.textContent = s.getAttribute('data-caption-title') || '';
+      if (textEl) textEl.textContent = s.getAttribute('data-caption-text') || '';
     }
 
-    if (prev) prev.onclick = () => { goTo(idx - 1); restart(); };
-    if (next) next.onclick = () => { goTo(idx + 1); restart(); };
-    dots.forEach((d, i) => {
-      d.onclick = () => { goTo(i); restart(); };
-    });
+    function layout() {
+      const slide = slides[0];
+      if (!slide) return;
+      const slideW = slide.getBoundingClientRect().width;
+      const gap = parseFloat(getComputedStyle(track).gap) || 0;
+      const vpW = viewport.getBoundingClientRect().width;
+      // center active slide in viewport
+      const offset = (vpW - slideW) / 2 - idx * (slideW + gap);
+      track.style.transform = 'translate3d(' + offset + 'px,0,0)';
+    }
+
+    function goTo(n) {
+      slides[idx]?.classList.remove('is-active');
+      idx = (n + slides.length) % slides.length;
+      slides[idx]?.classList.add('is-active');
+      updateCaption(idx);
+      layout();
+    }
+
+    if (prev) prev.onclick = (e) => { e.stopPropagation(); goTo(idx - 1); restart(); };
+    if (next) next.onclick = (e) => { e.stopPropagation(); goTo(idx + 1); restart(); };
 
     function startAuto() {
       if (gymShowcaseTimer) clearInterval(gymShowcaseTimer);
@@ -335,7 +353,130 @@
     root.onmouseleave = startAuto;
     root.addEventListener('focusin', stopAuto);
     root.addEventListener('focusout', startAuto);
+    window.addEventListener('resize', layout);
+
+    // touch swipe
+    let touchX = null;
+    viewport.addEventListener('touchstart', (e) => {
+      touchX = e.changedTouches[0].clientX;
+      stopAuto();
+    }, { passive: true });
+    viewport.addEventListener('touchend', (e) => {
+      if (touchX == null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      touchX = null;
+      if (Math.abs(dx) > 40) goTo(dx < 0 ? idx + 1 : idx - 1);
+      startAuto();
+    }, { passive: true });
+
+    updateCaption(idx);
+    // layout after images may affect width
+    layout();
+    requestAnimationFrame(layout);
     startAuto();
+  }
+
+  // —— Gym image lightbox (full uncropped view) ——
+  function initGymLightbox() {
+    const lb = document.getElementById('gymLightbox');
+    if (!lb) return;
+    const imgEl = document.getElementById('gymLightboxImg');
+    const capEl = document.getElementById('gymLightboxCaption');
+    const closeBtn = document.getElementById('gymLightboxClose');
+    let lastFocus = null;
+
+    function open(src, alt, caption) {
+      if (!src) return;
+      lastFocus = document.activeElement;
+      imgEl.src = src;
+      imgEl.alt = alt || '';
+      if (caption) {
+        capEl.textContent = caption;
+        capEl.hidden = false;
+      } else {
+        capEl.textContent = '';
+        capEl.hidden = true;
+      }
+      lb.hidden = false;
+      lb.setAttribute('aria-hidden', 'false');
+      // force reflow then open for transition
+      void lb.offsetWidth;
+      lb.classList.add('is-open');
+      document.body.classList.add('gym-lightbox-open');
+      closeBtn?.focus();
+    }
+
+    function close() {
+      lb.classList.remove('is-open');
+      document.body.classList.remove('gym-lightbox-open');
+      lb.setAttribute('aria-hidden', 'true');
+      const onEnd = () => {
+        lb.hidden = true;
+        imgEl.removeAttribute('src');
+        lb.removeEventListener('transitionend', onEnd);
+      };
+      lb.addEventListener('transitionend', onEnd);
+      // fallback if no transition
+      setTimeout(() => {
+        if (!lb.classList.contains('is-open')) {
+          lb.hidden = true;
+          if (imgEl.getAttribute('src')) imgEl.removeAttribute('src');
+        }
+      }, 350);
+      if (lastFocus && typeof lastFocus.focus === 'function') {
+        try { lastFocus.focus(); } catch (_) {}
+      }
+    }
+
+    closeBtn?.addEventListener('click', close);
+    lb.addEventListener('click', (e) => {
+      if (e.target === lb) close();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lb.classList.contains('is-open')) close();
+    });
+
+    // Showcase slides
+    const showcase = document.getElementById('gymShowcase');
+    if (showcase) {
+      showcase.querySelectorAll('.gym-showcase-slide').forEach((slide) => {
+        const img = slide.querySelector('img');
+        if (!img) return;
+        const openFromSlide = (e) => {
+          if (e.target.closest('.gym-showcase-nav')) return;
+          e.preventDefault();
+          const t = slide.getAttribute('data-caption-title') || '';
+          const d = slide.getAttribute('data-caption-text') || '';
+          const cap = [t, d].filter(Boolean).join(' — ');
+          open(img.currentSrc || img.src, img.alt, cap);
+        };
+        slide.addEventListener('click', openFromSlide);
+      });
+    }
+
+    // Equipment grid cards
+    document.querySelectorAll('.gym-equip-card-media').forEach((media) => {
+      const img = media.querySelector('img');
+      if (!img) return;
+      media.setAttribute('role', 'button');
+      media.setAttribute('tabindex', '0');
+      media.setAttribute('aria-label', 'Ver imagem completa');
+      const openCard = () => {
+        const card = media.closest('.gym-equip-card');
+        const title = card?.querySelector('.gym-equip-card-title')?.textContent || '';
+        open(img.currentSrc || img.src, img.alt, title);
+      };
+      media.addEventListener('click', (e) => {
+        e.preventDefault();
+        openCard();
+      });
+      media.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openCard();
+        }
+      });
+    });
   }
 
   // —— Catalog load ——
@@ -745,6 +886,7 @@
     initNewsletter();
     initReveal();
     initGymShowcase();
+    initGymLightbox();
     loadCatalog();
   });
 

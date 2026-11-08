@@ -1975,118 +1975,147 @@ body.drawer-open { overflow: hidden; }
   margin-right: auto;
 }
 
-/* Showcase — large editorial carousel */
+/* Showcase — Four Seasons style: side peeks + minimal chevrons */
 .gym-showcase {
   position: relative;
   margin: 2.75rem auto 3.5rem;
-  max-width: 1080px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: #1c1917;
-  aspect-ratio: 16 / 10;
-  box-shadow: 0 20px 50px rgba(28, 25, 23, 0.12);
+  max-width: 1180px;
+  padding: 0;
+  background: transparent;
+  /* no fixed aspect on outer shell — height comes from slides */
 }
-@media (min-width: 900px) {
-  .gym-showcase { aspect-ratio: 21 / 10; }
+.gym-showcase-viewport {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
 }
 .gym-showcase-track {
-  position: absolute;
-  inset: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  transition: transform 0.55s var(--ease-out);
+  will-change: transform;
 }
 .gym-showcase-slide {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.85s var(--ease-out);
-  pointer-events: none;
-  background: #1c1917;
+  flex: 0 0 72%;
+  position: relative;
+  background: var(--color-surface-soft);
+  border-radius: 2px;
+  overflow: hidden;
+  opacity: 0.45;
+  transform: scale(0.96);
+  transition: opacity 0.45s var(--ease), transform 0.45s var(--ease);
+  cursor: zoom-in;
+  aspect-ratio: 16 / 10;
 }
 .gym-showcase-slide.is-active {
   opacity: 1;
-  pointer-events: auto;
+  transform: scale(1);
   z-index: 1;
 }
 .gym-showcase-slide img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   display: block;
-}
-.gym-showcase-caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
-  padding: 3.5rem 1.5rem 1.35rem;
-  background: linear-gradient(to top, rgba(20, 16, 12, 0.72) 0%, rgba(20, 16, 12, 0.28) 55%, transparent 100%);
-  color: #fff;
   pointer-events: none;
 }
-.gym-showcase-caption strong {
+.gym-showcase-caption {
+  display: none; /* text lives under carousel in FS style */
+}
+.gym-showcase-meta {
+  text-align: center;
+  margin-top: 1.35rem;
+  min-height: 3.2rem;
+}
+.gym-showcase-meta strong {
   display: block;
   font-family: var(--font-display);
   font-weight: var(--fw-semibold);
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  margin-bottom: 0.25rem;
-  opacity: 0.9;
+  color: var(--color-text);
+  margin-bottom: 0.35rem;
 }
-.gym-showcase-caption span {
+.gym-showcase-meta span {
+  display: block;
   font-size: 0.95rem;
   font-weight: var(--fw-light);
+  color: var(--color-text-muted);
   letter-spacing: 0.01em;
-  opacity: 0.92;
+  max-width: 36rem;
+  margin: 0 auto;
+  line-height: 1.5;
 }
+
+/* Minimal Four Seasons–style chevrons */
 .gym-showcase-nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 3;
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(28, 25, 23, 0.35);
-  color: #fff;
+  z-index: 4;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background var(--t-fast), transform var(--t-fast);
+  transition: color var(--t-fast), opacity var(--t-fast);
+  opacity: 0.72;
 }
 .gym-showcase-nav:hover {
-  background: rgba(28, 25, 23, 0.55);
+  opacity: 1;
+  color: var(--color-accent);
+  background: transparent;
 }
 .gym-showcase-nav svg {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  stroke-width: 1.5;
 }
-.gym-showcase-prev { left: 0.9rem; }
-.gym-showcase-next { right: 0.9rem; }
+.gym-showcase-prev { left: 0.15rem; }
+.gym-showcase-next { right: 0.15rem; }
+
+/* Hide dots — FS style doesn't use them */
 .gym-showcase-dots {
-  position: absolute;
-  bottom: 0.9rem;
-  right: 1.1rem;
-  z-index: 3;
-  display: flex;
-  gap: 0.4rem;
+  display: none;
 }
-.gym-showcase-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-  transition: background var(--t-fast), transform var(--t-fast);
-  cursor: pointer;
+
+@media (min-width: 768px) {
+  .gym-showcase-slide {
+    flex: 0 0 62%;
+    aspect-ratio: 16 / 9;
+  }
+  .gym-showcase-track { gap: 1.25rem; }
+  .gym-showcase-prev { left: 0.5rem; }
+  .gym-showcase-next { right: 0.5rem; }
 }
-.gym-showcase-dot.is-active {
-  background: #fff;
-  transform: scale(1.15);
+@media (min-width: 1100px) {
+  .gym-showcase-slide {
+    flex: 0 0 58%;
+  }
+}
+@media (max-width: 599px) {
+  .gym-showcase {
+    margin: 2rem 0 2.5rem;
+  }
+  .gym-showcase-slide {
+    flex: 0 0 82%;
+    aspect-ratio: 5 / 4;
+  }
+  .gym-showcase-track { gap: 0.65rem; }
+  .gym-showcase-nav {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  .gym-showcase-prev { left: 0; }
+  .gym-showcase-next { right: 0; }
 }
 
 /* Equipment grid */
@@ -2117,22 +2146,21 @@ body.drawer-open { overflow: hidden; }
   position: relative;
   overflow: hidden;
   border-radius: 2px;
-  background: #1c1917;
+  background: var(--color-surface-soft);
   aspect-ratio: 4 / 5;
   margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  cursor: zoom-in;
 }
 .gym-equip-card-media img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   transition: transform 0.7s var(--ease-out);
+  pointer-events: none;
 }
 .gym-equip-card:hover .gym-equip-card-media img {
-  transform: scale(1.03);
+  transform: scale(1.04);
 }
 .gym-equip-card.is-trainer .gym-equip-card-media {
   aspect-ratio: 3 / 4;
@@ -2196,4 +2224,88 @@ body.drawer-open { overflow: hidden; }
   .gym-equip-card-media img {
     transition: none;
   }
+}
+
+
+/* ========== Gym image lightbox ========== */
+.gym-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(12, 10, 9, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.28s var(--ease), visibility 0.28s var(--ease);
+}
+.gym-lightbox.is-open {
+  opacity: 1;
+  visibility: visible;
+}
+.gym-lightbox-inner {
+  position: relative;
+  max-width: min(96vw, 1200px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+.gym-lightbox-inner img {
+  max-width: 96vw;
+  max-height: calc(90vh - 3rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 2px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  background: #1c1917;
+}
+.gym-lightbox-caption {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  max-width: 36rem;
+  line-height: 1.4;
+}
+.gym-lightbox-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(28, 25, 23, 0.45);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background var(--t-fast);
+}
+.gym-lightbox-close:hover {
+  background: rgba(28, 25, 23, 0.7);
+}
+.gym-lightbox-close svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+body.gym-lightbox-open {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gym-lightbox { transition: none; }
 }

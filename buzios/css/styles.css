@@ -998,8 +998,16 @@ body.drawer-open { overflow: hidden; }
   align-items: center;
 }
 @media (min-width: 900px) {
-  .intro-grid { grid-template-columns: 1fr 1fr; gap: 4.5rem; }
-  .intro-media { aspect-ratio: 16 / 10; }
+  .intro-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 4.5rem;
+    align-items: stretch;
+  }
+  .intro-media {
+    aspect-ratio: auto;
+    height: 100%;
+    min-height: 0;
+  }
 }
 .intro-media {
   border-radius: var(--radius-card);

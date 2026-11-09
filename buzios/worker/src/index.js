@@ -642,7 +642,25 @@ async function handleAdminData(request, env) {
 
   // —— Auth (password already validated above) ——
   if (action === 'auth') {
-    return json({ ok: true });
+    const authEpoch = await d1GetAuthEpoch(env);
+    return json({ ok: true, authEpoch });
+  }
+
+  if (action === 'force_logout_all') {
+    try {
+      const authEpoch = await d1BumpAuthEpoch(env);
+      // Clear presence so "online" resets immediately
+      if (env.DB) {
+        try {
+          await d1EnsurePresenceTable(env);
+          await env.DB.prepare('DELETE FROM admin_presence').run();
+        } catch (e) { /* ignore */ }
+      }
+      await d1Audit(env, 'force_logout_all', 'admin', '', 'all sessions invalidated', adminName);
+      return json({ ok: true, authEpoch, message: 'Todas as sessões foram invalidadas' });
+    } catch (e) {
+      return json({ error: 'force_logout failed: ' + (e && e.message) }, 500);
+    }
   }
 
   // —— D1 setup / migration / backup ——
@@ -755,7 +773,8 @@ async function handleAdminData(request, env) {
     const name = String((data && data.adminName) || adminName || '').trim().slice(0, 80);
     try {
       const result = await d1PresenceHeartbeat(env, sessionId, ua, name);
-      return json({ ok: true, online: result.online, names: result.names });
+      const authEpoch = await d1GetAuthEpoch(env);
+      return json({ ok: true, online: result.online, names: result.names, authEpoch });
     } catch (e) {
       console.error('presence_heartbeat', e && e.message);
       return json({ error: 'presence failed: ' + (e && e.message) }, 500);
@@ -1400,6 +1419,43 @@ async function d1Audit(env, action, entity, entityId, detail, actor) {
   } catch (e) {
     console.error('audit_log insert failed', e && e.message);
   }
+}
+
+// —— Auth epoch (force remote logout) ——
+async function d1EnsureSettingsTable(env) {
+  if (!env.DB) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS admin_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )`
+  ).run();
+}
+
+async function d1GetAuthEpoch(env) {
+  if (!env.DB) return 1;
+  try {
+    await d1EnsureSettingsTable(env);
+    const row = await env.DB.prepare(
+      "SELECT value FROM admin_settings WHERE key = 'auth_epoch'"
+    ).first();
+    const n = row && row.value != null ? parseInt(row.value, 10) : 1;
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  } catch (e) {
+    return 1;
+  }
+}
+
+async function d1BumpAuthEpoch(env) {
+  if (!env.DB) return 1;
+  await d1EnsureSettingsTable(env);
+  const current = await d1GetAuthEpoch(env);
+  const next = current + 1;
+  await env.DB.prepare(
+    `INSERT INTO admin_settings (key, value) VALUES ('auth_epoch', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).bind(String(next)).run();
+  return next;
 }
 
 // —— Trainings helpers ——

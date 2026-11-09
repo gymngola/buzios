@@ -339,7 +339,14 @@
             <li><strong>Apagar já / Apagar definitivamente</strong> é irreversível no painel (só recuperação via Time Travel do D1 ou último backup).</li>
             <li>Recomendado: correr <strong>Backup completo</strong> (ou aguardar o backup agendado <code>d1_backup</code>) pelo menos a cada poucos dias.</li>
             <li>Time Travel do D1 recupera a base nos últimos <strong>7 dias</strong> (plano Free) / <strong>30 dias</strong> (Paid). Os ficheiros datados no Cloudinary (<code>backups/d1-YYYY-MM-DD.json</code>) são a cópia de longa duração.</li>
+            <li>Um <strong>hard reload</strong> não termina a sessão (a palavra-passe fica no browser). Use <strong>Sair</strong> ou o botão abaixo para obrigar todos os dispositivos a entrar de novo — útil depois de actualizações do painel.</li>
           </ul>
+          <p style="margin:0.75rem 0 0.35rem">
+            <button type="button" id="forceLogoutAllBtn" class="danger" style="height:40px;padding:0 1rem;border:1px solid #e8b4b4;border-radius:8px;background:#fff;color:#b33;cursor:pointer;font-size:0.85rem">
+              Terminar todas as sessões (todos os dispositivos)
+            </button>
+          </p>
+          <p class="muted" style="font-size:0.8rem;margin:0.35rem 0 0">Dentro de cerca de 1 minuto, todos os painéis abertos pedem login outra vez (incluindo este).</p>
 
           <h3>Redeploy do Worker</h3>
           <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>

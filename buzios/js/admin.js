@@ -72,6 +72,55 @@
     }
   }
 
+  function getAuthEpoch() {
+    try {
+      const n = parseInt(sessionStorage.getItem('buzios_admin_epoch') || '0', 10);
+      return Number.isFinite(n) ? n : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function setAuthEpoch(n) {
+    try {
+      if (n != null && n !== '') sessionStorage.setItem('buzios_admin_epoch', String(n));
+      else sessionStorage.removeItem('buzios_admin_epoch');
+    } catch (e) {}
+  }
+
+  /** If server auth epoch moved ahead, invalidate this browser session. */
+  function checkAuthEpochFromServer(serverEpoch) {
+    if (serverEpoch == null || serverEpoch === '') return;
+    const remote = parseInt(serverEpoch, 10);
+    if (!Number.isFinite(remote) || remote < 1) return;
+    const local = getAuthEpoch();
+    if (!local) {
+      setAuthEpoch(remote);
+      return;
+    }
+    if (remote > local) {
+      forceRemoteLogout('Sessão terminada remotamente. Entre de novo.');
+    }
+  }
+
+  function forceRemoteLogout(message) {
+    stopStoreSync();
+    stopPresence(false);
+    setSessionPassword('');
+    setAuthEpoch(null);
+    try { sessionStorage.removeItem('buzios_admin_name'); } catch (e) {}
+    sessionStorage.removeItem(LS.auth);
+    localStorage.removeItem(LS.auth);
+    document.documentElement.classList.remove('admin-authed');
+    $('#adminApp')?.classList.add('hidden');
+    $('#loginScreen')?.classList.remove('hidden');
+    if ($('#loginError')) {
+      $('#loginError').textContent = message || 'Sessão terminada. Entre de novo.';
+      $('#loginError').style.display = 'block';
+    }
+    toast(message || 'Sessão terminada');
+  }
+
   function setAdminName(name) {
     const n = String(name || '').trim();
     try {
@@ -201,6 +250,7 @@
     stopStoreSync();
     stopPresence(true);
     setSessionPassword('');
+    setAuthEpoch(null);
     // Keep last selected name in localStorage for convenience; clear session only
     try { sessionStorage.removeItem('buzios_admin_name'); } catch (e) {}
     sessionStorage.removeItem(LS.auth);
@@ -265,6 +315,7 @@
       }
       setSessionPassword(password);
       setAdminName(adminName);
+      if (data.authEpoch != null) setAuthEpoch(data.authEpoch);
       const stay = $('#stayLoggedIn') && $('#stayLoggedIn').checked;
       sessionStorage.setItem(LS.auth, '1');
       if (stay) localStorage.setItem(LS.auth, '1');
@@ -318,6 +369,33 @@
       logoutAdmin();
     });
   }
+
+  $('#forceLogoutAllBtn')?.addEventListener('click', async () => {
+    if (!confirm('Terminar a sessão em TODOS os dispositivos com o painel aberto?\n\nTodos (incluindo você) terão de entrar de novo.')) {
+      return;
+    }
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'force_logout_all',
+          adminName: getAdminName()
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        toast((data && data.error) || 'Não foi possível terminar as sessões');
+        return;
+      }
+      // Invalidate this browser immediately
+      forceRemoteLogout('Todas as sessões foram terminadas. Entre de novo.');
+    } catch (e) {
+      toast(isTimeoutError(e) ? 'Servidor não respondeu' : 'Erro de rede');
+    }
+  });
 
   // Close modals when clicking the dimmed backdrop (not the panel itself)
   function bindModalBackdropClose(modalId) {
@@ -968,6 +1046,7 @@
       if (!res.ok) return;
       const data = await res.json();
       if (data && data.ok) {
+        if (data.authEpoch != null) checkAuthEpochFromServer(data.authEpoch);
         setPresenceLabel(
           typeof data.online === 'number' ? data.online : (data.names || []).length,
           data.names

@@ -1341,6 +1341,28 @@ a { color: var(--admin-accent); }
 .client-doc-file:hover,
 .client-doc-thumb:hover { border-color: var(--admin-accent); color: var(--admin-accent); }
 
+.client-doc-item {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.client-doc-item .client-doc-del {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border: 1px solid #e8b4b4;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+.client-doc-item .client-doc-del:hover {
+  background: #fdeaea;
+  color: #b33;
+}
+
 .clients-empty {
   text-align: center;
   padding: 2rem 1rem;

@@ -289,6 +289,8 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Histórico de pagamentos**: each line has pencil (edit) and trash (delete) icon buttons. Edit uses simple prompts for amount / method / note; delete confirms then saves.
 - **Named admin logins**: login requires selecting a staff name (Julio Figueiredo, Nataniel Figueiredo, Keuria, Garcia Kissanga, Amarildo Salvador) + shared password. Name is stored in session, shown in the admin bar, sent with presence heartbeats and mutations. Presence shows who is online by name. Client/submission saves record `[Name]` in audit_log detail. Migration `0005_admin_name.sql`.
 - **Treinos (attendance)**: new admin panel to mark training sessions. D1 table `trainings` (migration `0006_trainings.sql`). Any admin can add multiple sessions per day; counts for day/month; sessions show who recorded them; client edit modal shows recent training history + “Marcar treino de hoje”. Worker actions: `add_training`, `delete_training`, `list_trainings`, `trainings_summary`.
+- **Filtrar por idade**: age range select on Clientes toolbar (`<18`, 18–25, 26–35, 36–50, 51+, sem idade).
+- **Client documents in edit panel**: upload images/PDFs via Cloudinary from client modal (`+ Adicionar`); remove with trash icon; stored on client `attachments` (and clears matching `documents` / `paymentProof` URLs on delete).
 
 ### 2026-11-08
 

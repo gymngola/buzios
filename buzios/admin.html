@@ -192,6 +192,15 @@
           <div class="clients-summary" id="clientsSummary"></div>
           <div class="client-toolbar">
             <input type="search" id="clientSearch" placeholder="Pesquisar nome ou telefone…  (atalho /)" autocomplete="off" aria-label="Pesquisar clientes">
+            <select id="clientAgeFilter" aria-label="Filtrar por idade">
+              <option value="">Idade: todas</option>
+              <option value="0-17">&lt; 18</option>
+              <option value="18-25">18 – 25</option>
+              <option value="26-35">26 – 35</option>
+              <option value="36-50">36 – 50</option>
+              <option value="51-120">51+</option>
+              <option value="none">Sem idade</option>
+            </select>
             <select id="clientSort" aria-label="Ordenar">
               <option value="priority">Prioridade (dívida / a expirar)</option>
               <option value="name">Nome A–Z</option>

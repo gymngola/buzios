@@ -1424,29 +1424,145 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:0.65rem;margin-top:0.45rem">${cards}</div>`;
   }
 
-  /** Compact gallery for client modal (small thumbs + links). */
+  /** Compact gallery for client modal (small thumbs + links) + upload/delete. */
   function renderClientDocsBlock(c) {
     const items = clientAttachments(c);
-    if (!items.length) {
-      return '<div id="cDocsBlock" class="client-docs-block" style="display:none"></div>';
-    }
-    const chips = items.map(a => {
+    const chips = items.map((a, idx) => {
       const href = escapeHtml(fixAttachmentUrl(a.url));
       const label = escapeHtml(shortDocLabel(a));
       const full = escapeHtml(a.label || a.name || label);
       const img = isImageUrl(a.url);
-      if (img) {
-        return `<a class="client-doc-thumb" href="${href}" target="_blank" rel="noopener" title="${full}">
-          <img src="${href}" alt="${label}" loading="lazy">
-          <span>${label}</span>
-        </a>`;
-      }
-      return `<a class="client-doc-file" href="${href}" target="_blank" rel="noopener" title="${full}">📄 ${label}</a>`;
+      const urlAttr = escapeHtml(a.url);
+      const body = img
+        ? `<a class="client-doc-thumb" href="${href}" target="_blank" rel="noopener" title="${full}">
+            <img src="${href}" alt="${label}" loading="lazy">
+            <span>${label}</span>
+          </a>`
+        : `<a class="client-doc-file" href="${href}" target="_blank" rel="noopener" title="${full}">📄 ${label}</a>`;
+      return `<div class="client-doc-item" data-doc-url="${urlAttr}" data-doc-idx="${idx}">
+        ${body}
+        <button type="button" class="pay-icon-btn pay-icon-danger client-doc-del" data-doc-del-url="${urlAttr}" title="Remover documento" aria-label="Remover documento">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        </button>
+      </div>`;
     }).join('');
+
     return `<div id="cDocsBlock" class="client-docs-block">
-      <div class="meta" style="margin-bottom:0.4rem"><strong>Documentos da inscrição (${items.length})</strong></div>
-      <div class="client-docs-grid">${chips}</div>
+      <div class="meta" style="margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap">
+        <strong>Documentos e imagens (${items.length})</strong>
+        <label class="btn-secondary client-doc-upload-label" style="margin:0;cursor:pointer;padding:0.35rem 0.7rem;font-size:0.8rem;border-radius:8px;border:1px solid #ddd;background:#fff">
+          + Adicionar
+          <input type="file" id="cDocUpload" accept="image/*,.pdf,application/pdf" multiple hidden>
+        </label>
+      </div>
+      <div class="client-docs-grid">${chips || '<span class="muted" style="font-size:0.8rem">Ainda sem documentos. Use + Adicionar.</span>'}</div>
+      <p id="cDocUploadStatus" class="muted" style="font-size:0.75rem;margin:0.35rem 0 0;min-height:1.1em"></p>
     </div>`;
+  }
+
+  function bindClientDocsActions() {
+    const host = $('#cDocsHost');
+    if (!host) return;
+    host.querySelectorAll('[data-doc-del-url]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const url = btn.getAttribute('data-doc-del-url');
+        if (!url || !editingClientId) return;
+        if (!confirm('Remover este documento do cliente?')) return;
+        await removeClientAttachment(url);
+      });
+    });
+    const input = $('#cDocUpload');
+    if (input) {
+      input.addEventListener('change', async () => {
+        const files = input.files;
+        if (!files || !files.length) return;
+        if (!editingClientId) {
+          toast('Guarde o cliente primeiro, depois adicione documentos');
+          input.value = '';
+          return;
+        }
+        await uploadClientAttachments(files);
+        input.value = '';
+      });
+    }
+  }
+
+  async function uploadClientAttachments(fileList) {
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return toast('Cliente não encontrado');
+    const status = $('#cDocUploadStatus');
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+
+    let attachments = normalizeAttachments(existing).slice();
+    let ok = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (status) status.textContent = 'A carregar ' + (i + 1) + '/' + files.length + '…';
+      try {
+        const url = await uploadToCloudinary(file);
+        const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+        attachments.push({
+          url,
+          label: isPdf ? 'Documento' : 'Foto',
+          key: isPdf ? 'doc' : 'photo',
+          name: file.name || ''
+        });
+        ok++;
+      } catch (err) {
+        console.warn('client doc upload failed', err);
+        toast('Erro no upload: ' + (err.message || err));
+      }
+    }
+    // Deduplicate by URL
+    const seen = new Set();
+    attachments = attachments.filter(a => {
+      if (!a.url || seen.has(a.url)) return false;
+      seen.add(a.url);
+      return true;
+    });
+
+    const data = enrichClient(Object.assign({}, existing, {
+      attachments: attachments,
+      documents: existing.documents || null,
+      paymentProof: existing.paymentProof || null
+    }));
+    const saved = await adminAction('update_client', data);
+    if (status) status.textContent = ok ? ok + ' ficheiro(s) adicionado(s)' : '';
+    if (saved) {
+      toast(ok + ' documento(s) adicionado(s)');
+      openClientModal(editingClientId);
+    }
+  }
+
+  async function removeClientAttachment(url) {
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    let attachments = normalizeAttachments(existing).filter(a => a.url !== url);
+    // Also clear matching paymentProof / documents keys if they point to this URL
+    let paymentProof = existing.paymentProof;
+    if (paymentProof === url) paymentProof = null;
+    let documents = existing.documents;
+    if (documents && typeof documents === 'object') {
+      documents = Object.assign({}, documents);
+      Object.keys(documents).forEach(k => {
+        const d = documents[k];
+        const u = typeof d === 'string' ? d : (d && d.url);
+        if (u === url) delete documents[k];
+      });
+    }
+    const data = enrichClient(Object.assign({}, existing, {
+      attachments,
+      documents,
+      paymentProof
+    }));
+    const saved = await adminAction('update_client', data);
+    if (saved) {
+      toast('Documento removido');
+      openClientModal(editingClientId);
+    }
   }
 
   function bindSubmissionActions(list) {
@@ -1795,6 +1911,7 @@
   let clientsFilter = 'all';
   let clientsSearch = '';
   let clientsSort = 'priority';
+  let clientsAgeFilter = '';
 
   const CYCLE_MONTHS = { mensal: 1, trimestral: 3, anual: 12, pacote: 1 };
 
@@ -1996,11 +2113,24 @@
     }) || null;
   }
 
+  function clientMatchesAgeFilter(c, ageFilter) {
+    if (!ageFilter) return true;
+    const age = c.age != null && c.age !== '' ? Number(c.age) : null;
+    if (ageFilter === 'none') return age == null || Number.isNaN(age);
+    if (age == null || Number.isNaN(age)) return false;
+    const parts = String(ageFilter).split('-');
+    const min = Number(parts[0]);
+    const max = Number(parts[1]);
+    if (Number.isNaN(min) || Number.isNaN(max)) return true;
+    return age >= min && age <= max;
+  }
+
   function getVisibleClients() {
     const raw = store.clients || [];
     let items = raw.map(enrichClient);
     items = items.filter(c => clientMatchesFilter(c, clientsFilter));
     items = items.filter(c => clientMatchesSearch(c, clientsSearch));
+    items = items.filter(c => clientMatchesAgeFilter(c, clientsAgeFilter));
     return sortClients(items, clientsSort);
   }
 
@@ -2061,8 +2191,11 @@
       $('#clearClientFiltersBtn')?.addEventListener('click', () => {
         clientsFilter = 'all';
         clientsSearch = '';
+        clientsAgeFilter = '';
         const search = $('#clientSearch');
         if (search) search.value = '';
+        const ageSel = $('#clientAgeFilter');
+        if (ageSel) ageSel.value = '';
         $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(b => {
           b.classList.toggle('active', b.dataset.filter === 'all');
         });
@@ -2480,6 +2613,7 @@
       }
     }
     docsHost.innerHTML = renderClientDocsBlock(c);
+    bindClientDocsActions();
     updateDupWarn(c?.phone || '', id);
     // Training history for existing clients
     if (id) {
@@ -2768,6 +2902,10 @@
 
   $('#clientSearch')?.addEventListener('input', (e) => {
     clientsSearch = e.target.value.trim();
+    renderClients();
+  });
+  $('#clientAgeFilter')?.addEventListener('change', (e) => {
+    clientsAgeFilter = e.target.value || '';
     renderClients();
   });
   $('#clientSort')?.addEventListener('change', (e) => {

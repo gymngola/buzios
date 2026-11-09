@@ -2165,6 +2165,19 @@ body.drawer-open { overflow: hidden; }
 .gym-equip-card.is-trainer .gym-equip-card-media {
   aspect-ratio: 3 / 4;
 }
+/* Infographic / list images: show the whole graphic, no crop */
+.gym-equip-card.is-diagram .gym-equip-card-media {
+  aspect-ratio: 1 / 1;
+  background: #fff;
+}
+.gym-equip-card.is-diagram .gym-equip-card-media img {
+  object-fit: contain;
+  object-position: center;
+  padding: 0.5rem;
+}
+.gym-equip-card.is-diagram:hover .gym-equip-card-media img {
+  transform: none;
+}
 .gym-equip-card-label {
   font-family: var(--font-display);
   font-weight: var(--fw-semibold);

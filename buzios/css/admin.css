@@ -1600,3 +1600,38 @@ a { color: var(--admin-accent); }
   }
   .audit-meta, .audit-detail { grid-column: 1 / -1; }
 }
+
+/* Admin presence (open panels) */
+.admin-bar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.15rem;
+}
+.presence-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: #1a5a9c;
+  background: rgba(26, 90, 156, 0.1);
+  border: 1px solid rgba(26, 90, 156, 0.18);
+  line-height: 1.3;
+  max-width: max-content;
+}
+.presence-status[data-count="0"] {
+  color: var(--admin-muted);
+  background: transparent;
+  border-color: transparent;
+}
+.presence-status[data-count="1"] {
+  color: #1f5c42;
+  background: rgba(47, 107, 79, 0.1);
+  border-color: rgba(47, 107, 79, 0.18);
+}

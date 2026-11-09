@@ -148,10 +148,12 @@
     await loadStore();
     renderAll();
     startStoreSync();
+    startPresence();
   }
 
   function logoutAdmin() {
     stopStoreSync();
+    stopPresence(true);
     setSessionPassword('');
     sessionStorage.removeItem(LS.auth);
     localStorage.removeItem(LS.auth);
@@ -823,6 +825,117 @@
       }
     }
   }
+
+  // —— Admin presence (open panels) ——
+  const PRESENCE_INTERVAL_MS = 40000;
+  let presenceTimer = null;
+  let presenceSessionId = '';
+
+  function getPresenceSessionId() {
+    if (presenceSessionId) return presenceSessionId;
+    try {
+      presenceSessionId = sessionStorage.getItem('buzios_admin_sid') || '';
+    } catch (e) {}
+    if (!presenceSessionId) {
+      presenceSessionId =
+        's_' +
+        Date.now().toString(36) +
+        '_' +
+        Math.random().toString(36).slice(2, 10);
+      try {
+        sessionStorage.setItem('buzios_admin_sid', presenceSessionId);
+      } catch (e) {}
+    }
+    return presenceSessionId;
+  }
+
+  function setPresenceLabel(n) {
+    const el = $('#presenceStatus');
+    if (!el) return;
+    if (typeof n !== 'number' || n < 1) {
+      el.textContent = '0 online';
+      el.setAttribute('data-count', '0');
+      return;
+    }
+    el.textContent = n === 1 ? '1 online' : n + ' online';
+    el.setAttribute('data-count', String(n));
+  }
+
+  async function sendPresenceHeartbeat() {
+    const password = getAdminPassword();
+    if (!password || document.hidden) return;
+    try {
+      const res = await fetchWithTimeout(
+        ADMIN_DATA_URL,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            password: password,
+            action: 'presence_heartbeat',
+            data: {
+              sessionId: getPresenceSessionId(),
+              userAgent: (navigator.userAgent || '').slice(0, 180)
+            }
+          }),
+          cache: 'no-store'
+        },
+        8000
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.ok && typeof data.online === 'number') {
+        setPresenceLabel(data.online);
+      }
+    } catch (e) {
+      /* silent — presence is best-effort */
+    }
+  }
+
+  function startPresence() {
+    stopPresence(false);
+    setPresenceLabel(1);
+    sendPresenceHeartbeat();
+    presenceTimer = setInterval(sendPresenceHeartbeat, PRESENCE_INTERVAL_MS);
+  }
+
+  function stopPresence(sendLeave) {
+    if (presenceTimer) {
+      clearInterval(presenceTimer);
+      presenceTimer = null;
+    }
+    if (!sendLeave) return;
+    const password = getAdminPassword();
+    const sid = presenceSessionId || (function () {
+      try { return sessionStorage.getItem('buzios_admin_sid') || ''; } catch (e) { return ''; }
+    })();
+    if (!password || !sid) return;
+    const payload = JSON.stringify({
+      password: password,
+      action: 'presence_leave',
+      data: { sessionId: sid }
+    });
+    try {
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(ADMIN_DATA_URL, blob);
+      } else {
+        fetch(ADMIN_DATA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+          cache: 'no-store'
+        }).catch(function () {});
+      }
+    } catch (e) { /* ignore */ }
+    setPresenceLabel(0);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.documentElement.classList.contains('admin-authed')) return;
+    if (!document.hidden) sendPresenceHeartbeat();
+  });
 
   function currentSyncInterval() {
     return document.hidden ? STORE_SYNC_HIDDEN_MS : STORE_SYNC_FOCUS_MS;

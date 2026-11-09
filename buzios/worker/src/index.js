@@ -682,6 +682,47 @@ async function handleAdminData(request, env) {
     return json({ ok: true, entries: results || [], count: (results || []).length });
   }
 
+  // —— Admin presence (open panels) ——
+  if (action === 'presence_heartbeat') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const sessionId = String((data && data.sessionId) || '').slice(0, 64);
+    if (!sessionId) return json({ error: 'sessionId required' }, 400);
+    const ua = String((data && data.userAgent) || '').slice(0, 180);
+    try {
+      const online = await d1PresenceHeartbeat(env, sessionId, ua);
+      return json({ ok: true, online });
+    } catch (e) {
+      console.error('presence_heartbeat', e && e.message);
+      return json({ error: 'presence failed: ' + (e && e.message) }, 500);
+    }
+  }
+
+  if (action === 'presence_leave') {
+    if (!env.DB) return json({ ok: true, online: 0 });
+    const sessionId = String((data && data.sessionId) || '').slice(0, 64);
+    if (sessionId) {
+      try {
+        await env.DB.prepare('DELETE FROM admin_presence WHERE session_id = ?').bind(sessionId).run();
+      } catch (e) { /* ignore */ }
+    }
+    try {
+      const online = await d1PresenceCount(env);
+      return json({ ok: true, online });
+    } catch (e) {
+      return json({ ok: true, online: 0 });
+    }
+  }
+
+  if (action === 'presence_get') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    try {
+      const online = await d1PresenceCount(env);
+      return json({ ok: true, online });
+    } catch (e) {
+      return json({ error: 'presence failed: ' + (e && e.message) }, 500);
+    }
+  }
+
   return json({ error: 'Unknown action' }, 400);
 }
 
@@ -1292,6 +1333,51 @@ async function d1Audit(env, action, entity, entityId, detail) {
   } catch (e) {
     console.error('audit_log insert failed', e && e.message);
   }
+}
+
+/** Sessions with last_seen within this window count as online. */
+const PRESENCE_ONLINE_MS = 2 * 60 * 1000;
+
+async function d1EnsurePresenceTable(env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS admin_presence (
+      session_id TEXT PRIMARY KEY,
+      last_seen TEXT NOT NULL,
+      user_agent TEXT,
+      created_at TEXT
+    )`
+  ).run();
+}
+
+async function d1PresenceHeartbeat(env, sessionId, userAgent) {
+  await d1EnsurePresenceTable(env);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO admin_presence (session_id, last_seen, user_agent, created_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(session_id) DO UPDATE SET
+       last_seen = excluded.last_seen,
+       user_agent = excluded.user_agent`
+  )
+    .bind(sessionId, now, userAgent || '', now)
+    .run();
+
+  // Drop stale sessions (older than 10 minutes) so the table stays small
+  const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  await env.DB.prepare('DELETE FROM admin_presence WHERE last_seen < ?').bind(staleBefore).run();
+
+  return d1PresenceCount(env);
+}
+
+async function d1PresenceCount(env) {
+  await d1EnsurePresenceTable(env);
+  const since = new Date(Date.now() - PRESENCE_ONLINE_MS).toISOString();
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM admin_presence WHERE last_seen >= ?'
+  )
+    .bind(since)
+    .first();
+  return (row && typeof row.n === 'number') ? row.n : (row && row.n ? Number(row.n) : 0);
 }
 
 /** Permanent delete (after 30-day trash or explicit purge). */

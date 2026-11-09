@@ -27,7 +27,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=20261109a">
+  <link rel="stylesheet" href="css/admin.css?v=20261109b">
   <style>
     html.admin-authed #loginScreen { display: none !important; }
     html.admin-authed #adminApp.hidden { display: block !important; }
@@ -97,7 +97,10 @@
         <div class="admin-bar">
           <p class="admin-brand">Búzios Admin</p>
           <h1 id="sectionTitle">Inscrições</h1>
-          <p id="syncStatus" class="sync-status" data-state="idle" title="Estado de sincronização entre dispositivos">Em sincronização</p>
+          <div class="admin-bar-meta">
+            <p id="syncStatus" class="sync-status" data-state="idle" title="Estado de sincronização entre dispositivos">Em sincronização</p>
+            <p id="presenceStatus" class="presence-status" title="Painéis admin abertos agora (últimos 2 min)">—</p>
+          </div>
         </div>
 
       <!-- Inbox / Enrollments -->
@@ -517,7 +520,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261109a"></script>
+  <script src="js/admin.js?v=20261109b"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

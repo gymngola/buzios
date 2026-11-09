@@ -692,13 +692,56 @@ async function handleAdminData(request, env) {
   if (action === 'get_audit_log') {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
     const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 500);
-    const { results } = await env.DB.prepare(
-      `SELECT id, at, action, entity, entity_id, detail
-       FROM audit_log
-       ORDER BY id DESC
-       LIMIT ?`
-    ).bind(limit).all();
+    const entityId = data && data.entityId ? String(data.entityId).slice(0, 80) : '';
+    let results;
+    if (entityId) {
+      const q = await env.DB.prepare(
+        `SELECT id, at, action, entity, entity_id, detail
+         FROM audit_log
+         WHERE entity_id = ?
+         ORDER BY id DESC
+         LIMIT ?`
+      ).bind(entityId, limit).all();
+      results = q.results || [];
+    } else {
+      const q = await env.DB.prepare(
+        `SELECT id, at, action, entity, entity_id, detail
+         FROM audit_log
+         ORDER BY id DESC
+         LIMIT ?`
+      ).bind(limit).all();
+      results = q.results || [];
+    }
     return json({ ok: true, entries: results || [], count: (results || []).length });
+  }
+
+  if (action === 'get_client_history') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const clientId = String((data && data.clientId) || '').trim();
+    if (!clientId) return json({ error: 'clientId required' }, 400);
+    const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 500);
+    try {
+      await d1EnsureTrainingsTable(env);
+      const trainingsQ = await env.DB.prepare(
+        `SELECT id, client_id, trained_at, trained_date, recorded_by, note, created_at
+         FROM trainings WHERE client_id = ?
+         ORDER BY trained_at DESC LIMIT ?`
+      ).bind(clientId, limit).all();
+      const auditQ = await env.DB.prepare(
+        `SELECT id, at, action, entity, entity_id, detail
+         FROM audit_log
+         WHERE entity_id = ? OR (entity = 'training' AND detail LIKE ?)
+         ORDER BY id DESC LIMIT ?`
+      ).bind(clientId, clientId + '%', limit).all();
+      return json({
+        ok: true,
+        trainings: (trainingsQ.results || []).map(trainingRowFromDb),
+        audit: auditQ.results || []
+      });
+    } catch (e) {
+      console.error('get_client_history', e && e.message);
+      return json({ error: 'D1 read failed: ' + (e && e.message) }, 500);
+    }
   }
 
   // —— Trainings / attendance ——

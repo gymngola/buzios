@@ -2696,9 +2696,10 @@
     updateDupWarn(c?.phone || '', id);
     // Training history for existing clients
     if (id) {
-      loadClientTrainings(id);
+      clientHistoryYear = '';
+      loadClientHistory(id);
     } else {
-      const th = $('#cTrainingsHost');
+      const th = $('#cHistoryHost') || $('#cTrainingsHost');
       if (th) th.innerHTML = '';
     }
     const modal = $('#clientModal');
@@ -3340,67 +3341,211 @@
     }
   }
 
+  let clientHistoryCache = { clientId: '', trainings: [], audit: [], payments: [] };
+  let clientHistoryYear = '';
+
   async function loadClientTrainings(clientId) {
-    const host = ensureClientTrainingsHost();
+    return loadClientHistory(clientId);
+  }
+
+  async function loadClientHistory(clientId) {
+    const host = ensureClientHistoryHost();
     if (!host || !clientId) return;
-    host.innerHTML = '<p class="muted" style="font-size:0.8rem">A carregar treinos…</p>';
+    host.innerHTML = '<p class="muted" style="font-size:0.8rem">A carregar histórico do cliente…</p>';
+    const existing = (store.clients || []).find(x => x.id === clientId);
+    const payments = (existing && existing.payments) || [];
     try {
-      const month = todayISO().slice(0, 7);
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           password: getAdminPassword(),
-          action: 'list_trainings',
+          action: 'get_client_history',
           adminName: getAdminName(),
-          data: { clientId, limit: 40 }
+          data: { clientId, limit: 300 }
         }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) throw new Error('status ' + res.status);
       const data = await res.json();
-      const list = (data && data.trainings) || [];
-      const thisMonth = list.filter(t => (t.trainedDate || '').startsWith(month)).length;
-      const today = list.filter(t => t.trainedDate === todayISO()).length;
-      host.innerHTML =
-        '<h3 style="font-size:0.85rem;font-weight:500;margin:0 0 0.4rem">Treinos</h3>' +
-        '<p style="font-size:0.8rem;color:#555;margin:0 0 0.5rem">' +
-          '<strong>' + today + '</strong> hoje · <strong>' + thisMonth + '</strong> este mês · <strong>' + list.length + '</strong> recentes' +
-        '</p>' +
-        (list.length
-          ? '<ul class="pay-history client-training-history">' + list.slice(0, 15).map(t => {
-              const when = t.trainedAt ? new Date(t.trainedAt).toLocaleString('pt') : (t.trainedDate || '');
-              const by = t.recordedBy ? ' · ' + escapeHtml(t.recordedBy) : '';
-              const note = t.note ? ' — ' + escapeHtml(t.note) : '';
-              return '<li class="pay-row"><span class="pay-info">' + escapeHtml(when) + by + note + '</span>' +
-                '<span class="pay-actions"><button type="button" class="pay-icon-btn pay-icon-danger" data-del-training="' + escapeHtml(t.id) + '" title="Apagar" aria-label="Apagar">' +
-                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button></span></li>';
-            }).join('') + '</ul>'
-          : '<p class="muted" style="font-size:0.8rem;margin:0">Ainda sem treinos registados.</p>') +
-        '<div class="form-actions" style="margin-top:0.5rem">' +
-          '<button type="button" class="btn-train" id="cAddTrainingBtn" style="height:36px;padding:0 0.9rem">+ Marcar treino de hoje</button>' +
-        '</div>';
-
-      host.querySelectorAll('[data-del-training]').forEach(btn => {
-        btn.addEventListener('click', () => deleteTrainingSession(btn.getAttribute('data-del-training')));
-      });
-      const addBtn = host.querySelector('#cAddTrainingBtn');
-      if (addBtn) {
-        addBtn.addEventListener('click', () => addTrainingForClient(clientId));
-      }
+      clientHistoryCache = {
+        clientId,
+        trainings: (data && data.trainings) || [],
+        audit: (data && data.audit) || [],
+        payments: payments,
+        createdAt: existing && existing.createdAt
+      };
+      renderClientHistory(host, clientId);
     } catch (e) {
-      host.innerHTML = '<p class="muted" style="font-size:0.8rem">Não foi possível carregar treinos.</p>';
+      // Fallback: payments only + local trainings attempt
+      clientHistoryCache = {
+        clientId,
+        trainings: [],
+        audit: [],
+        payments: payments,
+        createdAt: existing && existing.createdAt
+      };
+      renderClientHistory(host, clientId);
+      const status = host.querySelector('.client-history-status');
+      if (status) status.textContent = 'Histórico parcial (servidor indisponível para treinos/auditoria).';
     }
   }
 
-  function ensureClientTrainingsHost() {
-    let host = $('#cTrainingsHost');
-    if (host) return host;
+  function buildClientTimeline(cache, yearFilter) {
+    const events = [];
+    const methodLabel = { cash: 'Numerário', transfer: 'Transferência', multicaixa: 'Multicaixa', other: 'Outro' };
+
+    (cache.payments || []).forEach((p, idx) => {
+      const at = p.paidAt || '';
+      events.push({
+        at,
+        sortKey: at || '1970-01-01',
+        type: 'payment',
+        title: 'Pagamento',
+        body:
+          (p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '—') +
+          ' · ' + (methodLabel[p.method] || p.method || '') +
+          (p.note ? ' — ' + p.note : '') +
+          (p.periodEnd ? ' · válido até ' + formatDatePT(p.periodEnd) : ''),
+        id: p.id || ('pay-' + idx)
+      });
+    });
+
+    (cache.trainings || []).forEach(t => {
+      const at = t.trainedAt || t.trainedDate || '';
+      events.push({
+        at,
+        sortKey: at || '1970-01-01',
+        type: 'training',
+        title: 'Treino',
+        body:
+          (t.recordedBy ? 'Registado por ' + t.recordedBy : 'Sessão') +
+          (t.note ? ' — ' + t.note : ''),
+        id: t.id
+      });
+    });
+
+    (cache.audit || []).forEach(a => {
+      // Skip noisy training add/delete if we already show trainings
+      if (a.entity === 'training' && (a.action === 'add_training' || a.action === 'delete_training')) return;
+      const at = a.at || '';
+      const actionLabels = {
+        save_client: 'Cliente actualizado',
+        delete_client: 'Cliente apagado / lixeira',
+        restore_client: 'Cliente restaurado',
+        save_submission: 'Inscrição actualizada'
+      };
+      events.push({
+        at,
+        sortKey: at || '1970-01-01',
+        type: 'audit',
+        title: actionLabels[a.action] || a.action || 'Acção',
+        body: (a.detail || '').replace(/^\[.*?\]\s*/, '') || '',
+        who: ((a.detail || '').match(/^\[([^\]]+)\]/) || [])[1] || '',
+        id: 'audit-' + a.id
+      });
+    });
+
+    if (cache.createdAt) {
+      events.push({
+        at: cache.createdAt,
+        sortKey: cache.createdAt,
+        type: 'created',
+        title: 'Cliente criado',
+        body: '',
+        id: 'created'
+      });
+    }
+
+    events.sort((a, b) => String(b.sortKey).localeCompare(String(a.sortKey)));
+
+    if (yearFilter) {
+      return events.filter(ev => String(ev.at || '').startsWith(String(yearFilter)));
+    }
+    return events;
+  }
+
+  function renderClientHistory(host, clientId) {
+    if (!host) return;
+    const cache = clientHistoryCache.clientId === clientId ? clientHistoryCache : { trainings: [], audit: [], payments: [] };
+    const years = new Set();
+    buildClientTimeline(cache, '').forEach(ev => {
+      const y = String(ev.at || '').slice(0, 4);
+      if (/^\d{4}$/.test(y)) years.add(y);
+    });
+    const yearList = Array.from(years).sort().reverse();
+    if (clientHistoryYear && yearList.indexOf(clientHistoryYear) < 0) clientHistoryYear = '';
+
+    const month = todayISO().slice(0, 7);
+    const trainings = cache.trainings || [];
+    const todayN = trainings.filter(t => t.trainedDate === todayISO()).length;
+    const monthN = trainings.filter(t => (t.trainedDate || '').startsWith(month)).length;
+    const timeline = buildClientTimeline(cache, clientHistoryYear);
+
+    const yearOptions =
+      '<option value="">Todos os anos</option>' +
+      yearList.map(y =>
+        '<option value="' + y + '"' + (clientHistoryYear === y ? ' selected' : '') + '>' + y + '</option>'
+      ).join('');
+
+    const typeClass = { payment: 'hist-pay', training: 'hist-train', audit: 'hist-audit', created: 'hist-created' };
+
+    host.innerHTML =
+      '<div class="client-history-head">' +
+        '<h3>Histórico do cliente</h3>' +
+        '<div class="client-history-tools">' +
+          '<select id="cHistoryYear" aria-label="Filtrar por ano">' + yearOptions + '</select>' +
+          '<button type="button" class="btn-train" id="cAddTrainingBtn" style="height:34px;padding:0 0.75rem">+ Treino hoje</button>' +
+        '</div>' +
+      '</div>' +
+      '<p class="client-history-stats">' +
+        '<strong>' + todayN + '</strong> treinos hoje · ' +
+        '<strong>' + monthN + '</strong> este mês · ' +
+        '<strong>' + (cache.payments || []).length + '</strong> pagamentos · ' +
+        '<strong>' + timeline.length + '</strong> eventos' +
+        (clientHistoryYear ? ' em ' + clientHistoryYear : '') +
+      '</p>' +
+      '<p class="client-history-status muted" style="font-size:0.75rem;min-height:1em"></p>' +
+      (timeline.length
+        ? '<ul class="client-history-timeline">' + timeline.map(ev => {
+            const when = ev.at
+              ? (ev.at.length > 12
+                  ? new Date(ev.at).toLocaleString('pt')
+                  : formatDatePT(ev.at.slice(0, 10)))
+              : '—';
+            const cls = typeClass[ev.type] || '';
+            const who = ev.who ? ' · ' + escapeHtml(ev.who) : '';
+            return '<li class="hist-item ' + cls + '">' +
+              '<span class="hist-dot" aria-hidden="true"></span>' +
+              '<div class="hist-body">' +
+                '<div class="hist-top"><span class="hist-title">' + escapeHtml(ev.title) + '</span>' +
+                '<span class="hist-when">' + escapeHtml(when) + who + '</span></div>' +
+                (ev.body ? '<div class="hist-detail">' + escapeHtml(ev.body) + '</div>' : '') +
+              '</div>' +
+            '</li>';
+          }).join('') + '</ul>'
+        : '<p class="muted" style="font-size:0.85rem">Ainda sem eventos neste filtro.</p>');
+
+    const yearSel = host.querySelector('#cHistoryYear');
+    if (yearSel) {
+      yearSel.addEventListener('change', () => {
+        clientHistoryYear = yearSel.value || '';
+        renderClientHistory(host, clientId);
+      });
+    }
+    const addBtn = host.querySelector('#cAddTrainingBtn');
+    if (addBtn) addBtn.addEventListener('click', () => addTrainingForClient(clientId));
+  }
+
+  function ensureClientHistoryHost() {
+    let host = $('#cHistoryHost') || $('#cTrainingsHost');
+    if (host) {
+      host.id = 'cHistoryHost';
+      return host;
+    }
     host = document.createElement('div');
-    host.id = 'cTrainingsHost';
-    host.style.marginTop = '1rem';
-    host.style.paddingTop = '1rem';
-    host.style.borderTop = '1px solid #eee';
+    host.id = 'cHistoryHost';
+    host.className = 'client-history-block';
     const pay = $('#paymentBlock');
     if (pay && pay.parentNode) {
       pay.parentNode.insertBefore(host, pay);
@@ -3409,6 +3554,10 @@
       if (notes && notes.parentNode) notes.parentNode.appendChild(host);
     }
     return host;
+  }
+
+  function ensureClientTrainingsHost() {
+    return ensureClientHistoryHost();
   }
 
   $('#trainingDate')?.addEventListener('change', async () => {

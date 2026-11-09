@@ -22,7 +22,7 @@ Luxury mobile-first brochure + admin site for **Búzios Health Club / Escola de 
   - Unsigned preset `buzios_unsigned` — browser image/doc uploads only
   - Signed raw upload (Worker + Root API key) — `buzios/catalog.json` + `buzios/store.json` (+ `store-prev.json` backup)
   - `invalidate=true` on every signed upload (CDN caches raw files ~30 days otherwise)
-- **Cloudflare D1** (`buzios-db`) — clients + inbox/submissions + newsletter (admin read + dual-write). Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
+- **Cloudflare D1** (`buzios-db`) — clients, inbox/submissions, newsletter, trainings, presence, audit_log, admin_settings. Catalog stays on Cloudinary. See `worker/SETUP-D1.md`.
 - **localStorage** — admin mid-session drafts only (catalog dirty flag; not cross-browser source of truth)
 - Orders / leads via WhatsApp (no payment backend)
 - **PWA** — installable as apps (public site + admin)
@@ -86,9 +86,19 @@ Live base: `https://buzios-publish.gymngola.workers.dev`
 | `POST /publish` | Admin — write `buzios/catalog.json` |
 | `POST /admin/data` | Admin — read/update store (inbox, clients, newsletter) + D1 ops |
 
-`POST /admin/data` actions (password required): `auth`, `get`, `update_*`, `delete_*`, `replace_store`, `debug_store`, **`d1_status`**, **`d1_import_from_store`**, **`d1_get_clients`**, **`d1_get_submissions`**, **`d1_get_newsletters`**, **`d1_backup`**.
+`POST /admin/data` actions (password required): `auth`, `force_logout_all`, `get`, `update_*`, `delete_*`, `replace_store`, `debug_store`, **`d1_status`**, **`d1_import_from_store`**, **`d1_get_clients`**, **`d1_get_submissions`**, **`d1_get_newsletters`**, **`d1_backup`**, **`get_audit_log`**, **`add_training`**, **`delete_training`**, **`list_trainings`**, **`trainings_summary`**, **`get_client_history`**, **`presence_heartbeat`**, **`presence_leave`**, **`presence_get`**.
 
-After any change to `worker/src/index.js`, run `npx wrangler deploy` again from `worker/`.
+Optional body field on mutations: `adminName` (staff name from login dropdown) — written into audit detail and presence.
+
+After any change to `worker/src/index.js`, run `npx wrangler deploy` again from `worker/`. Apply new migrations when present:
+
+```bash
+cd worker
+npx wrangler d1 migrations apply buzios-db --remote
+npx wrangler deploy
+```
+
+Migrations of note: `0004` presence · `0005` admin_name · `0006` trainings · `0007` admin_settings (`auth_epoch`).
 
 **Do not** run `npx wrangler deploy` from the project root (it tries to create a static Assets Worker named `buzios`). Static site = Cloudflare Pages only.
 
@@ -121,10 +131,12 @@ Time Travel alone is only 7 days on Free — keep the Cloudinary snapshots. See 
 
 **Segurança / dados (staff):** Operational data is D1-primary. **Arquivar** is reversible status; **Lixeira** is soft-delete with 30-day recovery, then permanent purge on cron. **Apagar já** is irreversible in the UI (Time Travel / last backup only). Recommend Backup completo every few days. Same points appear in admin **Guia** and `BLUEPRINT.md` §2.2.
 
-### 3. Admin password
+### 3. Admin password + named staff
 
 Password exists **only** as Worker secret `ADMIN_PASSWORD` (`npx wrangler secret put ADMIN_PASSWORD`).  
-It is **not** in `js/admin.js`. Login POSTs `action: "auth"`; the typed password is kept in sessionStorage for subsequent API calls.
+It is **not** in `js/admin.js`. Login requires a **staff name** (dropdown) + password; POSTs `action: "auth"` and stores password + name in session for API calls / presence / audit.
+
+**Force logout all devices:** Guia → “Terminar todas as sessões” (`force_logout_all`) bumps D1 `auth_epoch`. Open panels pick this up on the next presence heartbeat (~40s) and return to login. Hard reload alone does **not** end a session (password stays in `sessionStorage`).
 
 ### 4. Deploy static site
 
@@ -299,6 +311,16 @@ Several staff devices can keep admin open:
 
 ## Recent changes
 
+### 2026-11-09 — Treinos, client history, named admins, force logout
+
+- **Public:** address updated (Rua 21-C … Rua do ginásio); Saturday hours 06h–12h on site.
+- **Admin login:** staff name dropdown + shared password; presence shows who is online; audit detail prefixes `[Name]`.
+- **Clientes:** accent-insensitive search; age filter; billing `desistente`; schedule 05:00; payment history edit/delete icons; documents upload/remove in edit modal.
+- **Treinos panel:** attendance sessions in D1 (`0006_trainings.sql`); day/month counts; multi-session per day.
+- **Histórico do cliente:** unified timeline (payments + trainings + audit) with year filter (`get_client_history`).
+- **Force logout all:** Guia button → `force_logout_all` / `auth_epoch` (`0007_admin_settings.sql`).
+- Deploy: `npx wrangler d1 migrations apply buzios-db --remote` then `npx wrangler deploy` from `worker/`; publish Pages for static UI.
+
 ### 2026-11-08 — Admin Worker timeouts + public form feedback
 
 - Admin: **12s timeout** on all Worker fetches (`fetchWithTimeout`). Sync status becomes a visible error pill on hang/block (e.g. gym Wi‑Fi); Clientes empty state explains load failure.
@@ -353,8 +375,10 @@ Several staff devices can keep admin open:
 
 - Media “delete” in admin removes the library list entry only (not the Cloudinary file)
 - Admin tab is remembered in `sessionStorage` across reloads
-- Auth: password only in Worker secret; login via `action: "auth"`; typed password in `sessionStorage` (`buzios_admin_pw`) for API calls; auth flag `buzios_admin_auth` (session + optional local “Manter sessão”)
-- Sidebar: **Website** (public site), **Instalar app**, **Sair** (clears password + auth, returns to login)
+- Auth: password only in Worker secret; login = staff name + password via `action: "auth"`; password in `sessionStorage` (`buzios_admin_pw`); name in `buzios_admin_name`; auth flag `buzios_admin_auth` (session + optional local “Manter sessão”). Hard reload does not log out.
+- Force logout all devices: Guia → Terminar todas as sessões (`auth_epoch`)
+- Sidebar: **Website**, **Instalar app**, **Sair**; panels include **Treinos**
+- Client edit: payment history icons, document upload, **Histórico do cliente** timeline
 - Keep `public_id` paths as `buzios/catalog.json` and `buzios/store.json` (with extension)
 - After significant product/UX/infra changes: update **README.md** and **BLUEPRINT.md** in the same change set
 - Deploy: **Pages** = static root; **Worker** = always `cd worker && npx wrangler deploy` (never from project root)

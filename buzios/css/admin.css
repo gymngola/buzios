@@ -1628,6 +1628,93 @@ a { color: var(--admin-accent); }
   color: #b33;
 }
 
+/* Client full history timeline */
+.client-history-block {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+.client-history-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.client-history-head h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+.client-history-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.client-history-tools select {
+  height: 34px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0 0.5rem;
+  font-size: 0.8rem;
+  background: #fff;
+}
+.client-history-stats {
+  font-size: 0.8rem;
+  color: #555;
+  margin: 0 0 0.5rem;
+}
+.client-history-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 0.35rem;
+  border-left: 2px solid #e6ebed;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.hist-item {
+  position: relative;
+  padding: 0.45rem 0 0.45rem 0.9rem;
+}
+.hist-dot {
+  position: absolute;
+  left: -0.42rem;
+  top: 0.7rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #9aa8b0;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #d0d8dc;
+}
+.hist-item.hist-pay .hist-dot { background: #c45c26; }
+.hist-item.hist-train .hist-dot { background: #2f6b4f; }
+.hist-item.hist-audit .hist-dot { background: #1a5a9c; }
+.hist-item.hist-created .hist-dot { background: #6b3a7a; }
+.hist-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+}
+.hist-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-text);
+}
+.hist-when {
+  font-size: 0.72rem;
+  color: var(--admin-muted);
+}
+.hist-detail {
+  font-size: 0.78rem;
+  color: #555;
+  margin-top: 0.15rem;
+  line-height: 1.35;
+}
+
 .sum-pill {
   display: inline-flex;
   align-items: center;

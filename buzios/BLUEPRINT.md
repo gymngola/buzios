@@ -124,22 +124,26 @@ Password gate → sections:
 | Contactos | Contact form messages |
 | Newsletter | Phone list |
 | **Clientes** | Membership CRM (see §5) |
+| **Treinos** | Attendance: mark sessions, day/month counts (see §5.1) |
 | Planos | Catalog products/prices → publish |
 | Imagens | Slots + media library → publish |
 | Textos | Site copy → publish |
-| Guia | In-app staff help |
+| Histórico | Global audit log |
+| Guia | In-app staff help + force logout all devices |
 
 - Only Planos / Imagens / Textos need **Publicar no website**.
-- Clientes / inscrições / contactos / newsletter persist via `/admin/data` → **D1** automatically.
+- Clientes / inscrições / contactos / newsletter / treinos persist via `/admin/data` → **D1** automatically.
 - Nav badge on Clientes when debt + expired count > 0.
 - Active panel remembered in `sessionStorage`.
-- **Session:** login against Worker `action: "auth"` (password = secret only). Auth flag `buzios_admin_auth` (session + optional local “Manter sessão”); API password held in `sessionStorage` (`buzios_admin_pw`). Reload does not flash login when already authed (`html.admin-authed` set in `<head>`). **Sair** clears password + flags and returns to login.
+- **Session:** login requires **staff name** (dropdown) + shared Worker secret password (`action: "auth"`). Names: Julio Figueiredo, Nataniel Figueiredo, Keuria, Garcia Kissanga, Amarildo Salvador. Auth flag `buzios_admin_auth`; password in `sessionStorage` (`buzios_admin_pw`); name in session/local (`buzios_admin_name`). Hard reload does **not** clear the session. **Sair** clears password + flags. **Guia → Terminar todas as sessões** bumps D1 `auth_epoch` so every open panel logs out within ~40s (presence heartbeat).
+- **Presence:** sidebar/meta shows who is online by name (last ~2 min).
 - **Multi-device sync:** while admin is open, store is polled on an interval (and on tab focus). D1 overlays refresh clients / inbox / newsletter. Writes pause polling briefly.
 
 **Admin chrome**
 
-- Login: logo + “Búzios Admin”
+- Login: logo + “Búzios Admin” + name select + password
 - Sidebar brand: logo (+ text on wide nav)
+- Bar meta: current user · sync status · who is online
 - Sidebar footer actions: **Website** (opens public site), **Instalar app**, **Sair**
 - Icons: `icons/admin-192.png`, `admin-512.png` (from same logo artwork)
 
@@ -208,11 +212,21 @@ Closes on **outside click** or **Escape**.
 - Quick **Renovar**: extends period by billing cycle, records payment, sets activo / em_dia
 - **Worker `update_client`:** re-loads store immediately before applying the patch (reduces multi-staff lost updates on *other* clients; same-client last-write still wins)
 
-### Client data (store)
+### Client data (store / D1)
 
-Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus`, `emergencyName`, `emergencyPhone`, `notes`, `payments[]`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.
+Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `notes`, `payments[]`, `attachments` / `documents`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.
 
-Edit modal exposes Nº sócio, idade, horário (select) and cartão as first-class fields. Legacy notes dumps (`Nº · Horário · Cartão · Idade`) are parsed on open when structured keys are missing; cleaned remainder stays in Notas.
+Edit modal exposes Nº sócio, idade, horário (select includes **05:00**), cartão, payment history (edit/delete icons), document upload/remove, and **Histórico do cliente** (unified timeline).
+
+**Client list:** search is accent-insensitive; filters include status pills + **Filtrar por idade** (ranges / sem idade).
+
+Legacy notes dumps (`Nº · Horário · Cartão · Idade`) are parsed on open when structured keys are missing; cleaned remainder stays in Notas.
+
+### 5.1 Treinos + Histórico do cliente
+
+- **Treinos panel:** date picker, search, filter (activos / todos / só quem treinou no dia). **+ Treino** registers a session (multiple per day allowed). Counts for day and month. `recorded_by` = admin name.
+- **D1 `trainings`:** `id`, `client_id`, `trained_at`, `trained_date`, `recorded_by`, `note`, `created_at`.
+- **Histórico do cliente** (edit modal): one timeline of payments + trainings + audit events + “cliente criado”; year filter; summary counts. Worker `get_client_history`.
 
 ---
 
@@ -222,12 +236,19 @@ Edit modal exposes Nº sócio, idade, horário (select) and cartão as first-cla
 
 Plans, site texts, image slot URLs — edited in admin, published explicitly.
 
-### Store (`buzios/store.json`)
+### Operational data (D1 primary)
 
-- `submissions` — inscrição + contacto
-- `clients` — membership records (cap **3000** in Worker)
-- `newsletters` — phone opt-ins
-- `updatedAt` — ISO timestamp on every write
+| Table / data | Role |
+|--------------|------|
+| `clients` | Membership CRM |
+| `submissions` | Inscrição + contacto inbox |
+| `newsletters` | Phone opt-ins |
+| `audit_log` | Write log (actions include `[AdminName]` in detail when known) |
+| `admin_presence` | Who has the panel open (+ `admin_name`) |
+| `trainings` | Attendance sessions |
+| `admin_settings` | e.g. `auth_epoch` for force logout all |
+
+Legacy Cloudinary `store.json` remains for backups / emergency snapshot only (`WRITE_OPS_TO_STORE = false`).
 
 Public `POST /submit` appends; admin mutates via `POST /admin/data`.
 
@@ -271,6 +292,10 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 | `worker/wrangler.toml` | Worker + D1 binding |
 | `worker/migrations/0001_init.sql` | D1 schema (clients, submissions, newsletters, audit_log) |
 | `worker/migrations/0002_trash.sql` | `deleted_at` for 30-day trash |
+| `worker/migrations/0004_admin_presence.sql` | Open-panel presence |
+| `worker/migrations/0005_admin_name.sql` | `admin_name` on presence |
+| `worker/migrations/0006_trainings.sql` | Attendance / trainings |
+| `worker/migrations/0007_admin_settings.sql` | `auth_epoch` (force logout) |
 | `worker/SETUP-D1.md` | D1 create / migrate / import commands |
 | `icons/logo.png` | Brand mark |
 
@@ -292,6 +317,7 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Filtrar por idade**: age range select on Clientes toolbar (`<18`, 18–25, 26–35, 36–50, 51+, sem idade).
 - **Client documents in edit panel**: upload images/PDFs via Cloudinary from client modal (`+ Adicionar`); remove with trash icon; stored on client `attachments` (and clears matching `documents` / `paymentProof` URLs on delete).
 - **Force logout all devices**: Guia → “Terminar todas as sessões”. Bumps D1 `admin_settings.auth_epoch` (migration `0007_admin_settings.sql`); presence heartbeats detect the new epoch and log every open panel out within ~40s. Explains why hard reload alone does not clear the session (password lives in `sessionStorage`).
+- **Histórico do cliente**: unified timeline in client edit modal — payments + trainings + audit/status events + “cliente criado”, with year filter and summary counts. Worker action `get_client_history` (trainings + audit for client).
 
 ### 2026-11-08
 

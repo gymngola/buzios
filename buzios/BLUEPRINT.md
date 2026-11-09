@@ -253,7 +253,7 @@ Public `POST /submit` appends; admin mutates via `POST /admin/data`.
 
 WhatsApp: ginásio +244 923 423 142 · natação +244 929 208 317  
 IBAN: A006 0040 0000 6810 2585 1017 3  
-Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda  
+Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do ginásio), Luanda  
 (Maps button uses business-name search so the Google place panel stays reliable)
 
 ---
@@ -277,6 +277,18 @@ Address: Rua 21-c, travessa 5, Bairro do Benfica, Kifica nº 57-59, Luanda
 ---
 
 ## 9. Change log (blueprint)
+
+### 2026-11-09
+
+- **Address updated** site-wide to: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do ginásio).
+- **Saturday hours** added on public pages: Sábados 06h–12h (Domingos & feriados text unchanged).
+- **Admin schedule**: 05:00 option added (special PT sessions).
+- **Billing status**: new value `desistente` (protected from auto planEnd overwrite).
+- **Search**: accent-insensitive (José ≈ Jose, ç ≈ c) on Clientes.
+- **Client edit modal**: always scrolls to top when opened.
+- **Histórico de pagamentos**: each line has pencil (edit) and trash (delete) icon buttons. Edit uses simple prompts for amount / method / note; delete confirms then saves.
+- **Named admin logins**: login requires selecting a staff name (Julio Figueiredo, Nataniel Figueiredo, Keuria, Garcia Kissanga, Amarildo Salvador) + shared password. Name is stored in session, shown in the admin bar, sent with presence heartbeats and mutations. Presence shows who is online by name. Client/submission saves record `[Name]` in audit_log detail. Migration `0005_admin_name.sql`.
+- **Treinos (attendance)**: new admin panel to mark training sessions. D1 table `trainings` (migration `0006_trainings.sql`). Any admin can add multiple sessions per day; counts for day/month; sessions show who recorded them; client edit modal shows recent training history + “Marcar treino de hoje”. Worker actions: `add_training`, `delete_training`, `list_trainings`, `trainings_summary`.
 
 ### 2026-11-08
 

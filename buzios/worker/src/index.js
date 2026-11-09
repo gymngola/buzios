@@ -336,6 +336,7 @@ async function handleSubmit(request, env) {
 async function handleAdminData(request, env) {
   const body = await request.json();
   const { password, action, data } = body || {};
+  const adminName = String((body && body.adminName) || (data && data.adminName) || '').trim().slice(0, 80);
   if (!password || password !== env.ADMIN_PASSWORD) {
     return json({ error: 'Unauthorized' }, 401);
   }
@@ -431,7 +432,7 @@ async function handleAdminData(request, env) {
     if (env.DB) {
       try {
         await d1UpsertSubmission(env, saved);
-        await d1Audit(env, 'save_submission', 'submission', String(data.id), saved.name || saved.status || '');
+        await d1Audit(env, 'save_submission', 'submission', String(data.id), saved.name || saved.status || '', adminName);
       } catch (e) {
         console.error('D1 upsert submission failed', e && e.message);
         return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
@@ -467,7 +468,7 @@ async function handleAdminData(request, env) {
         const detail = [saved.name, saved.plan_name || saved.planName, saved.membership_status || saved.membershipStatus]
           .filter(Boolean)
           .join(' · ');
-        await d1Audit(env, 'save_client', 'client', clientId, detail);
+        await d1Audit(env, 'save_client', 'client', clientId, detail, adminName);
       } catch (e) {
         console.error('D1 upsert client failed', e && e.message);
         return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
@@ -682,15 +683,79 @@ async function handleAdminData(request, env) {
     return json({ ok: true, entries: results || [], count: (results || []).length });
   }
 
+  // —— Trainings / attendance ——
+  if (action === 'add_training') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const clientId = String((data && data.clientId) || '').trim();
+    if (!clientId) return json({ error: 'clientId required' }, 400);
+    try {
+      const row = await d1AddTraining(env, {
+        clientId,
+        trainedAt: data && data.trainedAt,
+        note: data && data.note,
+        recordedBy: adminName || (data && data.recordedBy) || ''
+      });
+      await d1Audit(env, 'add_training', 'training', row.id, clientId + (row.note ? ' · ' + row.note : ''), adminName);
+      return json({ ok: true, training: row });
+    } catch (e) {
+      console.error('add_training', e && e.message);
+      return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
+    }
+  }
+
+  if (action === 'delete_training') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const id = String((data && data.id) || '').trim();
+    if (!id) return json({ error: 'id required' }, 400);
+    try {
+      await d1DeleteTraining(env, id);
+      await d1Audit(env, 'delete_training', 'training', id, '', adminName);
+      return json({ ok: true });
+    } catch (e) {
+      console.error('delete_training', e && e.message);
+      return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
+    }
+  }
+
+  if (action === 'list_trainings') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    try {
+      const result = await d1ListTrainings(env, {
+        clientId: data && data.clientId,
+        date: data && data.date,
+        month: data && data.month,
+        limit: data && data.limit
+      });
+      return json({ ok: true, trainings: result.trainings, counts: result.counts });
+    } catch (e) {
+      console.error('list_trainings', e && e.message);
+      return json({ error: 'D1 read failed: ' + (e && e.message) }, 500);
+    }
+  }
+
+  if (action === 'trainings_summary') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    try {
+      const date = String((data && data.date) || new Date().toISOString().slice(0, 10));
+      const month = date.slice(0, 7);
+      const summary = await d1TrainingsSummary(env, date, month);
+      return json({ ok: true, date, month, ...summary });
+    } catch (e) {
+      console.error('trainings_summary', e && e.message);
+      return json({ error: 'D1 read failed: ' + (e && e.message) }, 500);
+    }
+  }
+
   // —— Admin presence (open panels) ——
   if (action === 'presence_heartbeat') {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
     const sessionId = String((data && data.sessionId) || '').slice(0, 64);
     if (!sessionId) return json({ error: 'sessionId required' }, 400);
     const ua = String((data && data.userAgent) || '').slice(0, 180);
+    const name = String((data && data.adminName) || adminName || '').trim().slice(0, 80);
     try {
-      const online = await d1PresenceHeartbeat(env, sessionId, ua);
-      return json({ ok: true, online });
+      const result = await d1PresenceHeartbeat(env, sessionId, ua, name);
+      return json({ ok: true, online: result.online, names: result.names });
     } catch (e) {
       console.error('presence_heartbeat', e && e.message);
       return json({ error: 'presence failed: ' + (e && e.message) }, 500);
@@ -698,7 +763,7 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'presence_leave') {
-    if (!env.DB) return json({ ok: true, online: 0 });
+    if (!env.DB) return json({ ok: true, online: 0, names: [] });
     const sessionId = String((data && data.sessionId) || '').slice(0, 64);
     if (sessionId) {
       try {
@@ -706,18 +771,18 @@ async function handleAdminData(request, env) {
       } catch (e) { /* ignore */ }
     }
     try {
-      const online = await d1PresenceCount(env);
-      return json({ ok: true, online });
+      const result = await d1PresenceList(env);
+      return json({ ok: true, online: result.online, names: result.names });
     } catch (e) {
-      return json({ ok: true, online: 0 });
+      return json({ ok: true, online: 0, names: [] });
     }
   }
 
   if (action === 'presence_get') {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
     try {
-      const online = await d1PresenceCount(env);
-      return json({ ok: true, online });
+      const result = await d1PresenceList(env);
+      return json({ ok: true, online: result.online, names: result.names });
     } catch (e) {
       return json({ error: 'presence failed: ' + (e && e.message) }, 500);
     }
@@ -1321,18 +1386,186 @@ async function d1UpsertClient(env, c) {
 }
 
 /** Append one row to audit_log (best-effort; never fails the parent write). */
-async function d1Audit(env, action, entity, entityId, detail) {
+async function d1Audit(env, action, entity, entityId, detail, actor) {
   if (!env.DB) return;
   try {
     const at = new Date().toISOString();
+    const who = actor ? '[' + String(actor).slice(0, 60) + '] ' : '';
+    const fullDetail = (who + String(detail || '')).slice(0, 400);
     await env.DB.prepare(
       'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
     )
-      .bind(at, String(action || ''), String(entity || ''), String(entityId || ''), String(detail || '').slice(0, 400))
+      .bind(at, String(action || ''), String(entity || ''), String(entityId || ''), fullDetail)
       .run();
   } catch (e) {
     console.error('audit_log insert failed', e && e.message);
   }
+}
+
+// —— Trainings helpers ——
+async function d1EnsureTrainingsTable(env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS trainings (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      trained_at TEXT NOT NULL,
+      trained_date TEXT NOT NULL,
+      recorded_by TEXT,
+      note TEXT,
+      created_at TEXT
+    )`
+  ).run();
+  try {
+    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_trainings_client ON trainings(client_id)').run();
+    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_trainings_date ON trainings(trained_date)').run();
+    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_trainings_client_date ON trainings(client_id, trained_date)').run();
+  } catch (e) { /* ignore */ }
+}
+
+function trainingRowFromDb(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    clientId: r.client_id,
+    trainedAt: r.trained_at,
+    trainedDate: r.trained_date,
+    recordedBy: r.recorded_by || '',
+    note: r.note || '',
+    createdAt: r.created_at
+  };
+}
+
+async function d1AddTraining(env, opts) {
+  await d1EnsureTrainingsTable(env);
+  const now = new Date();
+  const trainedAt = opts.trainedAt ? new Date(opts.trainedAt) : now;
+  const iso = isNaN(trainedAt.getTime()) ? now.toISOString() : trainedAt.toISOString();
+  const trainedDate = iso.slice(0, 10);
+  const id = 'tr-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  const createdAt = now.toISOString();
+  const note = String(opts.note || '').slice(0, 200);
+  const recordedBy = String(opts.recordedBy || '').slice(0, 80);
+  await env.DB.prepare(
+    `INSERT INTO trainings (id, client_id, trained_at, trained_date, recorded_by, note, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(id, String(opts.clientId), iso, trainedDate, recordedBy, note, createdAt)
+    .run();
+  return {
+    id,
+    clientId: String(opts.clientId),
+    trainedAt: iso,
+    trainedDate,
+    recordedBy,
+    note,
+    createdAt
+  };
+}
+
+async function d1DeleteTraining(env, id) {
+  await d1EnsureTrainingsTable(env);
+  await env.DB.prepare('DELETE FROM trainings WHERE id = ?').bind(String(id)).run();
+}
+
+async function d1ListTrainings(env, opts) {
+  await d1EnsureTrainingsTable(env);
+  const limit = Math.min(Math.max(parseInt(opts && opts.limit, 10) || 100, 1), 500);
+  const clientId = opts && opts.clientId ? String(opts.clientId) : '';
+  const date = opts && opts.date ? String(opts.date).slice(0, 10) : '';
+  const month = opts && opts.month ? String(opts.month).slice(0, 7) : '';
+
+  let sql = 'SELECT id, client_id, trained_at, trained_date, recorded_by, note, created_at FROM trainings';
+  const binds = [];
+  const where = [];
+  if (clientId) {
+    where.push('client_id = ?');
+    binds.push(clientId);
+  }
+  if (date) {
+    where.push('trained_date = ?');
+    binds.push(date);
+  } else if (month) {
+    where.push('trained_date >= ? AND trained_date < ?');
+    binds.push(month + '-01');
+    // next month
+    const [y, m] = month.split('-').map(Number);
+    const nm = m === 12 ? (y + 1) + '-01-01' : y + '-' + String(m + 1).padStart(2, '0') + '-01';
+    binds.push(nm);
+  }
+  if (where.length) sql += ' WHERE ' + where.join(' AND ');
+  sql += ' ORDER BY trained_at DESC LIMIT ?';
+  binds.push(limit);
+
+  const { results } = await env.DB.prepare(sql).bind(...binds).all();
+  const trainings = (results || []).map(trainingRowFromDb);
+
+  // Optional per-client counts for the same filter window
+  let counts = null;
+  if (!clientId && (date || month)) {
+    let csql = 'SELECT client_id, COUNT(*) AS n FROM trainings';
+    const cbinds = [];
+    const cwhere = [];
+    if (date) {
+      cwhere.push('trained_date = ?');
+      cbinds.push(date);
+    } else if (month) {
+      cwhere.push('trained_date >= ? AND trained_date < ?');
+      cbinds.push(month + '-01');
+      const [y, m] = month.split('-').map(Number);
+      const nm = m === 12 ? (y + 1) + '-01-01' : y + '-' + String(m + 1).padStart(2, '0') + '-01';
+      cbinds.push(nm);
+    }
+    if (cwhere.length) csql += ' WHERE ' + cwhere.join(' AND ');
+    csql += ' GROUP BY client_id';
+    const cres = await env.DB.prepare(csql).bind(...cbinds).all();
+    counts = {};
+    for (const r of cres.results || []) {
+      counts[r.client_id] = Number(r.n) || 0;
+    }
+  }
+
+  return { trainings, counts };
+}
+
+async function d1TrainingsSummary(env, date, month) {
+  await d1EnsureTrainingsTable(env);
+  const dayRes = await env.DB.prepare(
+    'SELECT client_id, COUNT(*) AS n FROM trainings WHERE trained_date = ? GROUP BY client_id'
+  ).bind(date).all();
+  const [y, m] = month.split('-').map(Number);
+  const nm = m === 12 ? (y + 1) + '-01-01' : y + '-' + String(m + 1).padStart(2, '0') + '-01';
+  const monthRes = await env.DB.prepare(
+    'SELECT client_id, COUNT(*) AS n FROM trainings WHERE trained_date >= ? AND trained_date < ? GROUP BY client_id'
+  ).bind(month + '-01', nm).all();
+
+  const todayByClient = {};
+  let todayTotal = 0;
+  for (const r of dayRes.results || []) {
+    const n = Number(r.n) || 0;
+    todayByClient[r.client_id] = n;
+    todayTotal += n;
+  }
+  const monthByClient = {};
+  let monthTotal = 0;
+  for (const r of monthRes.results || []) {
+    const n = Number(r.n) || 0;
+    monthByClient[r.client_id] = n;
+    monthTotal += n;
+  }
+
+  // Recent sessions for the day (for the Treinos list detail)
+  const { results: daySessions } = await env.DB.prepare(
+    `SELECT id, client_id, trained_at, trained_date, recorded_by, note, created_at
+     FROM trainings WHERE trained_date = ? ORDER BY trained_at DESC LIMIT 300`
+  ).bind(date).all();
+
+  return {
+    todayByClient,
+    monthByClient,
+    todayTotal,
+    monthTotal,
+    daySessions: (daySessions || []).map(trainingRowFromDb)
+  };
 }
 
 /** Sessions with last_seen within this window count as online. */
@@ -1344,40 +1577,63 @@ async function d1EnsurePresenceTable(env) {
       session_id TEXT PRIMARY KEY,
       last_seen TEXT NOT NULL,
       user_agent TEXT,
-      created_at TEXT
+      created_at TEXT,
+      admin_name TEXT
     )`
   ).run();
+  // Best-effort add column for existing deployments
+  try {
+    await env.DB.prepare('ALTER TABLE admin_presence ADD COLUMN admin_name TEXT').run();
+  } catch (e) { /* already exists */ }
 }
 
-async function d1PresenceHeartbeat(env, sessionId, userAgent) {
+async function d1PresenceHeartbeat(env, sessionId, userAgent, adminName) {
   await d1EnsurePresenceTable(env);
   const now = new Date().toISOString();
+  const name = String(adminName || '').slice(0, 80);
   await env.DB.prepare(
-    `INSERT INTO admin_presence (session_id, last_seen, user_agent, created_at)
-     VALUES (?, ?, ?, ?)
+    `INSERT INTO admin_presence (session_id, last_seen, user_agent, created_at, admin_name)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(session_id) DO UPDATE SET
        last_seen = excluded.last_seen,
-       user_agent = excluded.user_agent`
+       user_agent = excluded.user_agent,
+       admin_name = excluded.admin_name`
   )
-    .bind(sessionId, now, userAgent || '', now)
+    .bind(sessionId, now, userAgent || '', now, name)
     .run();
 
   // Drop stale sessions (older than 10 minutes) so the table stays small
   const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   await env.DB.prepare('DELETE FROM admin_presence WHERE last_seen < ?').bind(staleBefore).run();
 
-  return d1PresenceCount(env);
+  return d1PresenceList(env);
 }
 
 async function d1PresenceCount(env) {
+  const result = await d1PresenceList(env);
+  return result.online;
+}
+
+async function d1PresenceList(env) {
   await d1EnsurePresenceTable(env);
   const since = new Date(Date.now() - PRESENCE_ONLINE_MS).toISOString();
-  const row = await env.DB.prepare(
-    'SELECT COUNT(*) AS n FROM admin_presence WHERE last_seen >= ?'
+  const { results } = await env.DB.prepare(
+    'SELECT admin_name FROM admin_presence WHERE last_seen >= ? ORDER BY last_seen DESC'
   )
     .bind(since)
-    .first();
-  return (row && typeof row.n === 'number') ? row.n : (row && row.n ? Number(row.n) : 0);
+    .all();
+  const rows = results || [];
+  const names = [];
+  const seen = Object.create(null);
+  for (const r of rows) {
+    const n = (r && r.admin_name) ? String(r.admin_name).trim() : '';
+    if (n && !seen[n]) {
+      seen[n] = true;
+      names.push(n);
+    }
+  }
+  // Count sessions (not unique names) so multiple devices by same person still show activity
+  return { online: rows.length, names };
 }
 
 /** Permanent delete (after 30-day trash or explicit purge). */

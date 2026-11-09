@@ -55,6 +55,42 @@
     if (pw) sessionStorage.setItem('buzios_admin_pw', pw);
     else sessionStorage.removeItem('buzios_admin_pw');
   }
+
+  const ADMIN_USERS = [
+    'Julio Figueiredo',
+    'Nataniel Figueiredo',
+    'Keuria',
+    'Garcia Kissanga',
+    'Amarildo Salvador'
+  ];
+
+  function getAdminName() {
+    try {
+      return sessionStorage.getItem('buzios_admin_name') || localStorage.getItem('buzios_admin_name') || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function setAdminName(name) {
+    const n = String(name || '').trim();
+    try {
+      if (n) {
+        sessionStorage.setItem('buzios_admin_name', n);
+        localStorage.setItem('buzios_admin_name', n);
+      } else {
+        sessionStorage.removeItem('buzios_admin_name');
+        localStorage.removeItem('buzios_admin_name');
+      }
+    } catch (e) {}
+    const el = $('#adminUserLabel');
+    if (el) el.textContent = n || '—';
+  }
+
+  function updateAdminUserLabel() {
+    const el = $('#adminUserLabel');
+    if (el) el.textContent = getAdminName() || '—';
+  }
   const SITE_IMAGE_SLOTS = [
     { key: 'hero', label: 'Hero 1 (página inicial)' },
     { key: 'hero2', label: 'Hero 2 (página inicial)' },
@@ -127,14 +163,23 @@
       sessionStorage.getItem(LS.auth) === '1' ||
       localStorage.getItem(LS.auth) === '1';
     const hasPw = !!getAdminPassword();
-    // Auth flag without password (e.g. new tab after stay-logged-in) → force re-login
-    if (authed && hasPw) {
+    // Pre-fill last user on the login form
+    const sel = $('#adminUser');
+    if (sel) {
+      const last = getAdminName() || localStorage.getItem('buzios_admin_name') || '';
+      if (ADMIN_USERS.indexOf(last) >= 0) sel.value = last;
+    }
+    // Auth flag without password or without a selected name → force re-login
+    const name = getAdminName();
+    const hasName = !!(name && ADMIN_USERS.indexOf(name) >= 0);
+    if (authed && hasPw && hasName) {
       if (localStorage.getItem(LS.auth) === '1' && $('#stayLoggedIn')) {
         $('#stayLoggedIn').checked = true;
       }
+      setAdminName(name);
       showApp({ resume: true });
-    } else if (authed && !hasPw) {
-      // Clear stale flag so user types password again
+    } else if (authed && (!hasPw || !hasName)) {
+      // Clear stale flag so user picks name + password again
       sessionStorage.removeItem(LS.auth);
     }
   }
@@ -143,6 +188,7 @@
     document.documentElement.classList.add('admin-authed');
     $('#loginScreen').classList.add('hidden');
     $('#adminApp').classList.remove('hidden');
+    updateAdminUserLabel();
     if (!resume) toast('A carregar catálogo…');
     await loadState();
     await loadStore();
@@ -155,6 +201,8 @@
     stopStoreSync();
     stopPresence(true);
     setSessionPassword('');
+    // Keep last selected name in localStorage for convenience; clear session only
+    try { sessionStorage.removeItem('buzios_admin_name'); } catch (e) {}
     sessionStorage.removeItem(LS.auth);
     localStorage.removeItem(LS.auth);
     document.documentElement.classList.remove('admin-authed');
@@ -166,21 +214,38 @@
       pass.focus();
     }
     if ($('#loginError')) $('#loginError').style.display = 'none';
+    // Pre-select last user if still in the list
+    const sel = $('#adminUser');
+    if (sel) {
+      const last = localStorage.getItem('buzios_admin_name') || '';
+      sel.value = ADMIN_USERS.indexOf(last) >= 0 ? last : '';
+    }
     toast('Sessão terminada');
   }
 
   async function loginWithPassword(pw) {
     const password = String(pw || '').trim();
-    if (!password) {
-      $('#loginError').style.display = 'block';
+    const adminName = ($('#adminUser') && $('#adminUser').value) || getAdminName() || '';
+    const errEl = $('#loginError');
+    if (!adminName || ADMIN_USERS.indexOf(adminName) < 0) {
+      if (errEl) {
+        errEl.textContent = 'Seleccione o seu nome';
+        errEl.style.display = 'block';
+      }
       return false;
     }
-    const errEl = $('#loginError');
+    if (!password) {
+      if (errEl) {
+        errEl.textContent = 'Introduza a palavra-passe';
+        errEl.style.display = 'block';
+      }
+      return false;
+    }
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, action: 'auth' }),
+        body: JSON.stringify({ password, action: 'auth', adminName }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) {
@@ -199,6 +264,7 @@
         return false;
       }
       setSessionPassword(password);
+      setAdminName(adminName);
       const stay = $('#stayLoggedIn') && $('#stayLoggedIn').checked;
       sessionStorage.setItem(LS.auth, '1');
       if (stay) localStorage.setItem(LS.auth, '1');
@@ -286,6 +352,7 @@
     contacts: 'Contactos',
     newsletters: 'Newsletter',
     clients: 'Clientes',
+    trainings: 'Treinos',
     products: 'Planos',
     images: 'Imagens',
     texts: 'Textos',
@@ -317,6 +384,10 @@
     // Live data panels: refresh when opened
     if (name === 'inbox' || name === 'contacts' || name === 'clients' || name === 'newsletters') {
       refreshStoreIfChanged();
+    }
+    if (name === 'trainings') {
+      refreshStoreIfChanged();
+      loadTrainingsPanel();
     }
     if (name === 'audit') {
       loadAuditLog();
@@ -849,15 +920,25 @@
     return presenceSessionId;
   }
 
-  function setPresenceLabel(n) {
+  function setPresenceLabel(n, names) {
     const el = $('#presenceStatus');
     if (!el) return;
+    const list = Array.isArray(names) ? names.filter(Boolean) : [];
     if (typeof n !== 'number' || n < 1) {
       el.textContent = '0 online';
       el.setAttribute('data-count', '0');
+      el.title = 'Ninguém com o painel aberto';
       return;
     }
-    el.textContent = n === 1 ? '1 online' : n + ' online';
+    if (list.length) {
+      el.textContent = list.length === 1
+        ? list[0] + ' online'
+        : list.length + ' online: ' + list.join(', ');
+      el.title = 'Online agora: ' + list.join(', ');
+    } else {
+      el.textContent = n === 1 ? '1 online' : n + ' online';
+      el.title = n + ' painel(is) aberto(s) (últimos 2 min)';
+    }
     el.setAttribute('data-count', String(n));
   }
 
@@ -873,9 +954,11 @@
           body: JSON.stringify({
             password: password,
             action: 'presence_heartbeat',
+            adminName: getAdminName(),
             data: {
               sessionId: getPresenceSessionId(),
-              userAgent: (navigator.userAgent || '').slice(0, 180)
+              userAgent: (navigator.userAgent || '').slice(0, 180),
+              adminName: getAdminName()
             }
           }),
           cache: 'no-store'
@@ -884,8 +967,11 @@
       );
       if (!res.ok) return;
       const data = await res.json();
-      if (data && data.ok && typeof data.online === 'number') {
-        setPresenceLabel(data.online);
+      if (data && data.ok) {
+        setPresenceLabel(
+          typeof data.online === 'number' ? data.online : (data.names || []).length,
+          data.names
+        );
       }
     } catch (e) {
       /* silent — presence is best-effort */
@@ -1427,7 +1513,12 @@
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: getAdminPassword(), action, data }),
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action,
+          data,
+          adminName: getAdminName()
+        }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (res.ok) {
@@ -1764,8 +1855,8 @@
     ) {
       return out;
     }
-    if (out.billingStatus === 'isento') {
-      if (out._expired) out.membershipStatus = out.membershipStatus || 'activo';
+    if (out.billingStatus === 'isento' || out.billingStatus === 'desistente') {
+      if (out.billingStatus === 'isento' && out._expired) out.membershipStatus = out.membershipStatus || 'activo';
       return out;
     }
     // Explicit "expirado" from the form: keep it. If planEnd is still in the future
@@ -1780,12 +1871,12 @@
         out._expiringSoon = false;
         out._expired = true;
       }
-      if (out.billingStatus !== 'isento') out.billingStatus = 'em_divida';
+      if (out.billingStatus !== 'isento' && out.billingStatus !== 'desistente') out.billingStatus = 'em_divida';
       return out;
     }
     if (out._expired) {
       out.membershipStatus = 'expirado';
-      if (out.billingStatus !== 'isento') out.billingStatus = 'em_divida';
+      if (out.billingStatus !== 'isento' && out.billingStatus !== 'desistente') out.billingStatus = 'em_divida';
     }
     // Do NOT force expirado → activo when planEnd is still valid; respect explicit choice.
     if (out.billingStatus === 'atrasado') out.billingStatus = 'em_divida';
@@ -1811,18 +1902,28 @@
     return true;
   }
 
+  /** Strip Portuguese diacritics so "Jose" matches "José", "c" matches "ç", etc. */
+  function normalizeForSearch(s) {
+    return String(s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/ç/g, 'c');
+  }
+
   function clientMatchesSearch(c, q) {
     if (!q) return true;
+    const nq = normalizeForSearch(q);
     const hay = [
       c.name, c.phone, c.email, c.planName, c.notes,
       c.emergencyName, c.emergencyPhone, c.memberNumber, c.schedule, c.age, c.hasCard
     ]
-      .map(x => String(x || '').toLowerCase())
+      .map(x => normalizeForSearch(x))
       .join(' ');
     const digits = normalizePhone(q);
     if (digits && normalizePhone(c.phone).includes(digits)) return true;
     if (/^\d+$/.test(q.trim()) && String(c.memberNumber || '') === q.trim()) return true;
-    return hay.includes(q.toLowerCase());
+    return hay.includes(nq);
   }
 
   function sortClients(items, mode) {
@@ -2126,13 +2227,111 @@
       el.innerHTML = '<li style="color:#999">Ainda sem pagamentos registados.</li>';
       return;
     }
-    el.innerHTML = list.slice(0, 20).map(p => {
+    const methodLabel = { cash: 'Numerário', transfer: 'Transferência', multicaixa: 'Multicaixa', other: 'Outro' };
+    el.innerHTML = list.slice(0, 20).map((p, idx) => {
       const when = p.paidAt ? new Date(p.paidAt).toLocaleString('pt') : '';
       const amt = p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '';
-      const method = p.method || '';
+      const method = methodLabel[p.method] || p.method || '';
       const note = p.note ? ' — ' + escapeHtml(p.note) : '';
-      return `<li><strong>${amt}</strong> · ${escapeHtml(method)} · ${when}${note}</li>`;
+      const pid = p.id || ('idx-' + idx);
+      return `<li class="pay-row" data-pay-id="${escapeHtml(String(pid))}" data-pay-idx="${idx}">
+        <span class="pay-info"><strong>${amt}</strong> · ${escapeHtml(method)} · ${when}${note}</span>
+        <span class="pay-actions">
+          <button type="button" class="pay-icon-btn" data-pay-edit="${escapeHtml(String(pid))}" title="Editar" aria-label="Editar pagamento">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button type="button" class="pay-icon-btn pay-icon-danger" data-pay-del="${escapeHtml(String(pid))}" title="Apagar" aria-label="Apagar pagamento">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </span>
+      </li>`;
     }).join('');
+
+    el.querySelectorAll('[data-pay-edit]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editPayment(btn.getAttribute('data-pay-edit'));
+      });
+    });
+    el.querySelectorAll('[data-pay-del]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deletePayment(btn.getAttribute('data-pay-del'));
+      });
+    });
+  }
+
+  function findPaymentIndex(payments, payId) {
+    if (!payments || !payments.length) return -1;
+    let idx = payments.findIndex(p => String(p.id) === String(payId));
+    if (idx >= 0) return idx;
+    // fallback for older payments without id
+    if (String(payId).startsWith('idx-')) {
+      const n = Number(String(payId).slice(4));
+      if (!Number.isNaN(n) && n >= 0 && n < payments.length) return n;
+    }
+    return -1;
+  }
+
+  async function deletePayment(payId) {
+    if (!editingClientId) return;
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    const payments = (existing.payments || []).slice();
+    const idx = findPaymentIndex(payments, payId);
+    if (idx < 0) return toast('Pagamento não encontrado');
+    const p = payments[idx];
+    const label = (p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : 'pagamento') +
+      (p.paidAt ? ' · ' + new Date(p.paidAt).toLocaleString('pt') : '');
+    if (!confirm('Apagar este pagamento?\n' + label)) return;
+    payments.splice(idx, 1);
+    const data = enrichClient(Object.assign({}, existing, {
+      payments: payments.slice(0, 50),
+      lastPaymentAt: payments[0]?.paidAt || null
+    }));
+    await adminAction('update_client', data);
+    toast('Pagamento apagado');
+    openClientModal(editingClientId);
+  }
+
+  async function editPayment(payId) {
+    if (!editingClientId) return;
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    const payments = (existing.payments || []).slice();
+    const idx = findPaymentIndex(payments, payId);
+    if (idx < 0) return toast('Pagamento não encontrado');
+    const p = payments[idx];
+
+    const amountStr = prompt('Valor (Kz)', p.amount != null ? String(p.amount) : '');
+    if (amountStr === null) return;
+    const amount = Number(amountStr);
+    if (Number.isNaN(amount) || amount < 0) return toast('Valor inválido');
+
+    const methodOptions = 'cash / transfer / multicaixa / other';
+    const methodStr = prompt('Método (' + methodOptions + ')', p.method || 'cash');
+    if (methodStr === null) return;
+    const method = String(methodStr).trim().toLowerCase() || 'cash';
+
+    const noteStr = prompt('Nota (opcional)', p.note || '');
+    if (noteStr === null) return;
+
+    payments[idx] = Object.assign({}, p, {
+      id: p.id || ('pay-' + Date.now() + '-' + idx),
+      amount: amount,
+      method: method,
+      note: String(noteStr).trim()
+    });
+
+    const data = enrichClient(Object.assign({}, existing, {
+      payments: payments.slice(0, 50),
+      lastPaymentAt: payments[0]?.paidAt || existing.lastPaymentAt || null
+    }));
+    await adminAction('update_client', data);
+    toast('Pagamento actualizado');
+    openClientModal(editingClientId);
   }
 
   function updateDupWarn(phone, excludeId) {
@@ -2237,6 +2436,14 @@
     $('#cPlanEnd').value = c?.planEnd || '';
     $('#cMembership').value = c?.membershipStatus || 'pendente';
     $('#cBilling').value = (c?.billingStatus === 'atrasado' ? 'em_divida' : (c?.billingStatus || 'em_dia'));
+    // Ensure desistente (and any future values) are selectable even if not in the static options at load time
+    if (c?.billingStatus && !$('#cBilling').querySelector('option[value="' + c.billingStatus + '"]')) {
+      const opt = document.createElement('option');
+      opt.value = c.billingStatus;
+      opt.textContent = c.billingStatus;
+      $('#cBilling').appendChild(opt);
+      $('#cBilling').value = c.billingStatus;
+    }
     $('#cEmergencyName').value = c?.emergencyName || '';
     $('#cEmergencyPhone').value = c?.emergencyPhone || '';
     $('#cPayAmount').value = c?.price != null ? c.price : '';
@@ -2274,7 +2481,19 @@
     }
     docsHost.innerHTML = renderClientDocsBlock(c);
     updateDupWarn(c?.phone || '', id);
-    $('#clientModal').classList.add('open');
+    // Training history for existing clients
+    if (id) {
+      loadClientTrainings(id);
+    } else {
+      const th = $('#cTrainingsHost');
+      if (th) th.innerHTML = '';
+    }
+    const modal = $('#clientModal');
+    modal.classList.add('open');
+    // Always start at the top of the form when opening/editing a client
+    const panel = modal.querySelector('.modal-panel') || modal.querySelector('.modal-content') || modal;
+    if (panel) panel.scrollTop = 0;
+    modal.scrollTop = 0;
   }
 
   function readClientForm(existing) {
@@ -2686,6 +2905,301 @@
     toast('Pagamento registado · válido até ' + formatDatePT(end));
     openClientModal(editingClientId);
   });
+
+  // —— Trainings / attendance ——
+  let trainingsSummaryCache = { date: '', todayByClient: {}, monthByClient: {}, daySessions: [], todayTotal: 0, monthTotal: 0 };
+  let trainingsLoading = false;
+
+  function trainingSelectedDate() {
+    const el = $('#trainingDate');
+    if (el && el.value) return el.value;
+    return todayISO();
+  }
+
+  async function loadTrainingsPanel() {
+    const dateInput = $('#trainingDate');
+    if (dateInput && !dateInput.value) dateInput.value = todayISO();
+    await refreshTrainingsSummary();
+    renderTrainingsPanel();
+  }
+
+  async function refreshTrainingsSummary() {
+    const date = trainingSelectedDate();
+    trainingsLoading = true;
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'trainings_summary',
+          adminName: getAdminName(),
+          data: { date }
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      if (data && data.ok) {
+        trainingsSummaryCache = {
+          date: data.date || date,
+          month: data.month || date.slice(0, 7),
+          todayByClient: data.todayByClient || {},
+          monthByClient: data.monthByClient || {},
+          daySessions: data.daySessions || [],
+          todayTotal: data.todayTotal || 0,
+          monthTotal: data.monthTotal || 0
+        };
+      }
+    } catch (e) {
+      console.warn('trainings_summary failed', e);
+      toast(isTimeoutError(e) ? 'Servidor não respondeu (treinos)' : 'Erro ao carregar treinos');
+    } finally {
+      trainingsLoading = false;
+    }
+  }
+
+  function renderTrainingsPanel() {
+    const list = $('#trainingsList');
+    const summaryEl = $('#trainingsSummary');
+    if (!list) return;
+
+    const date = trainingSelectedDate();
+    const q = (($('#trainingSearch') && $('#trainingSearch').value) || '').trim();
+    const filter = ($('#trainingFilter') && $('#trainingFilter').value) || 'activo';
+    const cache = trainingsSummaryCache;
+
+    if (summaryEl) {
+      const whoToday = Object.keys(cache.todayByClient || {}).length;
+      summaryEl.innerHTML =
+        '<span class="sum-pill"><strong>' + (cache.todayTotal || 0) + '</strong> sessões neste dia</span>' +
+        '<span class="sum-pill"><strong>' + whoToday + '</strong> clientes treinam hoje</span>' +
+        '<span class="sum-pill"><strong>' + (cache.monthTotal || 0) + '</strong> sessões no mês</span>' +
+        (trainingsLoading ? '<span class="sum-pill muted">A actualizar…</span>' : '');
+    }
+
+    let clients = (store.clients || []).map(enrichClient).filter(c => !isInTrash(c));
+    if (filter === 'activo') {
+      clients = clients.filter(c => c.membershipStatus === 'activo' && !c._expired);
+    } else if (filter === 'trained') {
+      clients = clients.filter(c => (cache.todayByClient[c.id] || 0) > 0);
+    }
+
+    if (q) {
+      clients = clients.filter(c => clientMatchesSearch(c, q));
+    }
+
+    clients.sort((a, b) => {
+      const ta = cache.todayByClient[a.id] || 0;
+      const tb = cache.todayByClient[b.id] || 0;
+      if (tb !== ta) return tb - ta;
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt');
+    });
+
+    if (!clients.length) {
+      list.innerHTML = '<p class="empty-hint" style="color:#888;padding:1rem 0">Nenhum cliente para mostrar.</p>';
+      return;
+    }
+
+    const sessionsByClient = {};
+    (cache.daySessions || []).forEach(s => {
+      if (!sessionsByClient[s.clientId]) sessionsByClient[s.clientId] = [];
+      sessionsByClient[s.clientId].push(s);
+    });
+
+    list.innerHTML = clients.map(c => {
+      const todayN = cache.todayByClient[c.id] || 0;
+      const monthN = cache.monthByClient[c.id] || 0;
+      const sessions = sessionsByClient[c.id] || [];
+      const mem = c.membershipStatus || 'pendente';
+      const sessionsHtml = sessions.length
+        ? '<ul class="training-session-list">' + sessions.map(s => {
+            const t = s.trainedAt ? new Date(s.trainedAt).toLocaleTimeString('pt', { hour: '2-digit', minute: '2-digit' }) : '';
+            const by = s.recordedBy ? ' · ' + escapeHtml(s.recordedBy) : '';
+            const note = s.note ? ' — ' + escapeHtml(s.note) : '';
+            return '<li>' +
+              '<span>' + escapeHtml(t) + by + note + '</span>' +
+              '<button type="button" class="pay-icon-btn pay-icon-danger" data-del-training="' + escapeHtml(s.id) + '" title="Apagar sessão" aria-label="Apagar sessão">' +
+              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>' +
+              '</button></li>';
+          }).join('') + '</ul>'
+        : '';
+
+      return '<div class="training-row' + (todayN ? ' training-row--done' : '') + '" data-client-id="' + escapeHtml(c.id) + '">' +
+        '<div class="training-main">' +
+          '<span class="row-name" data-edit-cli="' + escapeHtml(c.id) + '">' + escapeHtml(c.name || '—') + '</span>' +
+          '<span class="row-badges">' +
+            '<span class="status-badge status-' + mem + '">' + mem + '</span>' +
+            (c.schedule ? '<span class="status-badge status-card">' + escapeHtml(c.schedule) + '</span>' : '') +
+          '</span>' +
+          '<div class="row-contact">' + escapeHtml([c.phone, c.planName || c.planId].filter(Boolean).join(' · ') || '—') + '</div>' +
+        '</div>' +
+        '<div class="training-counts">' +
+          '<span class="t-count" title="Sessões neste dia"><strong>' + todayN + '</strong> hoje</span>' +
+          '<span class="t-count" title="Sessões neste mês"><strong>' + monthN + '</strong> mês</span>' +
+        '</div>' +
+        '<div class="training-actions">' +
+          '<button type="button" class="btn-train" data-add-training="' + escapeHtml(c.id) + '">+ Treino</button>' +
+        '</div>' +
+        (sessionsHtml ? '<div class="training-sessions">' + sessionsHtml + '</div>' : '') +
+      '</div>';
+    }).join('');
+
+    list.querySelectorAll('[data-add-training]').forEach(btn => {
+      btn.addEventListener('click', () => addTrainingForClient(btn.getAttribute('data-add-training')));
+    });
+    list.querySelectorAll('[data-del-training]').forEach(btn => {
+      btn.addEventListener('click', () => deleteTrainingSession(btn.getAttribute('data-del-training')));
+    });
+    list.querySelectorAll('[data-edit-cli]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openClientModal(btn.getAttribute('data-edit-cli'));
+      });
+    });
+  }
+
+  async function addTrainingForClient(clientId) {
+    if (!clientId) return;
+    const date = trainingSelectedDate();
+    const now = new Date();
+    let trainedAt = now.toISOString();
+    // If viewing another day, default to noon on that day
+    if (date !== todayISO()) {
+      trainedAt = date + 'T12:00:00.000Z';
+    }
+    const note = prompt('Nota (opcional)', '') || '';
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'add_training',
+          adminName: getAdminName(),
+          data: { clientId, trainedAt, note: String(note).trim() }
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      if (!data || !data.ok) throw new Error((data && data.error) || 'fail');
+      toast('Treino registado');
+      await refreshTrainingsSummary();
+      renderTrainingsPanel();
+      // Refresh client modal history if open for this client
+      if (editingClientId === clientId) {
+        await loadClientTrainings(clientId);
+      }
+    } catch (e) {
+      console.warn('add_training failed', e);
+      toast(isTimeoutError(e) ? 'Servidor não respondeu' : 'Erro ao registar treino');
+    }
+  }
+
+  async function deleteTrainingSession(id) {
+    if (!id) return;
+    if (!confirm('Apagar esta sessão de treino?')) return;
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'delete_training',
+          adminName: getAdminName(),
+          data: { id }
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      if (!res.ok) throw new Error('status ' + res.status);
+      toast('Sessão apagada');
+      await refreshTrainingsSummary();
+      renderTrainingsPanel();
+      if (editingClientId) await loadClientTrainings(editingClientId);
+    } catch (e) {
+      console.warn('delete_training failed', e);
+      toast('Erro ao apagar sessão');
+    }
+  }
+
+  async function loadClientTrainings(clientId) {
+    const host = ensureClientTrainingsHost();
+    if (!host || !clientId) return;
+    host.innerHTML = '<p class="muted" style="font-size:0.8rem">A carregar treinos…</p>';
+    try {
+      const month = todayISO().slice(0, 7);
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'list_trainings',
+          adminName: getAdminName(),
+          data: { clientId, limit: 40 }
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      const list = (data && data.trainings) || [];
+      const thisMonth = list.filter(t => (t.trainedDate || '').startsWith(month)).length;
+      const today = list.filter(t => t.trainedDate === todayISO()).length;
+      host.innerHTML =
+        '<h3 style="font-size:0.85rem;font-weight:500;margin:0 0 0.4rem">Treinos</h3>' +
+        '<p style="font-size:0.8rem;color:#555;margin:0 0 0.5rem">' +
+          '<strong>' + today + '</strong> hoje · <strong>' + thisMonth + '</strong> este mês · <strong>' + list.length + '</strong> recentes' +
+        '</p>' +
+        (list.length
+          ? '<ul class="pay-history client-training-history">' + list.slice(0, 15).map(t => {
+              const when = t.trainedAt ? new Date(t.trainedAt).toLocaleString('pt') : (t.trainedDate || '');
+              const by = t.recordedBy ? ' · ' + escapeHtml(t.recordedBy) : '';
+              const note = t.note ? ' — ' + escapeHtml(t.note) : '';
+              return '<li class="pay-row"><span class="pay-info">' + escapeHtml(when) + by + note + '</span>' +
+                '<span class="pay-actions"><button type="button" class="pay-icon-btn pay-icon-danger" data-del-training="' + escapeHtml(t.id) + '" title="Apagar" aria-label="Apagar">' +
+                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button></span></li>';
+            }).join('') + '</ul>'
+          : '<p class="muted" style="font-size:0.8rem;margin:0">Ainda sem treinos registados.</p>') +
+        '<div class="form-actions" style="margin-top:0.5rem">' +
+          '<button type="button" class="btn-train" id="cAddTrainingBtn" style="height:36px;padding:0 0.9rem">+ Marcar treino de hoje</button>' +
+        '</div>';
+
+      host.querySelectorAll('[data-del-training]').forEach(btn => {
+        btn.addEventListener('click', () => deleteTrainingSession(btn.getAttribute('data-del-training')));
+      });
+      const addBtn = host.querySelector('#cAddTrainingBtn');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => addTrainingForClient(clientId));
+      }
+    } catch (e) {
+      host.innerHTML = '<p class="muted" style="font-size:0.8rem">Não foi possível carregar treinos.</p>';
+    }
+  }
+
+  function ensureClientTrainingsHost() {
+    let host = $('#cTrainingsHost');
+    if (host) return host;
+    host = document.createElement('div');
+    host.id = 'cTrainingsHost';
+    host.style.marginTop = '1rem';
+    host.style.paddingTop = '1rem';
+    host.style.borderTop = '1px solid #eee';
+    const pay = $('#paymentBlock');
+    if (pay && pay.parentNode) {
+      pay.parentNode.insertBefore(host, pay);
+    } else {
+      const notes = $('#cNotes') && $('#cNotes').closest('.form-row');
+      if (notes && notes.parentNode) notes.parentNode.appendChild(host);
+    }
+    return host;
+  }
+
+  $('#trainingDate')?.addEventListener('change', async () => {
+    await refreshTrainingsSummary();
+    renderTrainingsPanel();
+  });
+  $('#trainingSearch')?.addEventListener('input', () => renderTrainingsPanel());
+  $('#trainingFilter')?.addEventListener('change', () => renderTrainingsPanel());
 
   // —— Products ——
   function formatAreaLabel(area) {

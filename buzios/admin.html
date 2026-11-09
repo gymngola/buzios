@@ -51,6 +51,7 @@
     .status-em_divida { background: #f5e3e3; color: #8b2a2a; }
     .status-atrasado { background: #fde8d8; color: #a34a1c; }
     .status-isento { background: #e3f0ff; color: #1a5a9c; }
+    .status-desistente { background: #f0e6f5; color: #6b3a7a; }
     .status-a_expirar { background: #fff3cd; color: #856404; }
     .upload-zone {
       border: 2px dashed rgba(15, 42, 50, 0.18);
@@ -79,6 +80,17 @@
     <img class="login-logo" src="icons/logo.png" width="88" height="88" alt="Búzios Health Club">
     <h1>Búzios Admin</h1>
     <p>Área reservada à equipa</p>
+    <div class="form-row" style="margin:0 0 0.75rem;text-align:left">
+      <label for="adminUser" style="display:block;font-size:0.8rem;color:#555;margin-bottom:0.35rem">Quem está a entrar</label>
+      <select id="adminUser" style="width:100%;height:44px;border:1px solid #ddd;border-radius:8px;padding:0 0.75rem;font-size:0.95rem;background:#fff">
+        <option value="">— Seleccione o nome —</option>
+        <option value="Julio Figueiredo">Julio Figueiredo</option>
+        <option value="Nataniel Figueiredo">Nataniel Figueiredo</option>
+        <option value="Keuria">Keuria</option>
+        <option value="Garcia Kissanga">Garcia Kissanga</option>
+        <option value="Amarildo Salvador">Amarildo Salvador</option>
+      </select>
+    </div>
     <div class="pass-wrap">
       <input type="password" id="adminPass" placeholder="Palavra-passe" autocomplete="current-password">
       <button type="button" class="pass-toggle" id="passToggle" aria-label="Mostrar palavra-passe">Mostrar</button>
@@ -98,8 +110,9 @@
           <p class="admin-brand">Búzios Admin</p>
           <h1 id="sectionTitle">Inscrições</h1>
           <div class="admin-bar-meta">
+            <p id="adminUserLabel" class="admin-user-label" title="Utilizador desta sessão">—</p>
             <p id="syncStatus" class="sync-status" data-state="idle" title="Estado de sincronização entre dispositivos">Em sincronização</p>
-            <p id="presenceStatus" class="presence-status" title="Painéis admin abertos agora (últimos 2 min)">—</p>
+            <p id="presenceStatus" class="presence-status" title="Quem tem o painel aberto agora (últimos 2 min)">—</p>
           </div>
         </div>
 
@@ -220,6 +233,28 @@
         </div>
       </div>
 
+      <!-- Trainings / attendance -->
+      <div id="panel-trainings" class="panel">
+        <div class="clients-page-head">
+          <p class="clients-desc">Marque as sessões de treino dos clientes. Contagens do dia e do mês actualizam-se em todo o painel.</p>
+          <div class="clients-head-actions">
+            <input type="date" id="trainingDate" aria-label="Data dos treinos" style="height:38px;border:1px solid #ddd;border-radius:8px;padding:0 0.6rem;font-size:0.85rem">
+          </div>
+        </div>
+        <div class="clients-sticky">
+          <div class="clients-summary" id="trainingsSummary"></div>
+          <div class="client-toolbar">
+            <input type="search" id="trainingSearch" placeholder="Pesquisar cliente…" autocomplete="off" aria-label="Pesquisar clientes nos treinos">
+            <select id="trainingFilter" aria-label="Filtrar lista">
+              <option value="activo">Activos</option>
+              <option value="all">Todos (exceto lixeira)</option>
+              <option value="trained">Só quem treinou neste dia</option>
+            </select>
+          </div>
+        </div>
+        <div class="trainings-list" id="trainingsList"></div>
+      </div>
+
       <!-- Products -->
       <div id="panel-products" class="panel">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;gap:0.75rem;flex-wrap:wrap">
@@ -327,6 +362,10 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4 1.5 4 4"/></svg>
           <span class="nav-label">Clientes</span>
         </button>
+        <button type="button" data-panel="trainings" title="Treinos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M6.5 12h11M4 8.5v7M20 8.5v7"/></svg>
+          <span class="nav-label">Treinos</span>
+        </button>
         <button type="button" data-panel="products" title="Planos">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
           <span class="nav-label">Planos</span>
@@ -417,6 +456,7 @@
       <div class="form-row"><label>Horário</label>
         <select id="cSchedule">
           <option value="">—</option>
+          <option value="05:00">05:00</option>
           <option value="06:00">06:00</option>
           <option value="07:00">07:00</option>
           <option value="08:00">08:00</option>
@@ -467,6 +507,7 @@
           <option value="em_divida">Em dívida</option>
           <option value="atrasado">Atrasado</option>
           <option value="isento">Isento</option>
+          <option value="desistente">Desistente</option>
         </select>
       </div>
       <div class="form-row"><label>Contacto de emergência</label><input type="text" id="cEmergencyName" placeholder="Nome"></div>

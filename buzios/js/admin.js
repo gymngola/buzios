@@ -287,6 +287,7 @@
     products: 'Planos',
     images: 'Imagens',
     texts: 'Textos',
+    audit: 'Histórico',
     guide: 'Guia'
   };
 
@@ -314,6 +315,9 @@
     // Live data panels: refresh when opened
     if (name === 'inbox' || name === 'contacts' || name === 'clients' || name === 'newsletters') {
       refreshStoreIfChanged();
+    }
+    if (name === 'audit') {
+      loadAuditLog();
     }
   }
 
@@ -735,6 +739,89 @@
     if (storeFetchInFlight) return;
     if (Date.now() < localWriteUntil) return;
     await loadStore({ silent: true, workerOnly: true });
+  }
+
+  const AUDIT_ACTION_LABELS = {
+    save_client: 'Guardou cliente',
+    save_submission: 'Guardou inscrição/contacto',
+    trash_client: 'Lixeira (cliente)',
+    restore_client: 'Restaurou cliente',
+    archive_client: 'Arquivou cliente',
+    delete_client: 'Apagou cliente',
+    trash_submission: 'Lixeira (inscrição)',
+    restore_submission: 'Restaurou inscrição',
+    delete_submission: 'Apagou inscrição',
+    purge_trash: 'Limpeza lixeira',
+    d1_backup: 'Backup D1',
+    d1_import: 'Importação D1'
+  };
+
+  function formatAuditWhen(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso).slice(0, 16);
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return dd + '/' + mm + ' ' + hh + ':' + mi;
+    } catch (e) {
+      return String(iso).slice(0, 16);
+    }
+  }
+
+  function renderAuditLog(entries) {
+    const box = $('#auditList');
+    if (!box) return;
+    if (!entries || !entries.length) {
+      box.innerHTML = '<p class="empty-hint" style="color:#888;font-size:0.9rem">Ainda não há registos. As acções de guardar, arquivar e apagar passam a aparecer aqui.</p>';
+      return;
+    }
+    const rows = entries.map(function (e) {
+      const label = AUDIT_ACTION_LABELS[e.action] || e.action || '—';
+      const entity = e.entity ? String(e.entity) : '';
+      const idShort = e.entity_id ? String(e.entity_id).slice(0, 12) : '';
+      const detail = e.detail ? String(e.detail) : '';
+      const meta = [entity, idShort].filter(Boolean).join(' · ');
+      return (
+        '<div class="audit-row">' +
+          '<span class="audit-when">' + formatAuditWhen(e.at) + '</span>' +
+          '<span class="audit-action">' + label + '</span>' +
+          (meta ? '<span class="audit-meta">' + meta + '</span>' : '') +
+          (detail ? '<span class="audit-detail">' + detail + '</span>' : '') +
+        '</div>'
+      );
+    }).join('');
+    box.innerHTML = rows;
+  }
+
+  async function loadAuditLog() {
+    const box = $('#auditList');
+    if (box) box.innerHTML = '<p class="empty-hint" style="color:#888;font-size:0.9rem">A carregar…</p>';
+    const password = getAdminPassword();
+    if (!password) {
+      if (box) box.innerHTML = '<p class="empty-hint" style="color:#b33;font-size:0.9rem">Sessão inválida. Volte a entrar.</p>';
+      return;
+    }
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password, action: 'get_audit_log', data: { limit: 200 } }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (!data || !data.ok) throw new Error((data && data.error) || 'Falha');
+      renderAuditLog(data.entries || []);
+    } catch (err) {
+      console.warn('audit log', err);
+      if (box) {
+        box.innerHTML = '<p class="empty-hint" style="color:#b33;font-size:0.9rem">Não foi possível carregar o histórico' +
+          (isTimeoutError(err) ? ' (timeout de rede).' : '.') + '</p>';
+      }
+    }
   }
 
   function currentSyncInterval() {
@@ -2345,6 +2432,7 @@
   $('#backupAllBtn')?.addEventListener('click', downloadFullBackup);
   $('#exportClientsBtn')?.addEventListener('click', exportClientsCsv);
   $('#copyClientPhonesBtn')?.addEventListener('click', copyClientPhones);
+  $('#refreshAuditBtn')?.addEventListener('click', () => loadAuditLog());
 
   $('#clientSearch')?.addEventListener('input', (e) => {
     clientsSearch = e.target.value.trim();

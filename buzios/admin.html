@@ -263,6 +263,17 @@
         <div id="textsForm"></div>
       </div>
 
+      <!-- Audit log -->
+      <div id="panel-audit" class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap">
+          <p style="font-size:0.85rem;color:#666;margin:0">Últimas acções gravadas no servidor (guardar, arquivar, apagar, backups…).</p>
+          <button type="button" id="refreshAuditBtn" class="bulk-action" style="margin:0">Actualizar</button>
+        </div>
+        <div id="auditList" class="audit-list">
+          <p class="empty-hint" style="color:#888;font-size:0.9rem">A carregar…</p>
+        </div>
+      </div>
+
       <!-- Guide -->
       <div id="panel-guide" class="panel">
         <div class="guide">
@@ -324,6 +335,10 @@
         <button type="button" data-panel="texts" title="Textos">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
           <span class="nav-label">Textos</span>
+        </button>
+        <button type="button" data-panel="audit" title="Histórico">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          <span class="nav-label">Histórico</span>
         </button>
         <button type="button" data-panel="guide" title="Guia">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>

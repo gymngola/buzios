@@ -1563,3 +1563,40 @@ a { color: var(--admin-accent); }
 .pay-history li strong { color: var(--admin-text); }
 
 .hidden { display: none !important; }
+
+/* Audit / history log */
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.audit-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(8rem, 1.2fr) minmax(6rem, 0.9fr) minmax(0, 1.4fr);
+  gap: 0.5rem 0.75rem;
+  align-items: baseline;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+.audit-row:last-child { border-bottom: none; }
+.audit-row:nth-child(even) { background: #fafbfc; }
+.audit-when {
+  color: var(--admin-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.audit-action { font-weight: 600; color: var(--admin-text); }
+.audit-meta { color: #5a6f78; font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.audit-detail { color: var(--admin-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 720px) {
+  .audit-row {
+    grid-template-columns: 5rem 1fr;
+    grid-template-rows: auto auto;
+  }
+  .audit-meta, .audit-detail { grid-column: 1 / -1; }
+}

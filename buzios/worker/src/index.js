@@ -431,6 +431,7 @@ async function handleAdminData(request, env) {
     if (env.DB) {
       try {
         await d1UpsertSubmission(env, saved);
+        await d1Audit(env, 'save_submission', 'submission', String(data.id), saved.name || saved.status || '');
       } catch (e) {
         console.error('D1 upsert submission failed', e && e.message);
         return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
@@ -463,6 +464,10 @@ async function handleAdminData(request, env) {
     if (env.DB) {
       try {
         await d1UpsertClient(env, saved);
+        const detail = [saved.name, saved.plan_name || saved.planName, saved.membership_status || saved.membershipStatus]
+          .filter(Boolean)
+          .join(' · ');
+        await d1Audit(env, 'save_client', 'client', clientId, detail);
       } catch (e) {
         console.error('D1 upsert client failed', e && e.message);
         return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
@@ -663,6 +668,18 @@ async function handleAdminData(request, env) {
   }
   if (action === 'd1_backup') {
     return json(await d1BackupToCloudinary(env, { source: 'manual' }));
+  }
+
+  if (action === 'get_audit_log') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 500);
+    const { results } = await env.DB.prepare(
+      `SELECT id, at, action, entity, entity_id, detail
+       FROM audit_log
+       ORDER BY id DESC
+       LIMIT ?`
+    ).bind(limit).all();
+    return json({ ok: true, entries: results || [], count: (results || []).length });
   }
 
   return json({ error: 'Unknown action' }, 400);
@@ -1260,6 +1277,21 @@ function d1ClientUpsertStmt(env, c) {
 
 async function d1UpsertClient(env, c) {
   await d1BatchWithRetry(env, () => [d1ClientUpsertStmt(env, c)]);
+}
+
+/** Append one row to audit_log (best-effort; never fails the parent write). */
+async function d1Audit(env, action, entity, entityId, detail) {
+  if (!env.DB) return;
+  try {
+    const at = new Date().toISOString();
+    await env.DB.prepare(
+      'INSERT INTO audit_log (at, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)'
+    )
+      .bind(at, String(action || ''), String(entity || ''), String(entityId || ''), String(detail || '').slice(0, 400))
+      .run();
+  } catch (e) {
+    console.error('audit_log insert failed', e && e.message);
+  }
 }
 
 /** Permanent delete (after 30-day trash or explicit purge). */

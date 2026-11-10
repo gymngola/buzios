@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0f2a32">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Búzios Admin">
+  <link rel="manifest" href="/admin-manifest.json">
+  <link rel="apple-touch-icon" href="/icons/admin-192.png">
+  <link rel="icon" href="/icons/admin-192.png" type="image/png">
+  <title>Admin — Búzios Health Club</title>
+  <script>
+    /* Avoid login flash on reload when session is already valid */
+    (function () {
+      try {
+        if (
+          sessionStorage.getItem('buzios_admin_auth') === '1' ||
+          localStorage.getItem('buzios_admin_auth') === '1'
+        ) {
+          document.documentElement.classList.add('admin-authed');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=20261110d">
+  <style>
+    html.admin-authed #loginScreen { display: none !important; }
+    html.admin-authed #adminApp.hidden { display: block !important; }
+    html.admin-authed #adminApp { display: block !important; }
+    .status-badge {
+      display: inline-block; font-size: 0.68rem; padding: 0.18rem 0.5rem;
+      border-radius: 6px; background: #eef2f4; margin-left: 0.3rem;
+      font-weight: 600; letter-spacing: 0.01em;
+    }
+    .status-novo { background: #fde8d8; color: #a34a1c; }
+    .status-contactado { background: #e3f0ff; color: #1a5a9c; }
+    .status-pendente_docs { background: #fff3cd; color: #856404; }
+    .status-inscrito { background: #e3f5e8; color: #1a6b3a; }
+    .status-arquivado { background: #eef2f4; color: #5a6f78; }
+    .status-activo { background: #e3f5e8; color: #1a6b3a; }
+    .status-pendente { background: #fde8d8; color: #a34a1c; }
+    .status-expirado { background: #f5e3e3; color: #8b2a2a; }
+    .status-suspenso { background: #eef2f4; color: #5a6f78; }
+    .status-cancelado { background: #eef2f4; color: #5a6f78; }
+    .status-em_dia { background: #e3f5e8; color: #1a6b3a; }
+    .status-em_divida { background: #f5e3e3; color: #8b2a2a; }
+    .status-atrasado { background: #fde8d8; color: #a34a1c; }
+    .status-isento { background: #e3f0ff; color: #1a5a9c; }
+    .status-desistente { background: #f0e6f5; color: #6b3a7a; }
+    .status-a_expirar { background: #fff3cd; color: #856404; }
+    .upload-zone {
+      border: 2px dashed rgba(15, 42, 50, 0.18);
+      border-radius: 14px;
+      padding: 1.75rem 1.15rem;
+      text-align: center;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      box-shadow: 0 1px 2px rgba(15, 42, 50, 0.04);
+    }
+    .upload-zone:hover, .upload-zone:focus {
+      border-color: #c45c26;
+      background: #fdf8f4;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(196, 92, 38, 0.1);
+    }
+    .upload-zone.dragover {
+      border-color: #c45c26;
+      background: #fde8d8;
+    }
+  </style>
+</head>
+<body>
+  <div id="loginScreen" class="login-box">
+    <img class="login-logo" src="icons/logo.png" width="88" height="88" alt="Búzios Health Club">
+    <h1>Búzios Admin</h1>
+    <p>Área reservada à equipa</p>
+    <div class="form-row" style="margin:0 0 0.75rem;text-align:left">
+      <label for="adminUser" style="display:block;font-size:0.8rem;color:#555;margin-bottom:0.35rem">Quem está a entrar</label>
+      <select id="adminUser" style="width:100%;height:44px;border:1px solid #ddd;border-radius:8px;padding:0 0.75rem;font-size:0.95rem;background:#fff">
+        <option value="">— Seleccione o nome —</option>
+        <option value="Julio Figueiredo">Julio Figueiredo</option>
+        <option value="Nataniel Figueiredo">Nataniel Figueiredo</option>
+        <option value="Keuria">Keuria</option>
+        <option value="Garcia Kissanga">Garcia Kissanga</option>
+        <option value="Amarildo Salvador">Amarildo Salvador</option>
+      </select>
+    </div>
+    <div class="pass-wrap">
+      <input type="password" id="adminPass" placeholder="Palavra-passe" autocomplete="current-password">
+      <button type="button" class="pass-toggle" id="passToggle" aria-label="Mostrar palavra-passe">Mostrar</button>
+    </div>
+    <label class="stay-logged" style="display:flex;align-items:center;gap:0.5rem;margin:0.85rem 0 0;font-size:0.85rem;color:#555;cursor:pointer;user-select:none">
+      <input type="checkbox" id="stayLoggedIn" style="width:auto;margin:0">
+      Manter sessão iniciada
+    </label>
+    <button type="button" id="loginBtn">Entrar</button>
+    <p id="loginError" style="color:#b33;font-size:0.8rem;margin-top:0.75rem;display:none">Palavra-passe incorrecta</p>
+  </div>
+
+  <div id="adminApp" class="hidden">
+    <div class="admin-layout">
+      <div class="admin-main">
+        <div class="admin-bar">
+          <p class="admin-brand">Búzios Admin</p>
+          <h1 id="sectionTitle">Inscrições</h1>
+          <div class="admin-bar-meta">
+            <p id="adminUserLabel" class="admin-user-label" title="Utilizador desta sessão">—</p>
+            <p id="syncStatus" class="sync-status" data-state="idle" title="Estado de sincronização entre dispositivos">Em sincronização</p>
+            <p id="presenceStatus" class="presence-status" title="Quem tem o painel aberto agora (últimos 2 min)">—</p>
+          </div>
+        </div>
+
+      <!-- Inbox / Enrollments -->
+      <div id="panel-inbox" class="panel active">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:0.65rem">Pedidos de inscrição. Fluxo: <strong>Novo → Contactado → Aguarda docs → Inscrito</strong>. Os estados podem ser alterados em qualquer sentido.</p>
+        <div class="client-filters" id="inboxFilters" style="margin-bottom:0.85rem">
+          <button type="button" data-inbox-filter="all" class="active">Todos</button>
+          <button type="button" data-inbox-filter="novo">Novos</button>
+          <button type="button" data-inbox-filter="contactado">Contactados</button>
+          <button type="button" data-inbox-filter="pendente_docs">Aguarda docs</button>
+          <button type="button" data-inbox-filter="inscrito">Inscritos</button>
+          <button type="button" data-inbox-filter="arquivado">Arquivados</button>
+          <button type="button" data-inbox-filter="lixeira">Lixeira (30d)</button>
+        </div>
+        <div class="bulk-bar" id="inboxBulkBar" data-list="inbox" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="inbox"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="inbox">0</span>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="contactado">Contactado</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="pendente_docs">Aguarda docs</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="inscrito">Inscrito</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="novo">Reabrir (novo)</button>
+          <button type="button" class="bulk-action" data-list="inbox" data-action="arquivado">Arquivar</button>
+          <button type="button" class="bulk-action danger" data-list="inbox" data-action="delete">Apagar</button>
+        </div>
+        <div class="prod-list" id="inboxList"></div>
+      </div>
+
+      <!-- Contact form messages -->
+      <div id="panel-contacts" class="panel">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:0.65rem">Mensagens da página Contacto. Fluxo: <strong>Novo → Respondido → Arquivar</strong>.</p>
+        <div class="client-filters" id="contactsFilters" style="margin-bottom:0.85rem">
+          <button type="button" data-contacts-filter="all" class="active">Todos</button>
+          <button type="button" data-contacts-filter="novo">Novos</button>
+          <button type="button" data-contacts-filter="contactado">Respondidos</button>
+          <button type="button" data-contacts-filter="arquivado">Arquivados</button>
+          <button type="button" data-contacts-filter="lixeira">Lixeira (30d)</button>
+        </div>
+        <div class="bulk-bar" id="contactsBulkBar" data-list="contacts" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="contacts"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="contacts">0</span>
+          <button type="button" class="bulk-action" data-list="contacts" data-action="novo">Reabrir</button>
+          <button type="button" class="bulk-action" data-list="contacts" data-action="contactado">Marcar respondido</button>
+          <button type="button" class="bulk-action" data-list="contacts" data-action="arquivado">Arquivar</button>
+          <button type="button" class="bulk-action danger" data-list="contacts" data-action="delete">Apagar</button>
+        </div>
+        <div class="prod-list" id="contactsList"></div>
+      </div>
+
+      <!-- Newsletter phones -->
+      <div id="panel-newsletters" class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+          <p style="font-size:0.85rem;color:#666;margin:0">Números subscritos em “Receba novidades e promoções”.</p>
+          <button type="button" id="copyNewslettersBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">Copiar todos</button>
+        </div>
+        <div class="bulk-bar" id="newslettersBulkBar" data-list="newsletters" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="newsletters"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="newsletters">0</span>
+          <button type="button" class="bulk-action danger" data-list="newsletters" data-action="delete">Apagar</button>
+        </div>
+        <div class="prod-list" id="newslettersList"></div>
+      </div>
+
+      <!-- Clients database -->
+      <div id="panel-clients" class="panel">
+        <div class="clients-page-head">
+          <p class="clients-desc">Membership, datas do plano e faturação. Estados actualizam-se pelas datas.</p>
+          <div class="clients-head-actions">
+            <button type="button" id="backupAllBtn" class="btn-secondary" title="Descarregar cópia de segurança completa (JSON)">Backup</button>
+            <button type="button" id="exportClientsBtn" class="btn-secondary">Exportar CSV</button>
+            <button type="button" id="copyClientPhonesBtn" class="btn-secondary">Copiar telefones</button>
+            <button type="button" id="addClientBtn" class="btn-primary">+ Cliente</button>
+          </div>
+        </div>
+
+        <div class="clients-sticky">
+          <div class="clients-summary" id="clientsSummary"></div>
+          <div class="client-toolbar">
+            <input type="search" id="clientSearch" placeholder="Pesquisar nome ou telefone…  (atalho /)" autocomplete="off" aria-label="Pesquisar clientes">
+            <select id="clientAgeFilter" aria-label="Filtrar por idade">
+              <option value="">Idade: todas</option>
+              <option value="0-17">&lt; 18</option>
+              <option value="18-25">18 – 25</option>
+              <option value="26-35">26 – 35</option>
+              <option value="36-50">36 – 50</option>
+              <option value="51-120">51+</option>
+              <option value="none">Sem idade</option>
+            </select>
+            <select id="clientSort" aria-label="Ordenar">
+              <option value="priority">Prioridade (dívida / a expirar)</option>
+              <option value="name">Nome A–Z</option>
+              <option value="planEnd">Fim do plano</option>
+              <option value="recent">Mais recentes</option>
+            </select>
+          </div>
+          <div class="client-filters" id="clientFilters">
+            <button type="button" data-filter="all" class="active">Todos</button>
+            <button type="button" data-filter="activo">Activos</button>
+            <button type="button" data-filter="a_expirar">A expirar</button>
+            <button type="button" data-filter="expirado">Expirados</button>
+            <button type="button" data-filter="em_divida">Em dívida</button>
+            <button type="button" data-filter="pendente">Pendentes</button>
+            <button type="button" data-filter="suspenso">Suspensos</button>
+            <button type="button" data-filter="arquivado">Arquivados</button>
+            <button type="button" data-filter="lixeira">Lixeira (30d)</button>
+          </div>
+        </div>
+
+        <div class="bulk-bar bulk-bar-clients" id="clientsBulkBar" data-list="clients" style="display:none">
+          <label><input type="checkbox" class="bulk-select-all" data-list="clients"> Seleccionar todos</label>
+          <span class="bulk-count" data-list="clients">0</span>
+          <button type="button" class="bulk-action" data-list="clients" data-action="whatsapp">WhatsApp</button>
+          <button type="button" class="bulk-action" data-list="clients" data-action="suspend">Suspender</button>
+          <button type="button" class="bulk-action" data-list="clients" data-action="archive">Arquivar</button>
+          <button type="button" class="bulk-action" data-list="clients" data-action="export">Exportar</button>
+          <button type="button" class="bulk-action danger" data-list="clients" data-action="delete">Apagar</button>
+        </div>
+
+        <div class="clients-list" id="clientsList"></div>
+        <div class="clients-bulk-float" id="clientsBulkFloat" hidden>
+          <span class="bulk-float-count">0 seleccionados</span>
+          <button type="button" class="bulk-action" data-list="clients" data-action="whatsapp">WhatsApp</button>
+          <button type="button" class="bulk-action" data-list="clients" data-action="suspend">Suspender</button>
+          <button type="button" class="bulk-action" data-list="clients" data-action="archive">Arquivar</button>
+          <button type="button" class="bulk-action danger" data-list="clients" data-action="delete">Apagar</button>
+          <button type="button" class="bulk-float-clear" id="clientsBulkClear" title="Limpar selecção">✕</button>
+        </div>
+      </div>
+
+      <!-- Trainings / attendance -->
+      <div id="panel-trainings" class="panel">
+        <div class="clients-page-head">
+          <p class="clients-desc">Quando o cliente chega ao ginásio, registe o treino aqui. No fim do mês o relatório mostra quantas vezes cada um treinou.</p>
+          <div class="clients-head-actions">
+            <input type="date" id="trainingDate" aria-label="Data dos treinos" style="height:38px;border:1px solid #ddd;border-radius:8px;padding:0 0.6rem;font-size:0.85rem">
+            <button type="button" id="trainingMonthReportBtn" class="btn-secondary" title="Relatório do mês (estilo Excel)">Relatório do mês</button>
+            <button type="button" id="trainingExportMonthBtn" class="btn-secondary" title="Exportar CSV do mês">CSV mês</button>
+          </div>
+        </div>
+        <div class="clients-sticky">
+          <div class="clients-summary" id="trainingsSummary"></div>
+          <div class="client-toolbar">
+            <input type="search" id="trainingSearch" placeholder="Pesquisar nome, telefone ou nº…" autocomplete="off" aria-label="Pesquisar clientes nos treinos">
+            <select id="trainingFilter" aria-label="Filtrar lista">
+              <option value="activo">Activos</option>
+              <option value="all">Todos (exceto lixeira)</option>
+              <option value="trained">Já treinou neste dia</option>
+              <option value="not_trained">Ainda não treinou neste dia</option>
+            </select>
+          </div>
+        </div>
+        <div class="trainings-list" id="trainingsList"></div>
+        <div id="trainingMonthReport" class="training-month-report" hidden></div>
+      </div>
+
+      <!-- Products -->
+      <div id="panel-products" class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;gap:0.75rem;flex-wrap:wrap">
+          <p style="font-size:0.85rem;color:#666;margin:0;flex:1;min-width:200px">Preços do ginásio e da escola de natação. Depois de editar, clique <strong>Publicar no website</strong>.</p>
+          <button type="button" id="addProductBtn" style="padding:0.45rem 0.9rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.8rem;cursor:pointer">+ Novo</button>
+        </div>
+        <div class="client-filters" id="prodFilters" style="margin-bottom:1rem">
+          <button type="button" data-prod-filter="all" class="active">Todos</button>
+          <button type="button" data-prod-filter="ginasio">Ginásio</button>
+          <button type="button" data-prod-filter="natacao">Natação</button>
+          <button type="button" data-prod-filter="mensal">Mensalidades</button>
+          <button type="button" data-prod-filter="ferias">Férias</button>
+        </div>
+        <div class="prod-list" id="prodList"></div>
+      </div>
+
+      <!-- Images -->
+      <div id="panel-images" class="panel">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">
+          Carregue fotos para o site (hero, ginásio, natação, contacto…). Depois clique <strong>Publicar no website</strong> para todos verem.
+        </p>
+
+        <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Zona de carregamento de imagens">
+          <input type="file" id="mediaUpload" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+          <p style="margin:0 0 0.35rem;font-weight:500">Arraste imagens para aqui ou clique para seleccionar</p>
+          <p style="margin:0;font-size:0.8rem;color:#666">JPG, PNG ou WebP · várias de uma vez · máx. ~10&nbsp;MB cada</p>
+          <button type="button" id="mediaUploadBtn" style="margin-top:0.85rem;padding:0.5rem 1rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.85rem;cursor:pointer">Escolher ficheiros</button>
+        </div>
+        <p id="uploadStatus" style="font-size:0.8rem;color:#666;margin:0.5rem 0 1rem;min-height:1.2em"></p>
+
+        <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Slots do site</h3>
+        <div class="img-slots" id="imgSlots"></div>
+
+        <div style="margin-top:1.5rem">
+          <h3 style="font-size:0.9rem;margin-bottom:0.5rem">Biblioteca de média</h3>
+          <p style="font-size:0.8rem;color:#666;margin-bottom:0.65rem">Fotos carregadas. Use “Da biblioteca” num slot e toque numa foto para a atribuir.</p>
+          <div id="mediaLibrary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:0.5rem"></div>
+        </div>
+      </div>
+
+      <!-- Texts -->
+      <div id="panel-texts" class="panel">
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Textos principais (português).</p>
+        <div id="textsForm"></div>
+      </div>
+
+      <!-- Audit log -->
+      <div id="panel-audit" class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.85rem;flex-wrap:wrap">
+          <p style="font-size:0.85rem;color:#666;margin:0">Últimas acções gravadas no servidor (guardar, arquivar, apagar, backups…).</p>
+          <button type="button" id="refreshAuditBtn" class="bulk-action" style="margin:0">Actualizar</button>
+        </div>
+        <div id="auditList" class="audit-list">
+          <p class="empty-hint" style="color:#888;font-size:0.9rem">A carregar…</p>
+        </div>
+      </div>
+
+      <!-- Guide -->
+      <div id="panel-guide" class="panel">
+        <div class="guide">
+          <h3>Como funciona</h3>
+          <p><strong>Inscrições</strong> — pedidos do formulário. Fluxo sugerido: Novo → Contactado → Aguarda docs → Inscrito. Estados são reversíveis (pode voltar atrás). Use «Criar pendente (docs)» para criar o cliente em estado <em>pendente</em> até entregar documentos; «Criar cliente» cria já como activo. Filtros e acções em massa disponíveis.</p>
+          <p><strong>Contactos</strong> — mensagens da página Contacto (nome, telefone, assunto, mensagem). Marque: Novo → Respondido → Arquivar.</p>
+          <p><strong>Clientes</strong> — base a partir de inscrições (botão “Criar cliente” na inscrição) ou manual. Lista densa com prioridade (dívida / a expirar), filtros, ordenação e barra de resumo fixa. Atalhos: <code>/</code> pesquisa, <code>N</code> novo cliente. Seleccione vários para WhatsApp em massa, suspender, arquivar ou exportar. Exportar CSV e copiar telefones usam a selecção se houver. Estados actualizam-se pelas datas. Use “Renovar” ou “Pagar e renovar”. Badge no menu se houver dívidas ou expirados.</p>
+          <p><strong>Imagens</strong> — no separador Imagens: arraste ou escolha fotos (várias de uma vez). Atribua a cada slot (hero, ginásio, contacto…). Depois <strong>Publicar no website</strong>.</p>
+          <p><strong>Planos</strong> — organizados por ginásio e natação (mensalidades Bebés / Especial / Hidro / 6–99 anos e planos de férias). Edite preços aqui e publique. O formulário de inscrição e as páginas do site usam este catálogo.</p>
+          <p><strong>Publicar no website</strong> — só em Planos, Imagens e Textos. Clientes, inscrições e contactos guardam-se sozinhos (não precisam de publicar).</p>
+
+          <h3>Segurança / dados</h3>
+          <ul>
+            <li>Dados operacionais (clientes, inscrições, contactos, newsletter) vivem no <strong>Cloudflare D1</strong>, não só no Cloudinary.</li>
+            <li><strong>Arquivar</strong> ≠ apagar: o registo fica fora da fila diária e pode ser reactivado. <strong>Lixeira</strong> move para lixo recuperável durante <strong>30 dias</strong>; depois o cron faz purge permanente.</li>
+            <li><strong>Apagar já / Apagar definitivamente</strong> é irreversível no painel (só recuperação via Time Travel do D1 ou último backup).</li>
+            <li>Recomendado: correr <strong>Backup completo</strong> (ou aguardar o backup agendado <code>d1_backup</code>) pelo menos a cada poucos dias.</li>
+            <li>Time Travel do D1 recupera a base nos últimos <strong>7 dias</strong> (plano Free) / <strong>30 dias</strong> (Paid). Os ficheiros datados no Cloudinary (<code>backups/d1-YYYY-MM-DD.json</code>) são a cópia de longa duração.</li>
+            <li>Um <strong>hard reload</strong> não termina a sessão (a palavra-passe fica no browser). Use <strong>Sair</strong> ou o botão abaixo para obrigar todos os dispositivos a entrar de novo — útil depois de actualizações do painel.</li>
+          </ul>
+          <p style="margin:0.75rem 0 0.35rem">
+            <button type="button" id="forceLogoutAllBtn" class="danger" style="height:40px;padding:0 1rem;border:1px solid #e8b4b4;border-radius:8px;background:#fff;color:#b33;cursor:pointer;font-size:0.85rem">
+              Terminar todas as sessões (todos os dispositivos)
+            </button>
+          </p>
+          <p class="muted" style="font-size:0.8rem;margin:0.35rem 0 0">Dentro de cerca de 1 minuto, todos os painéis abertos pedem login outra vez (incluindo este).</p>
+
+          <h3>Redeploy do Worker</h3>
+          <p>Após actualizar o Worker, faça <code>npx wrangler deploy</code> na pasta worker.</p>
+        </div>
+      </div>
+      </div><!-- /.admin-main -->
+
+      <nav class="admin-nav admin-tabs" aria-label="Secções">
+        <div class="admin-nav-brand" aria-hidden="true">
+          <img class="brand-logo" src="icons/logo.png" width="36" height="36" alt="Búzios">
+          <div class="brand-text">
+            <span class="brand-name">Búzios</span>
+            <span class="brand-sub">Admin</span>
+          </div>
+        </div>
+        <button type="button" data-panel="inbox" class="active" title="Inscrições">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 4h16v12H4z"/><path d="M8 8h8M8 12h5"/><path d="M4 16l4 4h8l4-4"/></svg>
+          <span class="nav-label">Inscrições</span>
+        </button>
+        <button type="button" data-panel="contacts" title="Contactos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span class="nav-label">Contactos</span>
+        </button>
+        <button type="button" data-panel="newsletters" title="Newsletter">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M4 8l8 5 8-5"/></svg>
+          <span class="nav-label">Newsletter</span>
+        </button>
+        <button type="button" data-panel="clients" title="Clientes">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4 1.5 4 4"/></svg>
+          <span class="nav-label">Clientes</span>
+        </button>
+        <button type="button" data-panel="trainings" title="Treinos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M6.5 12h11M4 8.5v7M20 8.5v7"/></svg>
+          <span class="nav-label">Treinos</span>
+        </button>
+        <button type="button" data-panel="products" title="Planos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+          <span class="nav-label">Planos</span>
+        </button>
+        <button type="button" data-panel="images" title="Imagens">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          <span class="nav-label">Imagens</span>
+        </button>
+        <button type="button" data-panel="texts" title="Textos">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
+          <span class="nav-label">Textos</span>
+        </button>
+        <button type="button" data-panel="audit" title="Histórico">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+          <span class="nav-label">Histórico</span>
+        </button>
+        <button type="button" data-panel="guide" title="Guia">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span class="nav-label">Guia</span>
+        </button>
+        <a href="https://www.buzioshealthclub.com/" id="visitSiteBtn" class="nav-visit" title="Abrir o website público" target="_blank" rel="noopener noreferrer">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          <span class="nav-label">Website</span>
+        </a>
+        <button type="button" id="installAdminAppBtn" class="nav-install" title="Instalar app no dispositivo">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 3v12"/><path d="M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>
+          <span class="nav-label">Instalar app</span>
+        </button>
+        <button type="button" id="logoutAdminBtn" class="nav-logout" title="Sair do painel admin">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="nav-label">Sair</span>
+        </button>
+      </nav>
+    </div><!-- /.admin-layout -->
+
+    <div class="sticky-actions" id="publishBar" hidden>
+      <p class="publish-hint">Alterações em planos, imagens ou textos só aparecem no site após publicar.</p>
+      <button type="button" class="btn-discard-draft" id="discardDraftBtn" title="Apaga o rascunho deste browser e volta ao que está no site">Descartar rascunho</button>
+      <button type="button" class="btn-publish" id="publishBtn">Publicar no website</button>
+    </div>
+  </div>
+
+  <!-- Product modal -->
+  <div class="modal-backdrop" id="prodModal">
+    <div class="modal">
+      <button type="button" class="modal-close" id="closeProdModal">×</button>
+      <h2 id="prodModalTitle">Editar plano</h2>
+      <div class="form-row"><label>Nome (PT)</label><input type="text" id="fName"></div>
+      <div class="form-row"><label>Nome (EN)</label><input type="text" id="fNameEn"></div>
+      <div class="form-row"><label>Categoria</label>
+        <select id="fCategory"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option></select>
+      </div>
+      <div class="form-row"><label>Preço (Kz)</label><input type="number" id="fPrice" inputmode="decimal" min="0" step="100"></div>
+      <div class="form-row"><label>Período</label>
+        <select id="fPeriod">
+          <option value="mensal">Mensal</option>
+          <option value="única">Única (taxa)</option>
+          <option value="pacote">Pacote / férias</option>
+          <option value="cartão">Cartão</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Descrição (PT)</label><textarea id="fDesc"></textarea></div>
+      <div class="form-row"><label>Descrição (EN)</label><textarea id="fDescEn"></textarea></div>
+      <div class="form-row"><label>Características (uma por linha)</label><textarea id="fFeatures" rows="4"></textarea></div>
+      <div class="form-row"><label><input type="checkbox" id="fFeatured"> Destacar</label></div>
+      <div class="form-row"><label><input type="checkbox" id="fActive" checked> Activo</label></div>
+      <div class="form-actions">
+        <button type="button" id="saveProdBtn" style="flex:1;height:44px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client modal -->
+  <div class="modal-backdrop" id="clientModal">
+    <div class="modal client-modal">
+      <button type="button" class="modal-close" id="closeClientModal" aria-label="Fechar">×</button>
+      <div class="client-modal-scroll">
+        <h2 id="clientModalTitle">Cliente</h2>
+        <div id="cStatusChips" class="client-status-chips" aria-live="polite"></div>
+        <div id="cQuickActions" class="client-quick-actions" style="display:none">
+          <button type="button" class="cq-btn" id="cQaWhatsApp" title="Abrir WhatsApp">WhatsApp</button>
+          <button type="button" class="cq-btn" id="cQaRenew" title="Ir para pagamento e renovar">Renovar</button>
+          <button type="button" class="cq-btn" id="cQaCopyPhone" title="Copiar telefone">Copiar tel.</button>
+        </div>
+        <p id="cDupWarn" class="dup-warn" style="display:none"></p>
+        <p id="cSubLink" class="meta" style="display:none;margin-bottom:0.75rem"></p>
+
+        <!-- Dados -->
+        <section class="client-section" data-section="dados">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Dados</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="client-photo-row" id="cPhotoRow">
+              <button type="button" class="client-photo-avatar" id="cPhotoAvatar" title="Ver foto ampliada" aria-label="Ver foto de perfil ampliada" disabled>
+                <img id="cPhotoImg" alt="" hidden>
+                <span id="cPhotoInitials" class="client-photo-initials">?</span>
+              </button>
+              <div class="client-photo-actions">
+                <label class="btn-secondary client-photo-upload-label">
+                  Foto de perfil
+                  <input type="file" id="cPhotoUpload" accept="image/*" hidden>
+                </label>
+                <button type="button" class="btn-secondary" id="cPhotoRemove" style="display:none">Remover foto</button>
+                <p id="cPhotoStatus" class="muted" style="font-size:0.75rem;margin:0.25rem 0 0;min-height:1.1em"></p>
+              </div>
+            </div>
+            <div class="form-row"><label>Nome</label><input type="text" id="cName" autocomplete="name"></div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Telefone</label><input type="tel" id="cPhone" inputmode="tel" autocomplete="tel"></div>
+              <div class="form-row"><label>Email</label><input type="email" id="cEmail" autocomplete="email"></div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Área</label>
+                <select id="cArea"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option><option value="ambos">Ambos</option></select>
+              </div>
+              <div class="form-row"><label>Nº sócio</label><input type="number" id="cMemberNumber" inputmode="numeric" min="1" step="1" placeholder="ex. 1344"></div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Idade</label><input type="number" id="cAge" inputmode="numeric" min="1" max="120" step="1" placeholder="ex. 23"></div>
+              <div class="form-row"><label>Horário</label>
+                <select id="cSchedule">
+                  <option value="">—</option>
+                  <option value="05:00">05:00</option>
+                  <option value="06:00">06:00</option>
+                  <option value="07:00">07:00</option>
+                  <option value="08:00">08:00</option>
+                  <option value="09:00">09:00</option>
+                  <option value="10:00">10:00</option>
+                  <option value="11:00">11:00</option>
+                  <option value="14:00">14:00</option>
+                  <option value="15:00">15:00</option>
+                  <option value="16:00">16:00</option>
+                  <option value="17:00">17:00</option>
+                  <option value="18:00">18:00</option>
+                  <option value="19:00">19:00</option>
+                  <option value="20:00">20:00</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row"><label>Cartão de acesso</label>
+              <select id="cHasCard">
+                <option value="">—</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Plano & estado -->
+        <section class="client-section" data-section="plano">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Plano &amp; estado</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="form-row"><label>Plano</label>
+              <select id="cPlanSelect">
+                <option value="">— Escolher plano —</option>
+                <option value="__custom">Outro (escrever nome)</option>
+              </select>
+            </div>
+            <div class="form-row" id="cPlanCustomRow" style="display:none">
+              <label>Nome do plano</label>
+              <input type="text" id="cPlan" placeholder="ex. Mensal ginásio">
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Preço do período (Kz)</label><input type="number" id="cPrice" inputmode="decimal" min="0" step="100" placeholder="0"></div>
+              <div class="form-row"><label>Ciclo de faturação</label>
+                <select id="cCycle">
+                  <option value="mensal">Mensal</option>
+                  <option value="trimestral">Trimestral</option>
+                  <option value="anual">Anual</option>
+                  <option value="pacote">Pacote / avulso</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Início do plano</label><input type="date" id="cPlanStart"></div>
+              <div class="form-row"><label>Fim do plano (vence)</label><input type="date" id="cPlanEnd"></div>
+            </div>
+            <p id="cEndHint" class="client-end-hint" style="display:none"></p>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Membership</label>
+                <select id="cMembership">
+                  <option value="pendente">Pendente</option>
+                  <option value="activo">Activo</option>
+                  <option value="expirado">Expirado</option>
+                  <option value="suspenso">Suspenso</option>
+                  <option value="cancelado">Cancelado</option>
+                  <option value="arquivado">Arquivado</option>
+                </select>
+              </div>
+              <div class="form-row"><label>Faturação</label>
+                <select id="cBilling">
+                  <option value="em_dia">Em dia</option>
+                  <option value="em_divida">Em dívida</option>
+                  <option value="atrasado">Atrasado</option>
+                  <option value="isento">Isento</option>
+                  <option value="desistente">Desistente</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Emergência -->
+        <section class="client-section" data-section="emergencia">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Contacto de emergência</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="form-grid-2">
+              <div class="form-row"><label>Nome</label><input type="text" id="cEmergencyName" placeholder="Nome"></div>
+              <div class="form-row"><label>Telefone</label><input type="tel" id="cEmergencyPhone" inputmode="tel" placeholder="Telefone"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Notas -->
+        <section class="client-section" data-section="notas">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Notas</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="form-row"><label class="sr-only">Notas</label><textarea id="cNotes" rows="3" placeholder="Observações internas…"></textarea></div>
+          </div>
+        </section>
+
+        <!-- Documentos (host filled by JS) -->
+        <section class="client-section is-collapsible" data-section="docs" id="cDocsSection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Documentos</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="cDocsHost"></div>
+          </div>
+        </section>
+
+        <!-- Histórico de treinos only -->
+        <section class="client-section is-collapsible" data-section="treinos" id="cTrainingsSection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Histórico de treinos</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="cTrainingsHost" class="client-trainings-block"></div>
+          </div>
+        </section>
+
+        <!-- Histórico do cliente (payments, status, audit — no trainings) -->
+        <section class="client-section is-collapsible" data-section="historico" id="cHistorySection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Histórico do cliente</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="cHistoryHost" class="client-history-block"></div>
+          </div>
+        </section>
+
+        <!-- Pagamentos -->
+        <section class="client-section is-collapsible" data-section="pagamentos" id="cPaySection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Pagamentos</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="paymentBlock">
+              <h3 class="client-subhead">Registar pagamento</h3>
+              <div class="form-grid-2">
+                <div class="form-row"><label>Valor (Kz)</label><input type="number" id="cPayAmount" inputmode="decimal" min="0" step="100" placeholder="Valor pago"></div>
+                <div class="form-row"><label>Método</label>
+                  <select id="cPayMethod">
+                    <option value="cash">Numerário</option>
+                    <option value="transfer">Transferência</option>
+                    <option value="multicaixa">Multicaixa</option>
+                    <option value="other">Outro</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row"><label>Nota do pagamento</label><input type="text" id="cPayNote" placeholder="Opcional"></div>
+              <div class="form-actions" style="margin-top:0.5rem">
+                <button type="button" id="payRenewBtn" class="btn-pay-renew">Pagar e renovar período</button>
+              </div>
+              <p id="cPayPreview" class="client-pay-preview" style="display:none"></p>
+              <p class="client-help-text">Actualiza fim do plano conforme o ciclo, marca activo e em dia.</p>
+              <h3 class="client-subhead" style="margin-top:1rem">Histórico de pagamentos</h3>
+              <ul class="pay-history" id="cPayHistory"></ul>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="client-modal-footer">
+        <button type="button" id="saveClientBtn" class="btn-save-client">Guardar cliente</button>
+        <button type="button" id="archiveClientBtn" class="btn-secondary btn-archive-client" style="display:none">Arquivar</button>
+        <button type="button" id="deleteClientBtn" class="danger btn-delete-client" style="display:none">Apagar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client photo lightbox (full-size view for staff) -->
+  <div class="modal-backdrop photo-lightbox" id="photoLightbox" role="dialog" aria-modal="true" aria-label="Foto de perfil">
+    <button type="button" class="modal-close photo-lightbox-close" id="closePhotoLightbox" aria-label="Fechar">×</button>
+    <img id="photoLightboxImg" class="photo-lightbox-img" alt="Foto de perfil do cliente">
+    <p id="photoLightboxCaption" class="photo-lightbox-caption"></p>
+  </div>
+
+  <!-- Install admin app help -->
+  <div class="modal-backdrop" id="installAppModal">
+    <div class="modal" style="max-width:420px">
+      <button type="button" class="modal-close" id="closeInstallAppModal">×</button>
+      <h2>Instalar Búzios Admin</h2>
+      <p id="installAppBody" style="font-size:0.9rem;line-height:1.55;color:#444;margin:0.5rem 0 1rem">
+        Adicione o painel ao ecrã inicial do telemóvel ou computador para abrir como aplicação.
+      </p>
+      <ol id="installAppSteps" style="font-size:0.88rem;line-height:1.55;color:#333;padding-left:1.2rem;margin:0 0 1rem"></ol>
+      <div class="form-actions">
+        <button type="button" id="installAppConfirmBtn" style="flex:1;height:44px;background:#0f2a32;color:#fff;border:none;border-radius:8px;cursor:pointer;display:none">Instalar agora</button>
+        <button type="button" id="installAppDismissBtn" style="flex:1;height:44px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/products.js"></script>
+  <script src="js/admin.js?v=20261110d"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js?v=2').catch(function () {});
+    }
+  </script>
+</body>
+</html>

@@ -778,6 +778,25 @@ async function handleAdminData(request, env) {
     }
   }
 
+  if (action === 'update_training') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const id = String((data && data.id) || '').trim();
+    if (!id) return json({ error: 'id required' }, 400);
+    try {
+      const row = await d1UpdateTraining(env, {
+        id,
+        trainedAt: data && data.trainedAt,
+        note: data && data.note
+      });
+      if (!row) return json({ error: 'Sessão não encontrada' }, 404);
+      await d1Audit(env, 'update_training', 'training', id, (row.note || '').slice(0, 120), adminName);
+      return json({ ok: true, training: row });
+    } catch (e) {
+      console.error('update_training', e && e.message);
+      return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
+    }
+  }
+
   if (action === 'list_trainings') {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
     try {
@@ -1760,6 +1779,48 @@ async function d1ImportTrainingsBulk(env, records, adminName) {
 async function d1DeleteTraining(env, id) {
   await d1EnsureTrainingsTable(env);
   await env.DB.prepare('DELETE FROM trainings WHERE id = ?').bind(String(id)).run();
+}
+
+async function d1UpdateTraining(env, opts) {
+  await d1EnsureTrainingsTable(env);
+  const id = String(opts.id || '').trim();
+  if (!id) return null;
+  const existing = await env.DB.prepare(
+    'SELECT id, client_id, trained_at, trained_date, recorded_by, note, created_at FROM trainings WHERE id = ? LIMIT 1'
+  )
+    .bind(id)
+    .first();
+  if (!existing) return null;
+
+  let trainedAt = existing.trained_at;
+  let trainedDate = existing.trained_date;
+  if (opts.trainedAt) {
+    const d = new Date(opts.trainedAt);
+    if (!isNaN(d.getTime())) {
+      trainedAt = d.toISOString();
+      trainedDate = trainedAt.slice(0, 10);
+    }
+  }
+  const note =
+    opts.note !== undefined && opts.note !== null
+      ? String(opts.note).slice(0, 200)
+      : existing.note || '';
+
+  await env.DB.prepare(
+    `UPDATE trainings SET trained_at = ?, trained_date = ?, note = ? WHERE id = ?`
+  )
+    .bind(trainedAt, trainedDate, note, id)
+    .run();
+
+  return {
+    id: existing.id,
+    clientId: existing.client_id,
+    trainedAt,
+    trainedDate,
+    recordedBy: existing.recorded_by || '',
+    note,
+    createdAt: existing.created_at
+  };
 }
 
 async function d1ListTrainings(env, opts) {

@@ -807,6 +807,33 @@ async function handleAdminData(request, env) {
     }
   }
 
+  // Bulk import monthly training counts from legacy Excel (NUM. VEZES).
+  // data.records: [{ memberNumber, year, month, count, name? }]
+  // Creates `count` session rows spread across the month (approx. days for history).
+  // Skips months already imported for that client (note marker). Idempotent-ish.
+  if (action === 'import_trainings_bulk') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const records = (data && data.records) || [];
+    if (!Array.isArray(records) || !records.length) {
+      return json({ error: 'records[] required' }, 400);
+    }
+    try {
+      const result = await d1ImportTrainingsBulk(env, records, adminName || '');
+      await d1Audit(
+        env,
+        'import_trainings_bulk',
+        'training',
+        '',
+        'imported=' + result.inserted + ' skipped=' + result.skipped + ' unmatched=' + result.unmatched,
+        adminName
+      );
+      return json({ ok: true, ...result });
+    } catch (e) {
+      console.error('import_trainings_bulk', e && e.message);
+      return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
+    }
+  }
+
   // —— Admin presence (open panels) ——
   if (action === 'presence_heartbeat') {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
@@ -1605,6 +1632,129 @@ async function d1AddTraining(env, opts) {
     note,
     createdAt
   };
+}
+
+/** Map member_number → client id for import matching. */
+async function d1MemberNumberMap(env) {
+  const res = await env.DB.prepare(
+    `SELECT id, member_number FROM clients
+     WHERE member_number IS NOT NULL
+       AND (deleted_at IS NULL OR deleted_at = '')`
+  ).all();
+  const map = {};
+  for (const r of res.results || []) {
+    if (r.member_number == null) continue;
+    map[String(r.member_number)] = r.id;
+  }
+  return map;
+}
+
+/**
+ * Import monthly attendance totals from Excel-style records.
+ * Each count>0 creates that many training rows spread across the month.
+ * Note marker: "Importado Excel — YYYY-MM" (skip if already present for client/month).
+ */
+async function d1ImportTrainingsBulk(env, records, adminName) {
+  await d1EnsureTrainingsTable(env);
+  const memberMap = await d1MemberNumberMap(env);
+  const recordedBy = String(adminName || 'Import Excel').slice(0, 80);
+  const createdAt = new Date().toISOString();
+
+  let inserted = 0;
+  let skipped = 0;
+  let unmatched = 0;
+  const unmatchedSamples = [];
+  const stmts = [];
+
+  function daysInMonth(y, m) {
+    return new Date(y, m, 0).getDate();
+  }
+
+  for (const rec of records) {
+    const memberNumber = rec.memberNumber != null ? String(rec.memberNumber) : '';
+    const year = parseInt(rec.year, 10);
+    const month = parseInt(rec.month, 10);
+    let count = parseInt(rec.count, 10);
+    if (!memberNumber || !year || !month || month < 1 || month > 12) {
+      skipped++;
+      continue;
+    }
+    if (!Number.isFinite(count) || count < 0) {
+      skipped++;
+      continue;
+    }
+    if (count === 0) {
+      // S/P — no sessions
+      skipped++;
+      continue;
+    }
+    const clientId = memberMap[memberNumber];
+    if (!clientId) {
+      unmatched++;
+      if (unmatchedSamples.length < 30) {
+        unmatchedSamples.push({ memberNumber, name: rec.name || '', year, month, count });
+      }
+      continue;
+    }
+
+    const monthKey = year + '-' + String(month).padStart(2, '0');
+    const noteMarker = 'Importado Excel — ' + monthKey;
+
+    // Skip if this client already has imported sessions for this month
+    const existing = await env.DB.prepare(
+      `SELECT id FROM trainings
+       WHERE client_id = ? AND trained_date >= ? AND trained_date < ?
+         AND note LIKE ?
+       LIMIT 1`
+    )
+      .bind(
+        clientId,
+        monthKey + '-01',
+        month === 12 ? (year + 1) + '-01-01' : year + '-' + String(month + 1).padStart(2, '0') + '-01',
+        noteMarker + '%'
+      )
+      .first();
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    const dim = daysInMonth(year, month);
+    const n = Math.min(count, 60); // safety cap per month
+    for (let i = 0; i < n; i++) {
+      // Spread across the month; overflow stacks on last days
+      const day = Math.min(dim, 1 + Math.floor((i * dim) / n));
+      const dd = String(day).padStart(2, '0');
+      const trainedDate = monthKey + '-' + dd;
+      const hour = 8 + (i % 10);
+      const trainedAt = trainedDate + 'T' + String(hour).padStart(2, '0') + ':00:00.000Z';
+      const id =
+        'tr-imp-' +
+        memberNumber +
+        '-' +
+        monthKey.replace('-', '') +
+        '-' +
+        String(i).padStart(2, '0') +
+        '-' +
+        Math.random().toString(36).slice(2, 6);
+      const note = (noteMarker + ' (' + count + '×)').slice(0, 200);
+      stmts.push(
+        env.DB.prepare(
+          `INSERT INTO trainings (id, client_id, trained_at, trained_date, recorded_by, note, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).bind(id, clientId, trainedAt, trainedDate, recordedBy, note, createdAt)
+      );
+      inserted++;
+    }
+  }
+
+  // D1 batch in chunks of 50
+  for (let i = 0; i < stmts.length; i += 50) {
+    const chunk = stmts.slice(i, i + 50);
+    await env.DB.batch(chunk);
+  }
+
+  return { inserted, skipped, unmatched, unmatchedSamples };
 }
 
 async function d1DeleteTraining(env, id) {

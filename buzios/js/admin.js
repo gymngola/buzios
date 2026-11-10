@@ -463,6 +463,10 @@
     if (name === 'inbox' || name === 'contacts' || name === 'clients' || name === 'newsletters') {
       refreshStoreIfChanged();
     }
+    if (name === 'clients') {
+      // Month training counts for list badges
+      refreshTrainingsSummary().then(() => renderClients()).catch(() => {});
+    }
     if (name === 'trainings') {
       refreshStoreIfChanged();
       loadTrainingsPanel();
@@ -2458,6 +2462,10 @@
                   <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
                   ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
                   ${c.hasCard === 'sim' ? '<span class="status-badge status-card">cartão</span>' : ''}
+                  ${(() => {
+                    const mn = (trainingsSummaryCache && trainingsSummaryCache.monthByClient && trainingsSummaryCache.monthByClient[c.id]) || 0;
+                    return '<span class="status-badge status-train" title="Treinos neste mês">' + mn + '× mês</span>';
+                  })()}
                 </span>
                 <div class="row-contact">${[contactBits, c.schedule ? 'Horário ' + escapeHtml(c.schedule) : '', c.age != null ? 'Idade ' + escapeHtml(String(c.age)) : ''].filter(Boolean).join(' · ') || '—'}</div>
               </div>
@@ -3041,9 +3049,13 @@
     if (id) {
       clientHistoryYear = '';
       loadClientHistory(id);
+      const tHost = $('#cTrainingsHost');
+      if (tHost) tHost.innerHTML = '<p class="muted" style="font-size:0.8rem">A carregar treinos…</p>';
     } else {
-      const th = $('#cHistoryHost') || $('#cTrainingsHost');
+      const th = $('#cHistoryHost');
       if (th) th.innerHTML = '';
+      const tHost = $('#cTrainingsHost');
+      if (tHost) tHost.innerHTML = '';
     }
 
     const modal = $('#clientModal');
@@ -3649,6 +3661,10 @@
       clients = clients.filter(c => c.membershipStatus === 'activo' && !c._expired);
     } else if (filter === 'trained') {
       clients = clients.filter(c => (cache.todayByClient[c.id] || 0) > 0);
+    } else if (filter === 'not_trained') {
+      clients = clients.filter(c =>
+        c.membershipStatus === 'activo' && !c._expired && !(cache.todayByClient[c.id] || 0)
+      );
     }
 
     if (q) {
@@ -3691,9 +3707,17 @@
           }).join('') + '</ul>'
         : '';
 
+      const photoUrl = c.photoUrl ? String(c.photoUrl) : '';
+      const av = photoUrl
+        ? '<span class="row-avatar has-photo training-avatar"><img src="' + escapeHtml(photoUrl) + '" alt="" loading="lazy"></span>'
+        : '<span class="row-avatar training-avatar"><span class="row-avatar-initials">' + escapeHtml(clientInitials(c.name)) + '</span></span>';
       return '<div class="training-row' + (todayN ? ' training-row--done' : '') + '" data-client-id="' + escapeHtml(c.id) + '">' +
+        av +
         '<div class="training-main">' +
-          '<span class="row-name" data-edit-cli="' + escapeHtml(c.id) + '">' + escapeHtml(c.name || '—') + '</span>' +
+          '<span class="row-name" data-edit-cli="' + escapeHtml(c.id) + '">' +
+            (c.memberNumber != null ? '<span class="member-n">Nº ' + escapeHtml(String(c.memberNumber)) + '</span> ' : '') +
+            escapeHtml(c.name || '—') +
+          '</span>' +
           '<span class="row-badges">' +
             '<span class="status-badge status-' + mem + '">' + mem + '</span>' +
             (c.schedule ? '<span class="status-badge status-card">' + escapeHtml(c.schedule) + '</span>' : '') +
@@ -3705,14 +3729,16 @@
           '<span class="t-count" title="Sessões neste mês"><strong>' + monthN + '</strong> mês</span>' +
         '</div>' +
         '<div class="training-actions">' +
-          '<button type="button" class="btn-train" data-add-training="' + escapeHtml(c.id) + '">+ Treino</button>' +
+          '<button type="button" class="btn-train" data-add-training="' + escapeHtml(c.id) + '" title="Registar treino (Alt+clique para nota)">+ Treino</button>' +
         '</div>' +
         (sessionsHtml ? '<div class="training-sessions">' + sessionsHtml + '</div>' : '') +
       '</div>';
     }).join('');
 
     list.querySelectorAll('[data-add-training]').forEach(btn => {
-      btn.addEventListener('click', () => addTrainingForClient(btn.getAttribute('data-add-training')));
+      btn.addEventListener('click', (e) =>
+        addTrainingForClient(btn.getAttribute('data-add-training'), { askNote: !!(e && e.altKey) })
+      );
     });
     list.querySelectorAll('[data-del-training]').forEach(btn => {
       btn.addEventListener('click', () => deleteTrainingSession(btn.getAttribute('data-del-training')));
@@ -3725,7 +3751,7 @@
     });
   }
 
-  async function addTrainingForClient(clientId) {
+  async function addTrainingForClient(clientId, opts) {
     if (!clientId) return;
     const date = trainingSelectedDate();
     const now = new Date();
@@ -3734,7 +3760,11 @@
     if (date !== todayISO()) {
       trainedAt = date + 'T12:00:00.000Z';
     }
-    const note = prompt('Nota (opcional)', '') || '';
+    // Fast path: no prompt. Hold Alt/Option while clicking for optional note.
+    let note = '';
+    if (opts && opts.askNote) {
+      note = prompt('Nota (opcional)', '') || '';
+    }
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
@@ -3753,7 +3783,6 @@
       toast('Treino registado');
       await refreshTrainingsSummary();
       renderTrainingsPanel();
-      // Refresh client modal history if open for this client
       if (editingClientId === clientId) {
         await loadClientTrainings(clientId);
       }
@@ -3793,7 +3822,33 @@
   let clientHistoryYear = '';
 
   async function loadClientTrainings(clientId) {
-    return loadClientHistory(clientId);
+    const host = $('#cTrainingsHost');
+    if (!host || !clientId) return;
+    host.innerHTML = '<p class="muted" style="font-size:0.8rem">A carregar treinos…</p>';
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'get_client_history',
+          adminName: getAdminName(),
+          data: { clientId, limit: 400 }
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      clientHistoryCache = Object.assign({}, clientHistoryCache, {
+        clientId,
+        trainings: (data && data.trainings) || []
+      });
+      renderClientTrainingsOnly(host, clientId);
+    } catch (e) {
+      clientHistoryCache = Object.assign({}, clientHistoryCache, { clientId, trainings: [] });
+      renderClientTrainingsOnly(host, clientId);
+      host.insertAdjacentHTML('beforeend', '<p class="muted" style="font-size:0.75rem">Não foi possível carregar treinos do servidor.</p>');
+    }
   }
 
   async function loadClientHistory(clientId) {
@@ -3824,8 +3879,10 @@
         createdAt: existing && existing.createdAt
       };
       renderClientHistory(host, clientId);
+      // Also refresh trainings panel if present
+      const tHost = $('#cTrainingsHost');
+      if (tHost) renderClientTrainingsOnly(tHost, clientId);
     } catch (e) {
-      // Fallback: payments only + local trainings attempt
       clientHistoryCache = {
         clientId,
         trainings: [],
@@ -3835,8 +3892,56 @@
       };
       renderClientHistory(host, clientId);
       const status = host.querySelector('.client-history-status');
-      if (status) status.textContent = 'Histórico parcial (servidor indisponível para treinos/auditoria).';
+      if (status) status.textContent = 'Histórico parcial (servidor indisponível).';
     }
+  }
+
+  function renderClientTrainingsOnly(host, clientId) {
+    if (!host) return;
+    const cache = clientHistoryCache.clientId === clientId ? clientHistoryCache : { trainings: [] };
+    const trainings = (cache.trainings || []).slice().sort((a, b) =>
+      String(b.trainedAt || b.trainedDate || '').localeCompare(String(a.trainedAt || a.trainedDate || ''))
+    );
+    const month = todayISO().slice(0, 7);
+    const todayN = trainings.filter(t => t.trainedDate === todayISO()).length;
+    const monthN = trainings.filter(t => (t.trainedDate || '').startsWith(month)).length;
+
+    // Group by YYYY-MM for monthly summary
+    const byMonth = {};
+    trainings.forEach(t => {
+      const m = (t.trainedDate || '').slice(0, 7);
+      if (!m) return;
+      byMonth[m] = (byMonth[m] || 0) + 1;
+    });
+    const monthRows = Object.keys(byMonth).sort().reverse().slice(0, 18).map(m => {
+      const [y, mo] = m.split('-');
+      const label = (mo || '') + '/' + (y || '');
+      return '<div class="t-month-row"><span>' + escapeHtml(label) + '</span><strong>' + byMonth[m] + '×</strong></div>';
+    }).join('');
+
+    host.innerHTML =
+      '<div class="client-trainings-head">' +
+        '<div class="client-history-stats">' +
+          '<strong>' + todayN + '</strong> hoje · <strong>' + monthN + '</strong> este mês · <strong>' + trainings.length + '</strong> no total' +
+        '</div>' +
+        '<button type="button" class="btn-train" id="cAddTrainingBtn">+ Treino hoje</button>' +
+      '</div>' +
+      (monthRows
+        ? '<div class="t-month-summary"><div class="t-month-title">Por mês</div>' + monthRows + '</div>'
+        : '') +
+      (trainings.length
+        ? '<ul class="client-training-list">' + trainings.slice(0, 80).map(t => {
+            const when = t.trainedAt
+              ? new Date(t.trainedAt).toLocaleString('pt', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : formatDatePT(t.trainedDate);
+            const by = t.recordedBy ? ' · ' + escapeHtml(t.recordedBy) : '';
+            const note = t.note ? ' — ' + escapeHtml(t.note) : '';
+            return '<li><span>' + escapeHtml(when) + by + note + '</span></li>';
+          }).join('') + '</ul>'
+        : '<p class="muted" style="font-size:0.85rem">Ainda sem treinos registados. Use <strong>+ Treino hoje</strong> ou o painel Treinos.</p>');
+
+    const addBtn = host.querySelector('#cAddTrainingBtn');
+    if (addBtn) addBtn.addEventListener('click', () => addTrainingForClient(clientId));
   }
 
   function buildClientTimeline(cache, yearFilter) {
@@ -3859,23 +3964,11 @@
       });
     });
 
-    (cache.trainings || []).forEach(t => {
-      const at = t.trainedAt || t.trainedDate || '';
-      events.push({
-        at,
-        sortKey: at || '1970-01-01',
-        type: 'training',
-        title: 'Treino',
-        body:
-          (t.recordedBy ? 'Registado por ' + t.recordedBy : 'Sessão') +
-          (t.note ? ' — ' + t.note : ''),
-        id: t.id
-      });
-    });
+    // Trainings are shown only in "Histórico de treinos" — not here
 
     (cache.audit || []).forEach(a => {
-      // Skip noisy training add/delete if we already show trainings
-      if (a.entity === 'training' && (a.action === 'add_training' || a.action === 'delete_training')) return;
+      // Skip training add/delete noise
+      if (a.entity === 'training' && (a.action === 'add_training' || a.action === 'delete_training' || a.action === 'import_trainings_bulk')) return;
       const at = a.at || '';
       const actionLabels = {
         save_client: 'Cliente actualizado',
@@ -3924,10 +4017,6 @@
     const yearList = Array.from(years).sort().reverse();
     if (clientHistoryYear && yearList.indexOf(clientHistoryYear) < 0) clientHistoryYear = '';
 
-    const month = todayISO().slice(0, 7);
-    const trainings = cache.trainings || [];
-    const todayN = trainings.filter(t => t.trainedDate === todayISO()).length;
-    const monthN = trainings.filter(t => (t.trainedDate || '').startsWith(month)).length;
     const timeline = buildClientTimeline(cache, clientHistoryYear);
 
     const yearOptions =
@@ -3943,12 +4032,9 @@
         '<h3>Histórico do cliente</h3>' +
         '<div class="client-history-tools">' +
           '<select id="cHistoryYear" aria-label="Filtrar por ano">' + yearOptions + '</select>' +
-          '<button type="button" class="btn-train" id="cAddTrainingBtn" style="height:34px;padding:0 0.75rem">+ Treino hoje</button>' +
         '</div>' +
       '</div>' +
       '<p class="client-history-stats">' +
-        '<strong>' + todayN + '</strong> treinos hoje · ' +
-        '<strong>' + monthN + '</strong> este mês · ' +
         '<strong>' + (cache.payments || []).length + '</strong> pagamentos · ' +
         '<strong>' + timeline.length + '</strong> eventos' +
         (clientHistoryYear ? ' em ' + clientHistoryYear : '') +
@@ -3981,41 +4067,100 @@
         renderClientHistory(host, clientId);
       });
     }
-    const addBtn = host.querySelector('#cAddTrainingBtn');
-    if (addBtn) addBtn.addEventListener('click', () => addTrainingForClient(clientId));
   }
 
   function ensureClientHistoryHost() {
-    let host = $('#cHistoryHost') || $('#cTrainingsHost');
-    if (host) {
-      host.id = 'cHistoryHost';
-      return host;
-    }
+    let host = $('#cHistoryHost');
+    if (host) return host;
     host = document.createElement('div');
     host.id = 'cHistoryHost';
     host.className = 'client-history-block';
     const sectionBody = document.querySelector('#cHistorySection .client-section-body');
-    if (sectionBody) {
-      sectionBody.appendChild(host);
-      return host;
-    }
-    const pay = $('#paymentBlock');
-    if (pay && pay.parentNode) {
-      pay.parentNode.insertBefore(host, pay);
-    }
+    if (sectionBody) sectionBody.appendChild(host);
     return host;
-  }
-
-  function ensureClientTrainingsHost() {
-    return ensureClientHistoryHost();
   }
 
   $('#trainingDate')?.addEventListener('change', async () => {
     await refreshTrainingsSummary();
     renderTrainingsPanel();
+    const report = $('#trainingMonthReport');
+    if (report && !report.hidden) renderTrainingMonthReport();
   });
   $('#trainingSearch')?.addEventListener('input', () => renderTrainingsPanel());
   $('#trainingFilter')?.addEventListener('change', () => renderTrainingsPanel());
+
+  function renderTrainingMonthReport() {
+    const host = $('#trainingMonthReport');
+    const list = $('#trainingsList');
+    if (!host) return;
+    const cache = trainingsSummaryCache || {};
+    const month = cache.month || todayISO().slice(0, 7);
+    const counts = cache.monthByClient || {};
+    let clients = (store.clients || []).map(enrichClient).filter(c => !isInTrash(c));
+    clients = clients.filter(c => (counts[c.id] || 0) > 0 || c.membershipStatus === 'activo');
+    clients.sort((a, b) => {
+      const d = (counts[b.id] || 0) - (counts[a.id] || 0);
+      if (d) return d;
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt');
+    });
+    const rows = clients.map(c => {
+      const n = counts[c.id] || 0;
+      return '<tr>' +
+        '<td>' + (c.memberNumber != null ? escapeHtml(String(c.memberNumber)) : '—') + '</td>' +
+        '<td>' + escapeHtml(c.name || '—') + '</td>' +
+        '<td>' + escapeHtml(c.planName || c.planId || '—') + '</td>' +
+        '<td class="num">' + n + '</td>' +
+        '</tr>';
+    }).join('');
+    host.innerHTML =
+      '<div class="training-report-head">' +
+        '<strong>Relatório de treinos — ' + escapeHtml(month) + '</strong>' +
+        '<button type="button" class="btn-secondary" id="trainingReportClose">Fechar relatório</button>' +
+      '</div>' +
+      '<table class="training-report-table">' +
+        '<thead><tr><th>Nº</th><th>Nome</th><th>Plano</th><th>Treinos</th></tr></thead>' +
+        '<tbody>' + (rows || '<tr><td colspan="4">Sem dados</td></tr>') + '</tbody>' +
+      '</table>';
+    host.hidden = false;
+    if (list) list.hidden = true;
+    host.querySelector('#trainingReportClose')?.addEventListener('click', () => {
+      host.hidden = true;
+      host.innerHTML = '';
+      if (list) list.hidden = false;
+    });
+  }
+
+  function exportTrainingMonthCsv() {
+    const cache = trainingsSummaryCache || {};
+    const month = cache.month || todayISO().slice(0, 7);
+    const counts = cache.monthByClient || {};
+    let clients = (store.clients || []).map(enrichClient).filter(c => !isInTrash(c));
+    clients.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt'));
+    const headers = ['Nº', 'Nome', 'Telefone', 'Plano', 'Treinos no mês'];
+    const rows = clients.map(c => [
+      c.memberNumber, c.name, c.phone, c.planName || c.planId, counts[c.id] || 0
+    ].map(v => {
+      const s = v == null ? '' : String(v);
+      return '"' + s.replace(/"/g, '""') + '"';
+    }).join(','));
+    const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'buzios-treinos-' + month + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('CSV do mês ' + month + ' exportado');
+  }
+
+  $('#trainingMonthReportBtn')?.addEventListener('click', async () => {
+    await refreshTrainingsSummary();
+    renderTrainingMonthReport();
+  });
+  $('#trainingExportMonthBtn')?.addEventListener('click', async () => {
+    await refreshTrainingsSummary();
+    exportTrainingMonthCsv();
+  });
 
   // —— Products ——
   function formatAreaLabel(area) {

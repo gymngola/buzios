@@ -1998,6 +1998,80 @@ a { color: var(--admin-accent); }
 .status-arquivado { background: #eef2f4; color: #5a6f78; }
 .status-suspenso { background: #eef2f4; color: #5a6f78; }
 .status-card { background: #e8f5e9; color: #2e7d32; }
+.status-train { background: #eef4ff; color: #2f4f8a; font-variant-numeric: tabular-nums; }
+
+.client-trainings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+.t-month-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.75rem;
+}
+.t-month-title {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--admin-muted);
+}
+.t-month-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  padding: 0.3rem 0.45rem;
+  background: #f6f8f9;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border);
+}
+.client-training-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 0.8rem;
+}
+.client-training-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #eee;
+  color: #444;
+}
+
+.training-month-report {
+  margin-top: 0.75rem;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+.training-report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+.training-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.training-report-table th,
+.training-report-table td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+.training-report-table th { color: var(--admin-muted); font-weight: 600; }
+.training-report-table td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 
 .prod-card .actions a.wa-btn {
   padding: 0.4rem 0.75rem;
@@ -2189,11 +2263,16 @@ a { color: var(--admin-accent); }
 }
 .training-row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 0.5rem 0.75rem;
+  grid-template-columns: 40px 1fr auto auto;
+  gap: 0.5rem 0.65rem;
   align-items: center;
   padding: 0.65rem 0.35rem;
   border-bottom: 1px solid var(--admin-border);
+}
+.training-avatar {
+  width: 36px;
+  height: 36px;
+  margin: 0;
 }
 .training-row--done {
   background: rgba(47, 107, 79, 0.04);

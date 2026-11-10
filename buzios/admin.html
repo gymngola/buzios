@@ -245,23 +245,27 @@
       <!-- Trainings / attendance -->
       <div id="panel-trainings" class="panel">
         <div class="clients-page-head">
-          <p class="clients-desc">Marque as sessões de treino dos clientes. Contagens do dia e do mês actualizam-se em todo o painel.</p>
+          <p class="clients-desc">Quando o cliente chega ao ginásio, registe o treino aqui. No fim do mês o relatório mostra quantas vezes cada um treinou.</p>
           <div class="clients-head-actions">
             <input type="date" id="trainingDate" aria-label="Data dos treinos" style="height:38px;border:1px solid #ddd;border-radius:8px;padding:0 0.6rem;font-size:0.85rem">
+            <button type="button" id="trainingMonthReportBtn" class="btn-secondary" title="Relatório do mês (estilo Excel)">Relatório do mês</button>
+            <button type="button" id="trainingExportMonthBtn" class="btn-secondary" title="Exportar CSV do mês">CSV mês</button>
           </div>
         </div>
         <div class="clients-sticky">
           <div class="clients-summary" id="trainingsSummary"></div>
           <div class="client-toolbar">
-            <input type="search" id="trainingSearch" placeholder="Pesquisar cliente…" autocomplete="off" aria-label="Pesquisar clientes nos treinos">
+            <input type="search" id="trainingSearch" placeholder="Pesquisar nome, telefone ou nº…" autocomplete="off" aria-label="Pesquisar clientes nos treinos">
             <select id="trainingFilter" aria-label="Filtrar lista">
               <option value="activo">Activos</option>
               <option value="all">Todos (exceto lixeira)</option>
-              <option value="trained">Só quem treinou neste dia</option>
+              <option value="trained">Já treinou neste dia</option>
+              <option value="not_trained">Ainda não treinou neste dia</option>
             </select>
           </div>
         </div>
         <div class="trainings-list" id="trainingsList"></div>
+        <div id="trainingMonthReport" class="training-month-report" hidden></div>
       </div>
 
       <!-- Products -->
@@ -626,10 +630,21 @@
           </div>
         </section>
 
-        <!-- Treinos / histórico (host filled by JS) -->
-        <section class="client-section is-collapsible" data-section="treinos" id="cHistorySection">
+        <!-- Histórico de treinos only -->
+        <section class="client-section is-collapsible" data-section="treinos" id="cTrainingsSection">
           <button type="button" class="client-section-head" aria-expanded="false">
             <span>Histórico de treinos</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="cTrainingsHost" class="client-trainings-block"></div>
+          </div>
+        </section>
+
+        <!-- Histórico do cliente (payments, status, audit — no trainings) -->
+        <section class="client-section is-collapsible" data-section="historico" id="cHistorySection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Histórico do cliente</span>
             <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="client-section-body" hidden>
@@ -704,7 +719,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261110b"></script>
+  <script src="js/admin.js?v=20261110c"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

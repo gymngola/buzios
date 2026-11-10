@@ -2608,6 +2608,200 @@
     sel.value = v;
   }
 
+  function populatePlanSelect(selectedId, selectedName) {
+    const sel = $('#cPlanSelect');
+    if (!sel) return;
+    const list = (products || []).filter(p => p && p.active !== false).slice().sort((a, b) => {
+      const ao = a.order != null ? a.order : 999;
+      const bo = b.order != null ? b.order : 999;
+      if (ao !== bo) return ao - bo;
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt');
+    });
+    let html = '<option value="">— Escolher plano —</option>';
+    const byCat = { ginasio: [], natacao: [], other: [] };
+    list.forEach(p => {
+      const cat = p.category === 'ginasio' || p.category === 'natacao' ? p.category : 'other';
+      byCat[cat].push(p);
+    });
+    const groups = [
+      { key: 'ginasio', label: 'Ginásio' },
+      { key: 'natacao', label: 'Natação' },
+      { key: 'other', label: 'Outros' }
+    ];
+    groups.forEach(g => {
+      if (!byCat[g.key].length) return;
+      html += '<optgroup label="' + escapeHtml(g.label) + '">';
+      byCat[g.key].forEach(p => {
+        const price = p.price != null ? ' — ' + Number(p.price).toLocaleString('pt') + ' Kz' : '';
+        html += '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.name || p.id) + price + '</option>';
+      });
+      html += '</optgroup>';
+    });
+    html += '<option value="__custom">Outro (escrever nome)</option>';
+    sel.innerHTML = html;
+
+    const matchById = selectedId && list.find(p => p.id === selectedId);
+    const matchByName = !matchById && selectedName
+      ? list.find(p => String(p.name).toLowerCase() === String(selectedName).toLowerCase())
+      : null;
+    if (matchById) {
+      sel.value = matchById.id;
+      setPlanCustomVisible(false);
+      if ($('#cPlan')) $('#cPlan').value = matchById.name || '';
+    } else if (matchByName) {
+      sel.value = matchByName.id;
+      setPlanCustomVisible(false);
+      if ($('#cPlan')) $('#cPlan').value = matchByName.name || '';
+    } else if (selectedName || selectedId) {
+      sel.value = '__custom';
+      setPlanCustomVisible(true);
+      if ($('#cPlan')) $('#cPlan').value = selectedName || selectedId || '';
+    } else {
+      sel.value = '';
+      setPlanCustomVisible(false);
+      if ($('#cPlan')) $('#cPlan').value = '';
+    }
+  }
+
+  function setPlanCustomVisible(show) {
+    const row = $('#cPlanCustomRow');
+    if (row) row.style.display = show ? '' : 'none';
+  }
+
+  function applyPlanFromSelect() {
+    const sel = $('#cPlanSelect');
+    if (!sel) return;
+    const v = sel.value;
+    if (!v) {
+      setPlanCustomVisible(false);
+      return;
+    }
+    if (v === '__custom') {
+      setPlanCustomVisible(true);
+      return;
+    }
+    setPlanCustomVisible(false);
+    const p = (products || []).find(x => x.id === v);
+    if (!p) return;
+    if ($('#cPlan')) $('#cPlan').value = p.name || '';
+    if (p.price != null && $('#cPrice')) {
+      $('#cPrice').value = p.price;
+      if ($('#cPayAmount')) $('#cPayAmount').value = p.price;
+    }
+    if (p.period && $('#cCycle')) {
+      const period = String(p.period).toLowerCase();
+      if (period === 'mensal' || period === 'trimestral' || period === 'anual' || period === 'pacote') {
+        $('#cCycle').value = period;
+      } else if (period === 'única' || period === 'unica') {
+        $('#cCycle').value = 'pacote';
+      }
+    }
+    suggestPlanEnd();
+    updateClientStatusChips();
+    updatePayPreview();
+  }
+
+  function suggestPlanEnd() {
+    const startEl = $('#cPlanStart');
+    const endEl = $('#cPlanEnd');
+    const cycleEl = $('#cCycle');
+    const hint = $('#cEndHint');
+    if (!startEl || !endEl || !cycleEl) return;
+    const start = startEl.value;
+    const cycle = cycleEl.value || 'mensal';
+    if (!start) {
+      if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
+      return;
+    }
+    const months = CYCLE_MONTHS[cycle] || 1;
+    const suggested = addMonthsISO(start, months);
+    if (!endEl.value) {
+      endEl.value = suggested;
+    }
+    if (hint) {
+      hint.style.display = '';
+      hint.textContent = 'Sugestão de fim (' + cycle + '): ' + formatDatePT(suggested);
+    }
+  }
+
+  function membershipLabel(v) {
+    const map = {
+      pendente: 'Pendente', activo: 'Activo', expirado: 'Expirado',
+      suspenso: 'Suspenso', cancelado: 'Cancelado', arquivado: 'Arquivado'
+    };
+    return map[v] || v || '';
+  }
+
+  function billingLabel(v) {
+    const map = {
+      em_dia: 'Em dia', em_divida: 'Em dívida', atrasado: 'Atrasado',
+      isento: 'Isento', desistente: 'Desistente'
+    };
+    return map[v] || v || '';
+  }
+
+  function updateClientStatusChips(client) {
+    const host = $('#cStatusChips');
+    if (!host) return;
+    const membership = ($('#cMembership') && $('#cMembership').value) || client?.membershipStatus || '';
+    const billing = ($('#cBilling') && $('#cBilling').value) || client?.billingStatus || '';
+    const planEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || client?.planEnd || '';
+    const chips = [];
+
+    if (membership) {
+      let cls = 'is-muted';
+      if (membership === 'activo') cls = 'is-ok';
+      else if (membership === 'expirado' || membership === 'cancelado') cls = 'is-danger';
+      else if (membership === 'suspenso' || membership === 'pendente') cls = 'is-warn';
+      chips.push('<span class="c-chip ' + cls + '">' + escapeHtml(membershipLabel(membership)) + '</span>');
+    }
+    if (billing) {
+      let cls = 'is-muted';
+      if (billing === 'em_dia' || billing === 'isento') cls = 'is-ok';
+      else if (billing === 'em_divida' || billing === 'atrasado') cls = 'is-danger';
+      else if (billing === 'desistente') cls = 'is-warn';
+      chips.push('<span class="c-chip ' + cls + '">' + escapeHtml(billingLabel(billing)) + '</span>');
+    }
+    if (planEnd) {
+      const days = daysUntil(planEnd);
+      if (days == null) {
+        chips.push('<span class="c-chip is-info">Vence ' + escapeHtml(formatDatePT(planEnd)) + '</span>');
+      } else if (days < 0) {
+        chips.push('<span class="c-chip is-danger">Expirou há ' + Math.abs(days) + 'd</span>');
+      } else if (days <= 7) {
+        chips.push('<span class="c-chip is-warn">Expira em ' + days + 'd</span>');
+      } else {
+        chips.push('<span class="c-chip is-info">Vence ' + escapeHtml(formatDatePT(planEnd)) + '</span>');
+      }
+    }
+    host.innerHTML = chips.join('');
+  }
+
+  function updatePayPreview() {
+    const preview = $('#cPayPreview');
+    if (!preview) return;
+    const cycle = ($('#cCycle') && $('#cCycle').value) || 'mensal';
+    const months = CYCLE_MONTHS[cycle] || 1;
+    const currentEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || '';
+    const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
+    const end = addMonthsISO(start, months);
+    const amount = ($('#cPayAmount') && $('#cPayAmount').value) || ($('#cPrice') && $('#cPrice').value) || '';
+    const amtTxt = amount !== '' ? Number(amount).toLocaleString('pt') + ' Kz · ' : '';
+    preview.style.display = '';
+    preview.textContent = 'Após pagar: novo fim ' + formatDatePT(end) + ' · Activo · Em dia' + (amtTxt ? ' · ' + amtTxt.trim() : '');
+  }
+
+  function setClientSectionOpen(section, open) {
+    if (!section) return;
+    const head = section.querySelector('.client-section-head');
+    const body = section.querySelector('.client-section-body');
+    if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (body) {
+      if (open) body.removeAttribute('hidden');
+      else body.setAttribute('hidden', '');
+    }
+  }
+
   function openClientModal(id) {
     editingClientId = id || null;
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
@@ -2632,7 +2826,6 @@
     setScheduleSelect(schedule);
     $('#cHasCard').value = hasCard === 'sim' || hasCard === 'nao' ? hasCard : '';
 
-    // If structured keys were missing and we parsed them, show cleaned notes
     const usedNotesFallback = c && (
       (c.memberNumber == null && meta.memberNumber != null) ||
       (c.age == null && meta.age != null) ||
@@ -2641,14 +2834,13 @@
     );
     $('#cNotes').value = usedNotesFallback ? meta.cleanedNotes : (c?.notes || '');
 
-    $('#cPlan').value = c?.planName || c?.planId || '';
+    populatePlanSelect(c?.planId || '', c?.planName || '');
     $('#cPrice').value = c?.price != null ? c.price : '';
     $('#cCycle').value = c?.billingCycle || 'mensal';
     $('#cPlanStart').value = c?.planStart || '';
     $('#cPlanEnd').value = c?.planEnd || '';
     $('#cMembership').value = c?.membershipStatus || 'pendente';
     $('#cBilling').value = (c?.billingStatus === 'atrasado' ? 'em_divida' : (c?.billingStatus || 'em_dia'));
-    // Ensure desistente (and any future values) are selectable even if not in the static options at load time
     if (c?.billingStatus && !$('#cBilling').querySelector('option[value="' + c.billingStatus + '"]')) {
       const opt = document.createElement('option');
       opt.value = c.billingStatus;
@@ -2662,12 +2854,15 @@
     $('#cPayMethod').value = 'cash';
     $('#cPayNote').value = '';
     renderPayHistory(c?.payments);
-    const payBlock = $('#paymentBlock');
-    if (payBlock) payBlock.style.display = id ? '' : 'none';
+
     const archBtn = $('#archiveClientBtn');
     const delBtn = $('#deleteClientBtn');
     if (archBtn) archBtn.style.display = id ? '' : 'none';
     if (delBtn) delBtn.style.display = id ? '' : 'none';
+
+    const qa = $('#cQuickActions');
+    if (qa) qa.style.display = id ? 'flex' : 'none';
+
     const subLink = $('#cSubLink');
     if (subLink) {
       if (c && c.fromSubmission) {
@@ -2678,23 +2873,39 @@
         subLink.innerHTML = '';
       }
     }
-    // Documents from client record or linked enrollment
-    let docsHost = $('#cDocsHost');
-    if (!docsHost) {
-      docsHost = document.createElement('div');
-      docsHost.id = 'cDocsHost';
-      const notesRow = $('#cNotes') && $('#cNotes').closest('.form-row');
-      if (notesRow && notesRow.parentNode) {
-        notesRow.parentNode.insertBefore(docsHost, notesRow.nextSibling);
-      } else {
-        const pay = $('#paymentBlock');
-        if (pay && pay.parentNode) pay.parentNode.insertBefore(docsHost, pay);
+
+    // Core sections open; collapsible ones depend on content
+    document.querySelectorAll('#clientModal .client-section').forEach(sec => {
+      const key = sec.getAttribute('data-section');
+      const isCollapsible = sec.classList.contains('is-collapsible');
+      if (!isCollapsible) {
+        setClientSectionOpen(sec, true);
+        return;
       }
+      if (key === 'pagamentos') {
+        const hasPay = !!(c && c.payments && c.payments.length);
+        const inDebt = c && (c.billingStatus === 'em_divida' || c.billingStatus === 'atrasado' || c._expired);
+        setClientSectionOpen(sec, !!(id && (hasPay || inDebt)));
+      } else if (key === 'docs') {
+        const n = c ? clientAttachments(c).length : 0;
+        setClientSectionOpen(sec, n > 0);
+      } else if (key === 'treinos') {
+        setClientSectionOpen(sec, false);
+      } else {
+        setClientSectionOpen(sec, false);
+      }
+    });
+
+    const docsHost = $('#cDocsHost');
+    if (docsHost) {
+      docsHost.innerHTML = renderClientDocsBlock(c);
+      bindClientDocsActions();
     }
-    docsHost.innerHTML = renderClientDocsBlock(c);
-    bindClientDocsActions();
     updateDupWarn(c?.phone || '', id);
-    // Training history for existing clients
+    updateClientStatusChips(c);
+    updatePayPreview();
+    suggestPlanEnd();
+
     if (id) {
       clientHistoryYear = '';
       loadClientHistory(id);
@@ -2702,11 +2913,11 @@
       const th = $('#cHistoryHost') || $('#cTrainingsHost');
       if (th) th.innerHTML = '';
     }
+
     const modal = $('#clientModal');
     modal.classList.add('open');
-    // Always start at the top of the form when opening/editing a client
-    const panel = modal.querySelector('.modal-panel') || modal.querySelector('.modal-content') || modal;
-    if (panel) panel.scrollTop = 0;
+    const scroll = modal.querySelector('.client-modal-scroll') || modal;
+    if (scroll) scroll.scrollTop = 0;
     modal.scrollTop = 0;
   }
 
@@ -2716,6 +2927,18 @@
     const ageRaw = $('#cAge') && $('#cAge').value;
     const scheduleVal = ($('#cSchedule') && $('#cSchedule').value) || '';
     const hasCardVal = ($('#cHasCard') && $('#cHasCard').value) || '';
+    const planSel = ($('#cPlanSelect') && $('#cPlanSelect').value) || '';
+    let planId = existing?.planId || '';
+    let planName = ($('#cPlan') && $('#cPlan').value.trim()) || '';
+    if (planSel && planSel !== '__custom') {
+      planId = planSel;
+      const p = (products || []).find(x => x.id === planSel);
+      if (p && p.name) planName = p.name;
+    } else if (planSel === '__custom') {
+      planId = existing?.planId && !((products || []).some(x => x.id === existing.planId))
+        ? existing.planId
+        : '';
+    }
     const data = {
       id: editingClientId || ('cli-' + Date.now()),
       name: $('#cName').value.trim(),
@@ -2726,8 +2949,8 @@
       age: ageRaw === '' || ageRaw == null ? null : Number(ageRaw),
       schedule: scheduleVal || '',
       hasCard: hasCardVal || '',
-      planName: $('#cPlan').value.trim(),
-      planId: existing?.planId || '',
+      planName: planName,
+      planId: planId,
       price: priceVal === '' ? null : Number(priceVal),
       billingCycle: $('#cCycle').value,
       planStart: $('#cPlanStart').value || null,
@@ -2743,7 +2966,6 @@
       fromSubmission: existing?.fromSubmission || null,
       fromImport: existing?.fromImport || null,
       archivedAt: existing?.archivedAt || null,
-      // Keep enrollment documents when editing
       attachments: existing?.attachments || null,
       documents: existing?.documents || null,
       paymentProof: existing?.paymentProof || null
@@ -2980,6 +3202,63 @@
   $('#copyClientPhonesBtn')?.addEventListener('click', copyClientPhones);
   $('#refreshAuditBtn')?.addEventListener('click', () => loadAuditLog());
 
+  // Client modal: collapsible sections
+  document.querySelectorAll('#clientModal .client-section-head').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.closest('.client-section');
+      const open = btn.getAttribute('aria-expanded') !== 'true';
+      setClientSectionOpen(section, open);
+    });
+  });
+
+  // Plan select → fill price / cycle / custom name
+  $('#cPlanSelect')?.addEventListener('change', () => applyPlanFromSelect());
+
+  // Auto end-date suggestion + chips
+  ['cPlanStart', 'cCycle'].forEach(id => {
+    $('#' + id)?.addEventListener('change', () => {
+      suggestPlanEnd();
+      updatePayPreview();
+      updateClientStatusChips();
+    });
+  });
+  ['cPlanEnd', 'cMembership', 'cBilling'].forEach(id => {
+    $('#' + id)?.addEventListener('change', () => {
+      updateClientStatusChips();
+      updatePayPreview();
+    });
+  });
+  $('#cPayAmount')?.addEventListener('input', () => updatePayPreview());
+  $('#cPrice')?.addEventListener('input', () => updatePayPreview());
+
+  // Quick actions
+  $('#cQaWhatsApp')?.addEventListener('click', () => {
+    const phone = ($('#cPhone') && $('#cPhone').value) || '';
+    const wa = whatsappUrl(phone);
+    if (!wa) return toast('Telefone em falta');
+    window.open(wa, '_blank', 'noopener');
+  });
+  $('#cQaCopyPhone')?.addEventListener('click', async () => {
+    const phone = (($('#cPhone') && $('#cPhone').value) || '').trim();
+    if (!phone) return toast('Telefone em falta');
+    try {
+      await navigator.clipboard.writeText(phone);
+      toast('Telefone copiado');
+    } catch (e) {
+      toast('Não foi possível copiar');
+    }
+  });
+  $('#cQaRenew')?.addEventListener('click', () => {
+    const sec = $('#cPaySection');
+    setClientSectionOpen(sec, true);
+    const scroll = document.querySelector('#clientModal .client-modal-scroll');
+    if (sec && scroll) {
+      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    updatePayPreview();
+    $('#cPayAmount')?.focus();
+  });
+
   $('#clientSearch')?.addEventListener('input', (e) => {
     clientsSearch = e.target.value.trim();
     renderClients();
@@ -3093,6 +3372,13 @@
     const currentEnd = $('#cPlanEnd').value || existing.planEnd;
     const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
     const end = addMonthsISO(start, months);
+    const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
+    if (!confirm(
+      'Registar pagamento e renovar?\n\n' +
+      'Valor: ' + amtLabel + '\n' +
+      'Novo fim do plano: ' + formatDatePT(end) + '\n' +
+      'Estado → Activo · Faturação → Em dia'
+    )) return;
     const payment = {
       id: 'pay-' + Date.now(),
       amount: amount,
@@ -3104,7 +3390,6 @@
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
-    // Sync form dates before save
     $('#cPlanStart').value = $('#cPlanStart').value || start;
     $('#cPlanEnd').value = end;
     $('#cMembership').value = 'activo';
@@ -3546,12 +3831,14 @@
     host = document.createElement('div');
     host.id = 'cHistoryHost';
     host.className = 'client-history-block';
+    const sectionBody = document.querySelector('#cHistorySection .client-section-body');
+    if (sectionBody) {
+      sectionBody.appendChild(host);
+      return host;
+    }
     const pay = $('#paymentBlock');
     if (pay && pay.parentNode) {
       pay.parentNode.insertBefore(host, pay);
-    } else {
-      const notes = $('#cNotes') && $('#cNotes').closest('.form-row');
-      if (notes && notes.parentNode) notes.parentNode.appendChild(host);
     }
     return host;
   }

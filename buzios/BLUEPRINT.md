@@ -216,7 +216,14 @@ Closes on **outside click** or **Escape**.
 
 Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `notes`, `payments[]`, `attachments` / `documents`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.
 
-Edit modal exposes Nº sócio, idade, horário (select includes **05:00**), cartão, payment history (edit/delete icons), document upload/remove, and **Histórico do cliente** (unified timeline).
+**Edit client modal (2026-11-10 redesign):**
+- Collapsible sections: Dados · Plano & estado · Emergência · Notas · Documentos · Histórico de treinos · Pagamentos
+- Status chips at top (membership, billing, days-to-expiry)
+- Quick actions when editing: WhatsApp · Renovar (jumps to payment) · Copiar telefone
+- Plan as **select from catalog** (grouped ginásio/natação) + “Outro” custom name; selecting a plan fills price + cycle
+- Cycle / plan start suggests end date; pay-and-renew shows explicit preview and confirm (new end · Activo · Em dia)
+- Two-column field pairs on wider screens; sticky footer with Guardar / Arquivar / Apagar
+- Docs, trainings history, and payments collapsed by default (auto-open when client has docs / debt / payment history)
 
 **Client list:** search is accent-insensitive; filters include status pills + **Filtrar por idade** (ranges / sem idade).
 

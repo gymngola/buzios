@@ -456,104 +456,210 @@
 
   <!-- Client modal -->
   <div class="modal-backdrop" id="clientModal">
-    <div class="modal">
-      <button type="button" class="modal-close" id="closeClientModal">×</button>
-      <h2 id="clientModalTitle">Cliente</h2>
-      <p id="cDupWarn" class="dup-warn" style="display:none"></p>
-      <p id="cSubLink" class="meta" style="display:none;margin-bottom:0.75rem"></p>
-      <div class="form-row"><label>Nome</label><input type="text" id="cName"></div>
-      <div class="form-row"><label>Telefone</label><input type="tel" id="cPhone" inputmode="tel"></div>
-      <div class="form-row"><label>Email</label><input type="email" id="cEmail"></div>
-      <div class="form-row"><label>Área</label>
-        <select id="cArea"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option><option value="ambos">Ambos</option></select>
-      </div>
-      <div class="form-row"><label>Nº sócio</label><input type="number" id="cMemberNumber" inputmode="numeric" min="1" step="1" placeholder="ex. 1344"></div>
-      <div class="form-row"><label>Idade</label><input type="number" id="cAge" inputmode="numeric" min="1" max="120" step="1" placeholder="ex. 23"></div>
-      <div class="form-row"><label>Horário</label>
-        <select id="cSchedule">
-          <option value="">—</option>
-          <option value="05:00">05:00</option>
-          <option value="06:00">06:00</option>
-          <option value="07:00">07:00</option>
-          <option value="08:00">08:00</option>
-          <option value="09:00">09:00</option>
-          <option value="10:00">10:00</option>
-          <option value="11:00">11:00</option>
-          <option value="14:00">14:00</option>
-          <option value="15:00">15:00</option>
-          <option value="16:00">16:00</option>
-          <option value="17:00">17:00</option>
-          <option value="18:00">18:00</option>
-          <option value="19:00">19:00</option>
-          <option value="20:00">20:00</option>
-        </select>
-      </div>
-      <div class="form-row"><label>Cartão de acesso</label>
-        <select id="cHasCard">
-          <option value="">—</option>
-          <option value="sim">Sim</option>
-          <option value="nao">Não</option>
-        </select>
-      </div>
-      <div class="form-row"><label>Plano</label><input type="text" id="cPlan" placeholder="ex. Mensal ginásio"></div>
-      <div class="form-row"><label>Preço do período (Kz)</label><input type="number" id="cPrice" inputmode="decimal" min="0" step="100" placeholder="0"></div>
-      <div class="form-row"><label>Ciclo de faturação</label>
-        <select id="cCycle">
-          <option value="mensal">Mensal</option>
-          <option value="trimestral">Trimestral</option>
-          <option value="anual">Anual</option>
-          <option value="pacote">Pacote / avulso</option>
-        </select>
-      </div>
-      <div class="form-row"><label>Início do plano</label><input type="date" id="cPlanStart"></div>
-      <div class="form-row"><label>Fim do plano (vence)</label><input type="date" id="cPlanEnd"></div>
-      <div class="form-row"><label>Membership</label>
-        <select id="cMembership">
-          <option value="pendente">Pendente</option>
-          <option value="activo">Activo</option>
-          <option value="expirado">Expirado</option>
-          <option value="suspenso">Suspenso</option>
-          <option value="cancelado">Cancelado</option>
-          <option value="arquivado">Arquivado</option>
-        </select>
-      </div>
-      <div class="form-row"><label>Faturação</label>
-        <select id="cBilling">
-          <option value="em_dia">Em dia</option>
-          <option value="em_divida">Em dívida</option>
-          <option value="atrasado">Atrasado</option>
-          <option value="isento">Isento</option>
-          <option value="desistente">Desistente</option>
-        </select>
-      </div>
-      <div class="form-row"><label>Contacto de emergência</label><input type="text" id="cEmergencyName" placeholder="Nome"></div>
-      <div class="form-row"><label>Tel. emergência</label><input type="tel" id="cEmergencyPhone" inputmode="tel" placeholder="Telefone"></div>
-      <div class="form-row"><label>Notas</label><textarea id="cNotes" rows="2"></textarea></div>
-
-      <div id="paymentBlock" style="margin-top:1rem;padding-top:1rem;border-top:1px solid #eee">
-        <h3 style="font-size:0.9rem;font-weight:500;margin-bottom:0.65rem">Registar pagamento</h3>
-        <div class="form-row"><label>Valor (Kz)</label><input type="number" id="cPayAmount" inputmode="decimal" min="0" step="100" placeholder="Valor pago"></div>
-        <div class="form-row"><label>Método</label>
-          <select id="cPayMethod">
-            <option value="cash">Numerário</option>
-            <option value="transfer">Transferência</option>
-            <option value="multicaixa">Multicaixa</option>
-            <option value="other">Outro</option>
-          </select>
+    <div class="modal client-modal">
+      <button type="button" class="modal-close" id="closeClientModal" aria-label="Fechar">×</button>
+      <div class="client-modal-scroll">
+        <h2 id="clientModalTitle">Cliente</h2>
+        <div id="cStatusChips" class="client-status-chips" aria-live="polite"></div>
+        <div id="cQuickActions" class="client-quick-actions" style="display:none">
+          <button type="button" class="cq-btn" id="cQaWhatsApp" title="Abrir WhatsApp">WhatsApp</button>
+          <button type="button" class="cq-btn" id="cQaRenew" title="Ir para pagamento e renovar">Renovar</button>
+          <button type="button" class="cq-btn" id="cQaCopyPhone" title="Copiar telefone">Copiar tel.</button>
         </div>
-        <div class="form-row"><label>Nota do pagamento</label><input type="text" id="cPayNote" placeholder="Opcional"></div>
-        <div class="form-actions" style="margin-top:0.5rem">
-          <button type="button" id="payRenewBtn" style="flex:1;height:42px;background:#c45c26;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:0.85rem">Pagar e renovar período</button>
-        </div>
-        <p style="font-size:0.75rem;color:#666;margin-top:0.4rem">Actualiza fim do plano conforme o ciclo, marca activo e em dia.</p>
-        <h3 style="font-size:0.85rem;font-weight:500;margin:1rem 0 0.35rem">Histórico de pagamentos</h3>
-        <ul class="pay-history" id="cPayHistory"></ul>
+        <p id="cDupWarn" class="dup-warn" style="display:none"></p>
+        <p id="cSubLink" class="meta" style="display:none;margin-bottom:0.75rem"></p>
+
+        <!-- Dados -->
+        <section class="client-section" data-section="dados">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Dados</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="form-row"><label>Nome</label><input type="text" id="cName" autocomplete="name"></div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Telefone</label><input type="tel" id="cPhone" inputmode="tel" autocomplete="tel"></div>
+              <div class="form-row"><label>Email</label><input type="email" id="cEmail" autocomplete="email"></div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Área</label>
+                <select id="cArea"><option value="ginasio">Ginásio</option><option value="natacao">Natação</option><option value="ambos">Ambos</option></select>
+              </div>
+              <div class="form-row"><label>Nº sócio</label><input type="number" id="cMemberNumber" inputmode="numeric" min="1" step="1" placeholder="ex. 1344"></div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Idade</label><input type="number" id="cAge" inputmode="numeric" min="1" max="120" step="1" placeholder="ex. 23"></div>
+              <div class="form-row"><label>Horário</label>
+                <select id="cSchedule">
+                  <option value="">—</option>
+                  <option value="05:00">05:00</option>
+                  <option value="06:00">06:00</option>
+                  <option value="07:00">07:00</option>
+                  <option value="08:00">08:00</option>
+                  <option value="09:00">09:00</option>
+                  <option value="10:00">10:00</option>
+                  <option value="11:00">11:00</option>
+                  <option value="14:00">14:00</option>
+                  <option value="15:00">15:00</option>
+                  <option value="16:00">16:00</option>
+                  <option value="17:00">17:00</option>
+                  <option value="18:00">18:00</option>
+                  <option value="19:00">19:00</option>
+                  <option value="20:00">20:00</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row"><label>Cartão de acesso</label>
+              <select id="cHasCard">
+                <option value="">—</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Plano & estado -->
+        <section class="client-section" data-section="plano">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Plano &amp; estado</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="form-row"><label>Plano</label>
+              <select id="cPlanSelect">
+                <option value="">— Escolher plano —</option>
+                <option value="__custom">Outro (escrever nome)</option>
+              </select>
+            </div>
+            <div class="form-row" id="cPlanCustomRow" style="display:none">
+              <label>Nome do plano</label>
+              <input type="text" id="cPlan" placeholder="ex. Mensal ginásio">
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Preço do período (Kz)</label><input type="number" id="cPrice" inputmode="decimal" min="0" step="100" placeholder="0"></div>
+              <div class="form-row"><label>Ciclo de faturação</label>
+                <select id="cCycle">
+                  <option value="mensal">Mensal</option>
+                  <option value="trimestral">Trimestral</option>
+                  <option value="anual">Anual</option>
+                  <option value="pacote">Pacote / avulso</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Início do plano</label><input type="date" id="cPlanStart"></div>
+              <div class="form-row"><label>Fim do plano (vence)</label><input type="date" id="cPlanEnd"></div>
+            </div>
+            <p id="cEndHint" class="client-end-hint" style="display:none"></p>
+            <div class="form-grid-2">
+              <div class="form-row"><label>Membership</label>
+                <select id="cMembership">
+                  <option value="pendente">Pendente</option>
+                  <option value="activo">Activo</option>
+                  <option value="expirado">Expirado</option>
+                  <option value="suspenso">Suspenso</option>
+                  <option value="cancelado">Cancelado</option>
+                  <option value="arquivado">Arquivado</option>
+                </select>
+              </div>
+              <div class="form-row"><label>Faturação</label>
+                <select id="cBilling">
+                  <option value="em_dia">Em dia</option>
+                  <option value="em_divida">Em dívida</option>
+                  <option value="atrasado">Atrasado</option>
+                  <option value="isento">Isento</option>
+                  <option value="desistente">Desistente</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Emergência -->
+        <section class="client-section" data-section="emergencia">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Contacto de emergência</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="form-grid-2">
+              <div class="form-row"><label>Nome</label><input type="text" id="cEmergencyName" placeholder="Nome"></div>
+              <div class="form-row"><label>Telefone</label><input type="tel" id="cEmergencyPhone" inputmode="tel" placeholder="Telefone"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Notas -->
+        <section class="client-section" data-section="notas">
+          <button type="button" class="client-section-head" aria-expanded="true">
+            <span>Notas</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body">
+            <div class="form-row"><label class="sr-only">Notas</label><textarea id="cNotes" rows="3" placeholder="Observações internas…"></textarea></div>
+          </div>
+        </section>
+
+        <!-- Documentos (host filled by JS) -->
+        <section class="client-section is-collapsible" data-section="docs" id="cDocsSection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Documentos</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="cDocsHost"></div>
+          </div>
+        </section>
+
+        <!-- Treinos / histórico (host filled by JS) -->
+        <section class="client-section is-collapsible" data-section="treinos" id="cHistorySection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Histórico de treinos</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="cHistoryHost" class="client-history-block"></div>
+          </div>
+        </section>
+
+        <!-- Pagamentos -->
+        <section class="client-section is-collapsible" data-section="pagamentos" id="cPaySection">
+          <button type="button" class="client-section-head" aria-expanded="false">
+            <span>Pagamentos</span>
+            <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="client-section-body" hidden>
+            <div id="paymentBlock">
+              <h3 class="client-subhead">Registar pagamento</h3>
+              <div class="form-grid-2">
+                <div class="form-row"><label>Valor (Kz)</label><input type="number" id="cPayAmount" inputmode="decimal" min="0" step="100" placeholder="Valor pago"></div>
+                <div class="form-row"><label>Método</label>
+                  <select id="cPayMethod">
+                    <option value="cash">Numerário</option>
+                    <option value="transfer">Transferência</option>
+                    <option value="multicaixa">Multicaixa</option>
+                    <option value="other">Outro</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row"><label>Nota do pagamento</label><input type="text" id="cPayNote" placeholder="Opcional"></div>
+              <div class="form-actions" style="margin-top:0.5rem">
+                <button type="button" id="payRenewBtn" class="btn-pay-renew">Pagar e renovar período</button>
+              </div>
+              <p id="cPayPreview" class="client-pay-preview" style="display:none"></p>
+              <p class="client-help-text">Actualiza fim do plano conforme o ciclo, marca activo e em dia.</p>
+              <h3 class="client-subhead" style="margin-top:1rem">Histórico de pagamentos</h3>
+              <ul class="pay-history" id="cPayHistory"></ul>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div class="form-actions" style="margin-top:1.25rem;flex-wrap:wrap">
-        <button type="button" id="saveClientBtn" style="flex:1;min-width:120px;height:44px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;cursor:pointer">Guardar cliente</button>
-        <button type="button" id="archiveClientBtn" class="btn-secondary" style="display:none;height:44px;padding:0 1rem;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem">Arquivar</button>
-        <button type="button" id="deleteClientBtn" class="danger" style="display:none;height:44px;padding:0 1rem;border:1px solid #e8b4b4;border-radius:8px;background:#fff;color:#b33;cursor:pointer;font-size:0.85rem">Apagar</button>
+      <div class="client-modal-footer">
+        <button type="button" id="saveClientBtn" class="btn-save-client">Guardar cliente</button>
+        <button type="button" id="archiveClientBtn" class="btn-secondary btn-archive-client" style="display:none">Arquivar</button>
+        <button type="button" id="deleteClientBtn" class="danger btn-delete-client" style="display:none">Apagar</button>
       </div>
     </div>
   </div>

@@ -1219,6 +1219,27 @@ async function d1Status(env) {
 
 function clientToRow(c) {
   const now = new Date().toISOString();
+  // Persist attachments / documents / paymentProof in documents_json (migration 0003)
+  let documents_json = null;
+  try {
+    const docsPayload = {
+      attachments: Array.isArray(c.attachments) ? c.attachments : [],
+      documents: c.documents && typeof c.documents === 'object' ? c.documents : null,
+      paymentProof: c.paymentProof || null
+    };
+    if (
+      (docsPayload.attachments && docsPayload.attachments.length) ||
+      (docsPayload.documents && Object.keys(docsPayload.documents).length) ||
+      docsPayload.paymentProof
+    ) {
+      documents_json = JSON.stringify(docsPayload);
+    } else if (c.documents_json != null) {
+      // Allow raw passthrough when already serialized
+      documents_json = typeof c.documents_json === 'string' ? c.documents_json : JSON.stringify(c.documents_json);
+    }
+  } catch (_) {
+    documents_json = null;
+  }
   return {
     id: String(c.id),
     member_number: c.memberNumber != null ? Number(c.memberNumber) : null,
@@ -1245,7 +1266,9 @@ function clientToRow(c) {
     from_import: c.fromImport ? 1 : 0,
     from_submission: c.fromSubmission || null,
     created_at: c.createdAt || now,
-    updated_at: now
+    updated_at: now,
+    photo_url: c.photoUrl || c.photo_url || null,
+    documents_json
   };
 }
 
@@ -1258,6 +1281,21 @@ function rowToClient(r) {
   let schedule = r.schedule;
   try {
     if (schedule && schedule.charAt(0) === '[') schedule = JSON.parse(schedule);
+  } catch (_) {}
+  // Restore attachments / documents / paymentProof from documents_json
+  let attachments = null;
+  let documents = null;
+  let paymentProof = null;
+  try {
+    if (r.documents_json) {
+      const parsed = typeof r.documents_json === 'string' ? JSON.parse(r.documents_json) : r.documents_json;
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.attachments)) attachments = parsed.attachments;
+        else if (Array.isArray(parsed)) attachments = parsed; // legacy: bare array
+        if (parsed.documents && typeof parsed.documents === 'object') documents = parsed.documents;
+        if (parsed.paymentProof) paymentProof = parsed.paymentProof;
+      }
+    }
   } catch (_) {}
   return {
     id: r.id,
@@ -1288,7 +1326,10 @@ function rowToClient(r) {
     deletedAt: r.deleted_at || null,
     photoUrl: r.photo_url || null,
     accountStatus: r.account_status || null,
-    lastLoginAt: r.last_login_at || null
+    lastLoginAt: r.last_login_at || null,
+    attachments: attachments,
+    documents: documents,
+    paymentProof: paymentProof
   };
 }
 
@@ -1403,13 +1444,15 @@ async function d1BatchWithRetry(env, buildStmts, maxAttempts) {
 
 function d1ClientUpsertStmt(env, c) {
   const r = clientToRow(c);
+  // photo_url + documents_json require migration 0003_client_portal
   return env.DB.prepare(
     `INSERT INTO clients (
       id, member_number, name, phone, email, area, age, schedule, has_card,
       plan_id, plan_name, price, billing_cycle, plan_start, plan_end,
       membership_status, billing_status, last_payment_at, payments_json, notes,
-      emergency_name, emergency_phone, from_import, from_submission, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      emergency_name, emergency_phone, from_import, from_submission, created_at, updated_at,
+      photo_url, documents_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       member_number=excluded.member_number,
       name=excluded.name,
@@ -1434,12 +1477,15 @@ function d1ClientUpsertStmt(env, c) {
       emergency_phone=excluded.emergency_phone,
       from_import=excluded.from_import,
       from_submission=excluded.from_submission,
-      updated_at=excluded.updated_at`
+      updated_at=excluded.updated_at,
+      photo_url=excluded.photo_url,
+      documents_json=excluded.documents_json`
   ).bind(
     r.id, r.member_number, r.name, r.phone, r.email, r.area, r.age, r.schedule, r.has_card,
     r.plan_id, r.plan_name, r.price, r.billing_cycle, r.plan_start, r.plan_end,
     r.membership_status, r.billing_status, r.last_payment_at, r.payments_json, r.notes,
-    r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at
+    r.emergency_name, r.emergency_phone, r.from_import, r.from_submission, r.created_at, r.updated_at,
+    r.photo_url, r.documents_json
   );
 }
 

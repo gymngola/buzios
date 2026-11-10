@@ -476,6 +476,20 @@
             <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="client-section-body">
+            <div class="client-photo-row" id="cPhotoRow">
+              <div class="client-photo-avatar" id="cPhotoAvatar" aria-hidden="true">
+                <img id="cPhotoImg" alt="" hidden>
+                <span id="cPhotoInitials" class="client-photo-initials">?</span>
+              </div>
+              <div class="client-photo-actions">
+                <label class="btn-secondary client-photo-upload-label">
+                  Foto de perfil
+                  <input type="file" id="cPhotoUpload" accept="image/*" hidden>
+                </label>
+                <button type="button" class="btn-secondary" id="cPhotoRemove" style="display:none">Remover foto</button>
+                <p id="cPhotoStatus" class="muted" style="font-size:0.75rem;margin:0.25rem 0 0;min-height:1.1em"></p>
+              </div>
+            </div>
             <div class="form-row"><label>Nome</label><input type="text" id="cName" autocomplete="name"></div>
             <div class="form-grid-2">
               <div class="form-row"><label>Telefone</label><input type="tel" id="cPhone" inputmode="tel" autocomplete="tel"></div>

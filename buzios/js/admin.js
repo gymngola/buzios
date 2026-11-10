@@ -1613,6 +1613,11 @@
     if (saved) {
       toast(ok + ' documento(s) adicionado(s)');
       openClientModal(editingClientId);
+      // Keep docs section open so staff sees the new files
+      const docsSec = document.querySelector('#clientModal [data-section="docs"]');
+      if (docsSec) setClientSectionOpen(docsSec, true);
+    } else if (ok) {
+      toast('Upload feito, mas falhou a gravar no servidor. Verifique a migração D1 (0003).');
     }
   }
 
@@ -1640,6 +1645,77 @@
     const saved = await adminAction('update_client', data);
     if (saved) {
       toast('Documento removido');
+      openClientModal(editingClientId);
+    }
+  }
+
+  function clientInitials(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function renderClientPhoto(c) {
+    const img = $('#cPhotoImg');
+    const initials = $('#cPhotoInitials');
+    const removeBtn = $('#cPhotoRemove');
+    const status = $('#cPhotoStatus');
+    const url = c && c.photoUrl ? String(c.photoUrl) : '';
+    if (img) {
+      if (url) {
+        img.src = url;
+        img.hidden = false;
+        img.alt = (c && c.name) ? ('Foto de ' + c.name) : 'Foto de perfil';
+      } else {
+        img.removeAttribute('src');
+        img.hidden = true;
+        img.alt = '';
+      }
+    }
+    if (initials) {
+      initials.textContent = clientInitials(c && c.name);
+      initials.style.display = url ? 'none' : '';
+    }
+    if (removeBtn) removeBtn.style.display = url && editingClientId ? '' : 'none';
+    if (status) status.textContent = '';
+  }
+
+  async function uploadClientPhoto(file) {
+    if (!file) return;
+    if (!editingClientId) {
+      toast('Guarde o cliente primeiro, depois adicione a foto');
+      return;
+    }
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return toast('Cliente não encontrado');
+    const status = $('#cPhotoStatus');
+    if (status) status.textContent = 'A carregar foto…';
+    try {
+      const url = await uploadToCloudinary(file);
+      const data = enrichClient(Object.assign({}, existing, { photoUrl: url }));
+      const saved = await adminAction('update_client', data);
+      if (status) status.textContent = '';
+      if (saved) {
+        toast('Foto de perfil actualizada');
+        openClientModal(editingClientId);
+      }
+    } catch (err) {
+      console.warn('client photo upload failed', err);
+      if (status) status.textContent = '';
+      toast('Erro no upload: ' + (err.message || err));
+    }
+  }
+
+  async function removeClientPhoto() {
+    if (!editingClientId) return;
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    if (!confirm('Remover a foto de perfil deste cliente?')) return;
+    const data = enrichClient(Object.assign({}, existing, { photoUrl: null }));
+    const saved = await adminAction('update_client', data);
+    if (saved) {
+      toast('Foto removida');
       openClientModal(editingClientId);
     }
   }
@@ -2901,6 +2977,7 @@
       docsHost.innerHTML = renderClientDocsBlock(c);
       bindClientDocsActions();
     }
+    renderClientPhoto(c);
     updateDupWarn(c?.phone || '', id);
     updateClientStatusChips(c);
     updatePayPreview();
@@ -2968,7 +3045,8 @@
       archivedAt: existing?.archivedAt || null,
       attachments: existing?.attachments || null,
       documents: existing?.documents || null,
-      paymentProof: existing?.paymentProof || null
+      paymentProof: existing?.paymentProof || null,
+      photoUrl: existing?.photoUrl || null
     };
     return enrichClient(data);
   }
@@ -3197,6 +3275,16 @@
 
   $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
   $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
+
+  // Profile photo upload / remove
+  $('#cPhotoUpload')?.addEventListener('change', async (e) => {
+    const input = e.target;
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    await uploadClientPhoto(file);
+    if (input) input.value = '';
+  });
+  $('#cPhotoRemove')?.addEventListener('click', () => removeClientPhoto());
   $('#backupAllBtn')?.addEventListener('click', downloadFullBackup);
   $('#exportClientsBtn')?.addEventListener('click', exportClientsCsv);
   $('#copyClientPhonesBtn')?.addEventListener('click', copyClientPhones);
@@ -4211,14 +4299,20 @@
   });
 
   async function uploadToCloudinary(file) {
+    const isPdf = (file && (/\.pdf$/i.test(file.name || '') || file.type === 'application/pdf'));
+    // PDFs must go through /raw/upload (or /auto); /image/upload often rejects them
+    // and even when accepted, serving via /image/upload returns 401.
+    const resourceType = isPdf ? 'raw' : 'image';
+
     async function post(withFolder) {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('upload_preset', UPLOAD_PRESET);
       if (withFolder) fd.append('folder', CATALOG_FOLDER);
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-        method: 'POST', body: fd
-      });
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`,
+        { method: 'POST', body: fd }
+      );
       const data = await res.json().catch(() => ({}));
       return { res, data };
     }
@@ -4230,6 +4324,23 @@
       if (/folder|preset|not allowed|invalid/i.test(String(msg))) {
         ({ res, data } = await post(false));
       }
+    }
+    // Fallback: try auto resource type if image/raw failed (e.g. HEIC, odd MIME)
+    if (!res.ok && resourceType !== 'auto') {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', UPLOAD_PRESET);
+      fd.append('folder', CATALOG_FOLDER);
+      try {
+        const autoRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
+          { method: 'POST', body: fd }
+        );
+        const autoData = await autoRes.json().catch(() => ({}));
+        if (autoRes.ok && autoData.secure_url) {
+          return autoData.secure_url;
+        }
+      } catch (_) { /* ignore auto fallback errors */ }
     }
     if (!res.ok) {
       const msg = data.error?.message || data.message || res.statusText || 'upload failed';

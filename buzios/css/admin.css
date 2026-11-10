@@ -2039,25 +2039,58 @@ a { color: var(--admin-accent); }
   font-size: 0.8rem;
 }
 .client-training-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.35rem 0;
   border-bottom: 1px solid #eee;
   color: #444;
 }
+.client-training-text {
+  min-width: 0;
+  flex: 1;
+}
+.training-session-actions {
+  display: inline-flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
 
 .training-month-report {
+  display: none;
   margin-top: 0.75rem;
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
   border-radius: 10px;
-  padding: 0.75rem;
+  padding: 0.85rem 1rem;
+  box-shadow: var(--admin-shadow);
+}
+.training-month-report.is-open,
+.training-month-report:not([hidden]) {
+  display: block;
+}
+.training-month-report[hidden] {
+  display: none !important;
 }
 .training-report-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
+}
+.training-report-sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--admin-muted);
+}
+.training-report-scroll {
+  max-height: min(60vh, 520px);
+  overflow: auto;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
 }
 .training-report-table {
   width: 100%;
@@ -2067,11 +2100,25 @@ a { color: var(--admin-accent); }
 .training-report-table th,
 .training-report-table td {
   text-align: left;
-  padding: 0.4rem 0.5rem;
+  padding: 0.45rem 0.65rem;
   border-bottom: 1px solid #eee;
 }
-.training-report-table th { color: var(--admin-muted); font-weight: 600; }
-.training-report-table td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.training-report-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f6f8f9;
+  color: var(--admin-muted);
+  font-weight: 600;
+  z-index: 1;
+}
+.training-report-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.training-report-table tr.is-zero td {
+  color: var(--admin-muted);
+}
 
 .prod-card .actions a.wa-btn {
   padding: 0.4rem 0.75rem;

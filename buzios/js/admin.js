@@ -3701,9 +3701,13 @@
             const note = s.note ? ' — ' + escapeHtml(s.note) : '';
             return '<li>' +
               '<span>' + escapeHtml(t) + by + note + '</span>' +
+              '<span class="training-session-actions">' +
+              '<button type="button" class="pay-icon-btn" data-edit-training="' + escapeHtml(s.id) + '" data-trained-at="' + escapeHtml(s.trainedAt || '') + '" data-note="' + escapeHtml(s.note || '') + '" title="Editar sessão" aria-label="Editar sessão">' +
+              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+              '</button>' +
               '<button type="button" class="pay-icon-btn pay-icon-danger" data-del-training="' + escapeHtml(s.id) + '" title="Apagar sessão" aria-label="Apagar sessão">' +
               '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>' +
-              '</button></li>';
+              '</button></span></li>';
           }).join('') + '</ul>'
         : '';
 
@@ -3742,6 +3746,14 @@
     });
     list.querySelectorAll('[data-del-training]').forEach(btn => {
       btn.addEventListener('click', () => deleteTrainingSession(btn.getAttribute('data-del-training')));
+    });
+    list.querySelectorAll('[data-edit-training]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        editTrainingSession(btn.getAttribute('data-edit-training'), {
+          trainedAt: btn.getAttribute('data-trained-at') || '',
+          note: btn.getAttribute('data-note') || ''
+        });
+      });
     });
     list.querySelectorAll('[data-edit-cli]').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -3815,6 +3827,63 @@
     } catch (e) {
       console.warn('delete_training failed', e);
       toast('Erro ao apagar sessão');
+    }
+  }
+
+  /** Edit date/time + note for an existing training session. */
+  async function editTrainingSession(id, current) {
+    if (!id) return;
+    const cur = current || {};
+    let defaultLocal = '';
+    try {
+      const d = cur.trainedAt ? new Date(cur.trainedAt) : (cur.trainedDate ? new Date(cur.trainedDate + 'T12:00:00') : new Date());
+      if (!isNaN(d.getTime())) {
+        const pad = (n) => String(n).padStart(2, '0');
+        defaultLocal =
+          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+          'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+      }
+    } catch (_) {}
+
+    const whenStr = prompt('Data e hora do treino (AAAA-MM-DDTHH:MM)', defaultLocal || '');
+    if (whenStr === null) return; // cancelled
+    let trainedAt;
+    try {
+      const parsed = new Date(whenStr);
+      if (isNaN(parsed.getTime())) {
+        toast('Data/hora inválida');
+        return;
+      }
+      trainedAt = parsed.toISOString();
+    } catch (_) {
+      toast('Data/hora inválida');
+      return;
+    }
+    const note = prompt('Nota (opcional)', cur.note || '');
+    if (note === null) return;
+
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'update_training',
+          adminName: getAdminName(),
+          data: { id, trainedAt, note: String(note).trim() }
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      if (!res.ok) throw new Error('status ' + res.status);
+      const data = await res.json();
+      if (!data || !data.ok) throw new Error((data && data.error) || 'fail');
+      toast('Treino actualizado');
+      await refreshTrainingsSummary();
+      renderTrainingsPanel();
+      if (editingClientId) await loadClientTrainings(editingClientId);
+    } catch (e) {
+      console.warn('update_training failed', e);
+      toast(isTimeoutError(e) ? 'Servidor não respondeu' : 'Erro ao actualizar treino');
     }
   }
 
@@ -3936,12 +4005,31 @@
               : formatDatePT(t.trainedDate);
             const by = t.recordedBy ? ' · ' + escapeHtml(t.recordedBy) : '';
             const note = t.note ? ' — ' + escapeHtml(t.note) : '';
-            return '<li><span>' + escapeHtml(when) + by + note + '</span></li>';
+            return '<li>' +
+              '<span class="client-training-text">' + escapeHtml(when) + by + note + '</span>' +
+              '<span class="training-session-actions">' +
+              '<button type="button" class="pay-icon-btn" data-edit-training="' + escapeHtml(t.id) + '" data-trained-at="' + escapeHtml(t.trainedAt || '') + '" data-note="' + escapeHtml(t.note || '') + '" title="Editar" aria-label="Editar treino">' +
+              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+              '</button>' +
+              '<button type="button" class="pay-icon-btn pay-icon-danger" data-del-training="' + escapeHtml(t.id) + '" title="Apagar" aria-label="Apagar treino">' +
+              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>' +
+              '</button></span></li>';
           }).join('') + '</ul>'
         : '<p class="muted" style="font-size:0.85rem">Ainda sem treinos registados. Use <strong>+ Treino hoje</strong> ou o painel Treinos.</p>');
 
     const addBtn = host.querySelector('#cAddTrainingBtn');
     if (addBtn) addBtn.addEventListener('click', () => addTrainingForClient(clientId));
+    host.querySelectorAll('[data-edit-training]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        editTrainingSession(btn.getAttribute('data-edit-training'), {
+          trainedAt: btn.getAttribute('data-trained-at') || '',
+          note: btn.getAttribute('data-note') || ''
+        });
+      });
+    });
+    host.querySelectorAll('[data-del-training]').forEach(btn => {
+      btn.addEventListener('click', () => deleteTrainingSession(btn.getAttribute('data-del-training')));
+    });
   }
 
   function buildClientTimeline(cache, yearFilter) {
@@ -4084,58 +4172,106 @@
     await refreshTrainingsSummary();
     renderTrainingsPanel();
     const report = $('#trainingMonthReport');
-    if (report && !report.hidden) renderTrainingMonthReport();
+    if (report && report.classList.contains('is-open')) renderTrainingMonthReport();
   });
   $('#trainingSearch')?.addEventListener('input', () => renderTrainingsPanel());
   $('#trainingFilter')?.addEventListener('change', () => renderTrainingsPanel());
 
+  function closeTrainingMonthReport() {
+    const host = $('#trainingMonthReport');
+    const list = $('#trainingsList');
+    if (host) {
+      host.classList.remove('is-open');
+      host.setAttribute('hidden', '');
+      host.innerHTML = '';
+    }
+    if (list) {
+      list.removeAttribute('hidden');
+      list.hidden = false;
+    }
+  }
+
   function renderTrainingMonthReport() {
     const host = $('#trainingMonthReport');
     const list = $('#trainingsList');
-    if (!host) return;
+    if (!host) {
+      toast('Área do relatório não encontrada');
+      return;
+    }
     const cache = trainingsSummaryCache || {};
-    const month = cache.month || todayISO().slice(0, 7);
+    const dateVal = trainingSelectedDate();
+    const month = cache.month || (dateVal && dateVal.slice(0, 7)) || todayISO().slice(0, 7);
     const counts = cache.monthByClient || {};
+    const trainedIds = Object.keys(counts).filter(id => (counts[id] || 0) > 0);
+
     let clients = (store.clients || []).map(enrichClient).filter(c => !isInTrash(c));
-    clients = clients.filter(c => (counts[c.id] || 0) > 0 || c.membershipStatus === 'activo');
+    // Prefer everyone who trained this month + active members
+    clients = clients.filter(c =>
+      (counts[c.id] || 0) > 0 ||
+      c.membershipStatus === 'activo' ||
+      trainedIds.indexOf(c.id) >= 0
+    );
     clients.sort((a, b) => {
       const d = (counts[b.id] || 0) - (counts[a.id] || 0);
       if (d) return d;
       return String(a.name || '').localeCompare(String(b.name || ''), 'pt');
     });
+
+    const totalSessions = Object.keys(counts).reduce((s, id) => s + (Number(counts[id]) || 0), 0);
+    const withTraining = clients.filter(c => (counts[c.id] || 0) > 0).length;
+
     const rows = clients.map(c => {
       const n = counts[c.id] || 0;
-      return '<tr>' +
+      return '<tr' + (n ? '' : ' class="is-zero"') + '>' +
         '<td>' + (c.memberNumber != null ? escapeHtml(String(c.memberNumber)) : '—') + '</td>' +
         '<td>' + escapeHtml(c.name || '—') + '</td>' +
         '<td>' + escapeHtml(c.planName || c.planId || '—') + '</td>' +
         '<td class="num">' + n + '</td>' +
         '</tr>';
     }).join('');
+
     host.innerHTML =
       '<div class="training-report-head">' +
-        '<strong>Relatório de treinos — ' + escapeHtml(month) + '</strong>' +
-        '<button type="button" class="btn-secondary" id="trainingReportClose">Fechar relatório</button>' +
+        '<div>' +
+          '<strong>Relatório de treinos — ' + escapeHtml(month) + '</strong>' +
+          '<p class="training-report-sub">' +
+            '<strong>' + totalSessions + '</strong> sessões · ' +
+            '<strong>' + withTraining + '</strong> clientes com treino · ' +
+            clients.length + ' na lista' +
+          '</p>' +
+        '</div>' +
+        '<button type="button" class="btn-secondary" id="trainingReportClose">Fechar</button>' +
       '</div>' +
-      '<table class="training-report-table">' +
-        '<thead><tr><th>Nº</th><th>Nome</th><th>Plano</th><th>Treinos</th></tr></thead>' +
-        '<tbody>' + (rows || '<tr><td colspan="4">Sem dados</td></tr>') + '</tbody>' +
-      '</table>';
+      (clients.length
+        ? '<div class="training-report-scroll"><table class="training-report-table">' +
+            '<thead><tr><th>Nº</th><th>Nome</th><th>Plano</th><th>Treinos</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table></div>'
+        : '<p class="muted" style="padding:1rem 0">Sem clientes para este mês. Verifique se os clientes estão carregados e tente de novo.</p>');
+
+    host.classList.add('is-open');
+    host.removeAttribute('hidden');
     host.hidden = false;
-    if (list) list.hidden = true;
-    host.querySelector('#trainingReportClose')?.addEventListener('click', () => {
-      host.hidden = true;
-      host.innerHTML = '';
-      if (list) list.hidden = false;
-    });
+    if (list) {
+      list.setAttribute('hidden', '');
+      list.hidden = true;
+    }
+    host.querySelector('#trainingReportClose')?.addEventListener('click', closeTrainingMonthReport);
+    // Scroll report into view (sticky header can hide it)
+    try { host.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
   }
 
   function exportTrainingMonthCsv() {
     const cache = trainingsSummaryCache || {};
-    const month = cache.month || todayISO().slice(0, 7);
+    const dateVal = trainingSelectedDate();
+    const month = cache.month || (dateVal && dateVal.slice(0, 7)) || todayISO().slice(0, 7);
     const counts = cache.monthByClient || {};
     let clients = (store.clients || []).map(enrichClient).filter(c => !isInTrash(c));
-    clients.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt'));
+    clients.sort((a, b) => {
+      const d = (counts[b.id] || 0) - (counts[a.id] || 0);
+      if (d) return d;
+      return String(a.name || '').localeCompare(String(b.name || ''), 'pt');
+    });
     const headers = ['Nº', 'Nome', 'Telefone', 'Plano', 'Treinos no mês'];
     const rows = clients.map(c => [
       c.memberNumber, c.name, c.phone, c.planName || c.planId, counts[c.id] || 0
@@ -4153,13 +4289,39 @@
     toast('CSV do mês ' + month + ' exportado');
   }
 
-  $('#trainingMonthReportBtn')?.addEventListener('click', async () => {
-    await refreshTrainingsSummary();
-    renderTrainingMonthReport();
+  async function openTrainingMonthReport() {
+    try {
+      toast('A carregar relatório…');
+      await refreshTrainingsSummary();
+      renderTrainingMonthReport();
+      toast('Relatório do mês aberto');
+    } catch (e) {
+      console.warn('month report failed', e);
+      toast('Erro ao abrir relatório');
+    }
+  }
+
+  // Direct binds + delegation (backup if DOM timing differs)
+  document.getElementById('trainingMonthReportBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openTrainingMonthReport();
   });
-  $('#trainingExportMonthBtn')?.addEventListener('click', async () => {
-    await refreshTrainingsSummary();
-    exportTrainingMonthCsv();
+  document.getElementById('trainingExportMonthBtn')?.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      await refreshTrainingsSummary();
+      exportTrainingMonthCsv();
+    } catch (err) {
+      toast('Erro ao exportar CSV');
+    }
+  });
+  document.getElementById('panel-trainings')?.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest && e.target.closest('#trainingMonthReportBtn, #trainingExportMonthBtn, #trainingReportClose');
+    if (!t) return;
+    if (t.id === 'trainingReportClose') {
+      e.preventDefault();
+      closeTrainingMonthReport();
+    }
   });
 
   // —— Products ——

@@ -1661,6 +1661,7 @@
     const initials = $('#cPhotoInitials');
     const removeBtn = $('#cPhotoRemove');
     const status = $('#cPhotoStatus');
+    const avatar = $('#cPhotoAvatar');
     const url = c && c.photoUrl ? String(c.photoUrl) : '';
     if (img) {
       if (url) {
@@ -1677,8 +1678,37 @@
       initials.textContent = clientInitials(c && c.name);
       initials.style.display = url ? 'none' : '';
     }
+    if (avatar) {
+      avatar.disabled = !url;
+      avatar.title = url ? 'Ver foto ampliada' : 'Sem foto de perfil';
+      avatar.setAttribute('aria-label', url ? 'Ver foto de perfil ampliada' : 'Sem foto de perfil');
+      avatar.dataset.photoUrl = url || '';
+      avatar.dataset.photoName = (c && c.name) ? String(c.name) : '';
+    }
     if (removeBtn) removeBtn.style.display = url && editingClientId ? '' : 'none';
     if (status) status.textContent = '';
+  }
+
+  function openPhotoLightbox(url, name) {
+    if (!url) return;
+    const box = $('#photoLightbox');
+    const img = $('#photoLightboxImg');
+    const caption = $('#photoLightboxCaption');
+    if (!box || !img) return;
+    img.src = url;
+    img.alt = name ? ('Foto de ' + name) : 'Foto de perfil do cliente';
+    if (caption) caption.textContent = name || '';
+    box.classList.add('open');
+  }
+
+  function closePhotoLightbox() {
+    const box = $('#photoLightbox');
+    const img = $('#photoLightboxImg');
+    if (box) box.classList.remove('open');
+    if (img) {
+      img.removeAttribute('src');
+      img.alt = '';
+    }
   }
 
   async function uploadClientPhoto(file) {
@@ -2360,6 +2390,14 @@
       return;
     }
 
+    // Compact row action icons (title + aria-label keep meaning for staff)
+    const ICO = {
+      renew: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.2"/><path d="M21 3v6h-6"/></svg>',
+      wa: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.15 6.4 2.15 11.84c0 2.08.62 4.02 1.7 5.63L2 22l4.7-1.53a9.86 9.86 0 0 0 5.34 1.55c5.46 0 9.89-4.4 9.89-9.84C21.93 6.4 17.5 2 12.04 2zm5.75 13.99c-.24.67-1.38 1.23-1.9 1.31-.49.07-1.1.1-1.78-.11-.41-.13-.94-.3-1.62-.59-2.85-1.23-4.7-4.1-4.84-4.29-.14-.19-1.15-1.53-1.15-2.92 0-1.39.73-2.07.99-2.36.26-.29.57-.36.76-.36h.55c.18 0 .41-.07.64.49.24.58.82 2 .89 2.15.07.14.12.31.02.5-.1.19-.14.31-.29.48-.14.17-.31.38-.44.51-.14.14-.29.29-.12.56.16.28.73 1.2 1.56 1.94 1.08.96 1.98 1.26 2.26 1.4.28.14.45.12.61-.07.17-.19.71-.83.9-1.11.19-.28.38-.23.64-.14.26.1 1.66.78 1.95.92.28.14.47.21.54.33.07.12.07.67-.17 1.34z"/></svg>',
+      edit: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+      more: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>'
+    };
+
     list.innerHTML = filtered.map(c => {
       const days = c._daysLeft;
       const bill = c.billingStatus || 'em_dia';
@@ -2376,11 +2414,22 @@
         ? escapeHtml(formatDatePT(c.planStart) + ' → ' + formatDatePT(c.planEnd))
         : '';
       const needsAttention = isDebt || isExpiring;
+      const photoUrl = c.photoUrl ? String(c.photoUrl) : '';
+      const initials = clientInitials(c.name);
+      const avatarHtml = photoUrl
+        ? `<button type="button" class="row-avatar has-photo" data-photo-open="${escapeHtml(photoUrl)}" data-photo-name="${escapeHtml(c.name || '')}" title="Ver foto" aria-label="Ver foto de ${escapeHtml(c.name || 'cliente')}">
+             <img src="${escapeHtml(photoUrl)}" alt="" loading="lazy">
+           </button>`
+        : `<button type="button" class="row-avatar" data-edit-cli="${c.id}" title="Editar cliente" aria-label="Editar ${escapeHtml(c.name || 'cliente')}">
+             <span class="row-avatar-initials">${escapeHtml(initials)}</span>
+           </button>`;
 
-      const primaryActions = `
-        <button type="button" class="btn-renew" data-renew-cli="${c.id}">Renovar</button>
-        ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
-      `;
+      const btnRenew = `<button type="button" class="icon-btn btn-renew" data-renew-cli="${c.id}" title="Renovar" aria-label="Renovar">${ICO.renew}</button>`;
+      const btnWa = wa
+        ? `<a class="icon-btn wa-btn" href="${wa}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">${ICO.wa}</a>`
+        : '';
+      const btnEdit = `<button type="button" class="icon-btn" data-edit-cli="${c.id}" title="Editar" aria-label="Editar">${ICO.edit}</button>`;
+
       const secondaryButtons = isInTrash(c)
         ? `
         <button type="button" data-restore-cli="${c.id}">Restaurar</button>
@@ -2400,14 +2449,19 @@
             <input type="checkbox" class="bulk-item" data-list="clients" data-id="${escapeHtml(c.id)}" aria-label="Seleccionar ${escapeHtml(c.name || '')}">
           </div>
           <div class="row-main">
-            <span class="row-name" data-edit-cli="${c.id}" title="Editar">${c.memberNumber != null ? '<span class="member-n">Nº ' + escapeHtml(String(c.memberNumber)) + '</span> ' : ''}${escapeHtml(c.name || '—')}</span>
-            <span class="row-badges">
-              <span class="status-badge status-${mem}">${mem}</span>
-              <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
-              ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
-              ${c.hasCard === 'sim' ? '<span class="status-badge status-card">cartão</span>' : ''}
-            </span>
-            <div class="row-contact">${[contactBits, c.schedule ? 'Horário ' + escapeHtml(c.schedule) : '', c.age != null ? 'Idade ' + escapeHtml(String(c.age)) : ''].filter(Boolean).join(' · ') || '—'}</div>
+            <div class="row-identity">
+              ${avatarHtml}
+              <div class="row-identity-text">
+                <span class="row-name" data-edit-cli="${c.id}" title="Editar">${c.memberNumber != null ? '<span class="member-n">Nº ' + escapeHtml(String(c.memberNumber)) + '</span> ' : ''}${escapeHtml(c.name || '—')}</span>
+                <span class="row-badges">
+                  <span class="status-badge status-${mem}">${mem}</span>
+                  <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
+                  ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
+                  ${c.hasCard === 'sim' ? '<span class="status-badge status-card">cartão</span>' : ''}
+                </span>
+                <div class="row-contact">${[contactBits, c.schedule ? 'Horário ' + escapeHtml(c.schedule) : '', c.age != null ? 'Idade ' + escapeHtml(String(c.age)) : ''].filter(Boolean).join(' · ') || '—'}</div>
+              </div>
+            </div>
           </div>
           <div class="row-plan">
             <div class="plan-name">${escapeHtml(c.planName || c.planId || 'Sem plano')}</div>
@@ -2418,16 +2472,10 @@
             ${daysPillHtml(days)}
           </div>
           <div class="row-actions">
-            ${needsAttention ? primaryActions : ''}
-            ${!needsAttention ? `
-              <button type="button" data-edit-cli="${c.id}" class="hide-mobile">Editar</button>
-              <button type="button" class="btn-renew" data-renew-cli="${c.id}">Renovar</button>
-              ${wa ? '<a class="wa-btn" href="' + wa + '" target="_blank" rel="noopener">WhatsApp</a>' : ''}
-            ` : `
-              <button type="button" data-edit-cli="${c.id}" class="hide-mobile">Editar</button>
-            `}
+            ${needsAttention ? btnRenew + btnWa : btnEdit + btnRenew + btnWa}
+            ${needsAttention ? btnEdit : ''}
             <details class="row-more">
-              <summary>Mais</summary>
+              <summary class="icon-btn" title="Mais acções" aria-label="Mais acções">${ICO.more}</summary>
               <div class="more-menu">
                 ${secondaryButtons}
               </div>
@@ -2442,6 +2490,13 @@
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         openClientModal(btn.dataset.editCli);
+      });
+    });
+    list.querySelectorAll('[data-photo-open]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openPhotoLightbox(btn.getAttribute('data-photo-open'), btn.getAttribute('data-photo-name') || '');
       });
     });
     list.querySelectorAll('[data-renew-cli]').forEach(btn => {
@@ -3276,7 +3331,7 @@
   $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
   $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
 
-  // Profile photo upload / remove
+  // Profile photo upload / remove / enlarge
   $('#cPhotoUpload')?.addEventListener('change', async (e) => {
     const input = e.target;
     const file = input && input.files && input.files[0];
@@ -3285,6 +3340,26 @@
     if (input) input.value = '';
   });
   $('#cPhotoRemove')?.addEventListener('click', () => removeClientPhoto());
+  $('#cPhotoAvatar')?.addEventListener('click', () => {
+    const avatar = $('#cPhotoAvatar');
+    if (!avatar || avatar.disabled) return;
+    openPhotoLightbox(avatar.dataset.photoUrl, avatar.dataset.photoName);
+  });
+  $('#closePhotoLightbox')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closePhotoLightbox();
+  });
+  $('#photoLightbox')?.addEventListener('click', (e) => {
+    // Close when tapping the dark backdrop (not the image itself)
+    if (e.target === $('#photoLightbox') || e.target === $('#photoLightboxCaption')) {
+      closePhotoLightbox();
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('#photoLightbox')?.classList.contains('open')) {
+      closePhotoLightbox();
+    }
+  });
   $('#backupAllBtn')?.addEventListener('click', downloadFullBackup);
   $('#exportClientsBtn')?.addEventListener('click', exportClientsCsv);
   $('#copyClientPhonesBtn')?.addEventListener('click', copyClientPhones);

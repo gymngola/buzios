@@ -477,10 +477,10 @@
           </button>
           <div class="client-section-body">
             <div class="client-photo-row" id="cPhotoRow">
-              <div class="client-photo-avatar" id="cPhotoAvatar" aria-hidden="true">
+              <button type="button" class="client-photo-avatar" id="cPhotoAvatar" title="Ver foto ampliada" aria-label="Ver foto de perfil ampliada" disabled>
                 <img id="cPhotoImg" alt="" hidden>
                 <span id="cPhotoInitials" class="client-photo-initials">?</span>
-              </div>
+              </button>
               <div class="client-photo-actions">
                 <label class="btn-secondary client-photo-upload-label">
                   Foto de perfil
@@ -678,6 +678,13 @@
     </div>
   </div>
 
+  <!-- Client photo lightbox (full-size view for staff) -->
+  <div class="modal-backdrop photo-lightbox" id="photoLightbox" role="dialog" aria-modal="true" aria-label="Foto de perfil">
+    <button type="button" class="modal-close photo-lightbox-close" id="closePhotoLightbox" aria-label="Fechar">×</button>
+    <img id="photoLightboxImg" class="photo-lightbox-img" alt="Foto de perfil do cliente">
+    <p id="photoLightboxCaption" class="photo-lightbox-caption"></p>
+  </div>
+
   <!-- Install admin app help -->
   <div class="modal-backdrop" id="installAppModal">
     <div class="modal" style="max-width:420px">
@@ -697,7 +704,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261109b"></script>
+  <script src="js/admin.js?v=20261110b"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

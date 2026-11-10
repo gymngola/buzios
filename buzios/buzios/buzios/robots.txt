@@ -1,9 +1,0 @@
-User-agent: *
-Allow: /
-
-# Block admin and service worker internals from indexing
-Disallow: /admin.html
-Disallow: /admin-manifest.json
-Disallow: /sw.js
-
-Sitemap: https://www.buzioshealthclub.com/sitemap.xml

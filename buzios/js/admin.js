@@ -2647,6 +2647,18 @@
     openClientModal(editingClientId);
   }
 
+  /** Build paidAt ISO from #cPayDate (YYYY-MM-DD). Empty → now. Keeps local calendar day. */
+  function paidAtFromForm() {
+    const raw = ($('#cPayDate') && $('#cPayDate').value) || '';
+    if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return new Date().toISOString();
+    const today = todayISO();
+    if (raw === today) return new Date().toISOString();
+    // Past/future calendar day: noon local so the displayed date is stable across TZ
+    const d = new Date(raw + 'T12:00:00');
+    if (Number.isNaN(d.getTime())) return new Date().toISOString();
+    return d.toISOString();
+  }
+
   async function editPayment(payId) {
     if (!editingClientId) return;
     const existing = (store.clients || []).find(x => x.id === editingClientId);
@@ -2666,6 +2678,15 @@
     if (methodStr === null) return;
     const method = String(methodStr).trim().toLowerCase() || 'cash';
 
+    const defaultDate = p.paidAt ? String(p.paidAt).slice(0, 10) : todayISO();
+    const dateStr = prompt('Data do pagamento (AAAA-MM-DD)', defaultDate);
+    if (dateStr === null) return;
+    let paidAt = p.paidAt || new Date().toISOString();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr).trim())) {
+      const raw = String(dateStr).trim();
+      paidAt = raw === todayISO() ? new Date().toISOString() : new Date(raw + 'T12:00:00').toISOString();
+    }
+
     const noteStr = prompt('Nota (opcional)', p.note || '');
     if (noteStr === null) return;
 
@@ -2673,8 +2694,12 @@
       id: p.id || ('pay-' + Date.now() + '-' + idx),
       amount: amount,
       method: method,
-      note: String(noteStr).trim()
+      note: String(noteStr).trim(),
+      paidAt: paidAt
     });
+
+    // Keep history ordered by paidAt desc
+    payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
 
     const data = enrichClient(Object.assign({}, existing, {
       payments: payments.slice(0, 50),
@@ -2992,6 +3017,7 @@
     $('#cPayAmount').value = c?.price != null ? c.price : '';
     $('#cPayMethod').value = 'cash';
     $('#cPayNote').value = '';
+    if ($('#cPayDate')) $('#cPayDate').value = todayISO();
     renderPayHistory(c?.payments);
 
     const archBtn = $('#archiveClientBtn');
@@ -3556,17 +3582,20 @@
     const currentEnd = $('#cPlanEnd').value || existing.planEnd;
     const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
     const end = addMonthsISO(start, months);
+    const paidAt = paidAtFromForm();
+    const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
     const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
     if (!confirm(
       'Registar pagamento e renovar?\n\n' +
       'Valor: ' + amtLabel + '\n' +
+      'Data do pagamento: ' + formatDatePT(payDateLabel) + '\n' +
       'Novo fim do plano: ' + formatDatePT(end) + '\n' +
       'Estado → Activo · Faturação → Em dia'
     )) return;
     const payment = {
       id: 'pay-' + Date.now(),
       amount: amount,
-      paidAt: new Date().toISOString(),
+      paidAt: paidAt,
       method: $('#cPayMethod').value,
       note: $('#cPayNote').value.trim(),
       periodStart: start,
@@ -3574,6 +3603,7 @@
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
+    payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
     $('#cPlanStart').value = $('#cPlanStart').value || start;
     $('#cPlanEnd').value = end;
     $('#cMembership').value = 'activo';
@@ -3584,7 +3614,7 @@
     data.planEnd = end;
     data.membershipStatus = 'activo';
     data.billingStatus = 'em_dia';
-    data.lastPaymentAt = payment.paidAt;
+    data.lastPaymentAt = payments[0]?.paidAt || paidAt;
     data.payments = payments.slice(0, 50);
     data.billingCycle = cycle;
     if (amount) data.price = amount;
@@ -3600,32 +3630,36 @@
     if (!existing) return;
     const amountStr = $('#cPayAmount').value;
     const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
+    const paidAt = paidAtFromForm();
+    const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
     const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
     if (!confirm(
       'Apenas registar pagamento?\n\n' +
       'Valor: ' + amtLabel + '\n' +
+      'Data: ' + formatDatePT(payDateLabel) + '\n' +
       'Faturação → Em dia\n' +
       'Datas do plano e estado de membro não são alterados.'
     )) return;
     const payment = {
       id: 'pay-' + Date.now(),
       amount: amount,
-      paidAt: new Date().toISOString(),
+      paidAt: paidAt,
       method: $('#cPayMethod').value,
       note: $('#cPayNote').value.trim()
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
+    payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
     $('#cBilling').value = 'em_dia';
     const data = readClientForm(Object.assign({}, existing, {
       payments: payments.slice(0, 50),
-      lastPaymentAt: payment.paidAt
+      lastPaymentAt: payments[0]?.paidAt || paidAt
     }));
     data.billingStatus = 'em_dia';
-    data.lastPaymentAt = payment.paidAt;
+    data.lastPaymentAt = payments[0]?.paidAt || paidAt;
     data.payments = payments.slice(0, 50);
     await adminAction('update_client', data);
-    toast('Pagamento registado · faturação em dia');
+    toast('Pagamento registado · ' + formatDatePT(payDateLabel) + ' · faturação em dia');
     openClientModal(editingClientId);
   });
 

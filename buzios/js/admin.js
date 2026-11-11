@@ -2924,6 +2924,19 @@
     if (e.target === $('#payEditModal')) closePayEditModal();
   });
 
+  $('#closeTrainingEditModal')?.addEventListener('click', closeTrainingEditModal);
+  $('#trainingEditCancel')?.addEventListener('click', closeTrainingEditModal);
+  $('#trainingEditSave')?.addEventListener('click', () => { saveTrainingEditModal(); });
+  $('#trainingEditModal')?.addEventListener('click', (e) => {
+    if (e.target === $('#trainingEditModal')) closeTrainingEditModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if ($('#trainingEditModal') && $('#trainingEditModal').classList.contains('open')) {
+      closeTrainingEditModal();
+    }
+  });
+
   function updateDupWarn(phone, excludeId) {
     const el = $('#cDupWarn');
     if (!el) return;
@@ -4204,28 +4217,61 @@
     }
   }
 
+  let _trainingEditId = null;
+
+  function closeTrainingEditModal() {
+    const modal = $('#trainingEditModal');
+    if (modal) modal.classList.remove('open');
+    _trainingEditId = null;
+  }
+
+  function toLocalDateAndTime(isoOrDate) {
+    const pad = (n) => String(n).padStart(2, '0');
+    let d;
+    try {
+      d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+    } catch (_) {
+      d = new Date();
+    }
+    if (isNaN(d.getTime())) d = new Date();
+    return {
+      date: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
+      time: pad(d.getHours()) + ':' + pad(d.getMinutes())
+    };
+  }
+
   /** Edit date/time + note for an existing training session. */
-  async function editTrainingSession(id, current) {
+  function editTrainingSession(id, current) {
     if (!id) return;
     const cur = current || {};
-    let defaultLocal = '';
+    _trainingEditId = id;
+    let parts = { date: todayISO(), time: '12:00' };
     try {
-      const d = cur.trainedAt ? new Date(cur.trainedAt) : (cur.trainedDate ? new Date(cur.trainedDate + 'T12:00:00') : new Date());
-      if (!isNaN(d.getTime())) {
-        const pad = (n) => String(n).padStart(2, '0');
-        defaultLocal =
-          d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-          'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-      }
+      const src = cur.trainedAt || (cur.trainedDate ? cur.trainedDate + 'T12:00:00' : null);
+      if (src) parts = toLocalDateAndTime(src);
     } catch (_) {}
+    if ($('#trainingEditDate')) $('#trainingEditDate').value = parts.date;
+    if ($('#trainingEditTime')) $('#trainingEditTime').value = parts.time;
+    if ($('#trainingEditNote')) $('#trainingEditNote').value = cur.note || '';
+    const modal = $('#trainingEditModal');
+    if (modal) modal.classList.add('open');
+    setTimeout(() => {
+      try { $('#trainingEditDate') && $('#trainingEditDate').focus(); } catch (_) {}
+    }, 40);
+  }
 
-    const whenStr = await adminPrompt('Data e hora (AAAA-MM-DDTHH:MM)', defaultLocal || '', {
-      title: 'Editar treino', confirmLabel: 'Seguinte'
-    });
-    if (whenStr === null) return; // cancelled
+  async function saveTrainingEditModal() {
+    if (!_trainingEditId) return closeTrainingEditModal();
+    const dateVal = ($('#trainingEditDate') && $('#trainingEditDate').value) || '';
+    const timeVal = ($('#trainingEditTime') && $('#trainingEditTime').value) || '12:00';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+      toast('Escolha a data do treino');
+      return;
+    }
+    const timeNorm = /^\d{2}:\d{2}/.test(timeVal) ? timeVal.slice(0, 5) : '12:00';
     let trainedAt;
     try {
-      const parsed = new Date(whenStr);
+      const parsed = new Date(dateVal + 'T' + timeNorm + ':00');
       if (isNaN(parsed.getTime())) {
         toast('Data/hora inválida');
         return;
@@ -4235,11 +4281,9 @@
       toast('Data/hora inválida');
       return;
     }
-    const note = await adminPrompt('Nota (opcional)', cur.note || '', {
-      title: 'Nota do treino', confirmLabel: 'Guardar'
-    });
-    if (note === null) return;
-
+    const note = ($('#trainingEditNote') && $('#trainingEditNote').value.trim()) || '';
+    const id = _trainingEditId;
+    closeTrainingEditModal();
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
@@ -4248,7 +4292,7 @@
           password: getAdminPassword(),
           action: 'update_training',
           adminName: getAdminName(),
-          data: { id, trainedAt, note: String(note).trim() }
+          data: { id, trainedAt, note: note }
         }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);

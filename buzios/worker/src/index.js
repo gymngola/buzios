@@ -28,6 +28,23 @@ const CORS = {
 
 const FOLDER = 'buzios';
 
+/** Age in full years from YYYY-MM-DD (local calendar). */
+function ageFromBirthDateISO(iso) {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return null;
+  const parts = String(iso).split('-').map(Number);
+  const y = parts[0];
+  const m = parts[1];
+  const day = parts[2];
+  if (!y || !m || !day) return null;
+  const today = new Date();
+  let age = today.getFullYear() - y;
+  const md = today.getMonth() + 1;
+  const dd = today.getDate();
+  if (md < m || (md === m && dd < day)) age -= 1;
+  if (age < 0 || age > 120) return null;
+  return age;
+}
+
 /**
  * Cutover flag (2026-11-06).
  * false = operational data (clients, submissions, newsletters) is D1-only.
@@ -220,7 +237,10 @@ async function handleSubmit(request, env) {
       name: payload.name,
       phone: payload.phone,
       email: payload.email || '',
-      age: payload.age,
+      birthDate: payload.birthDate || null,
+      age: payload.age != null && payload.age !== ''
+        ? Number(payload.age)
+        : ageFromBirthDateISO(payload.birthDate),
       emergency: payload.emergency || '',
       emergencyName: payload.emergencyName || '',
       emergencyPhone: payload.emergencyPhone || '',
@@ -239,6 +259,10 @@ async function handleSubmit(request, env) {
     if (!store.clients.some(c => c.phone === payload.phone)) {
       // Copy enrollment docs onto the auto-created client so they survive
       // status-only updates on the submission (which used to wipe payload_json).
+      const birthDate = payload.birthDate || null;
+      const age = newSubmission.age != null
+        ? newSubmission.age
+        : ageFromBirthDateISO(birthDate);
       newClient = {
         id: 'cli-' + Date.now(),
         name: payload.name,
@@ -258,6 +282,8 @@ async function handleSubmit(request, env) {
         notes: [payload.notes, payload.goals ? 'Objectivos: ' + payload.goals : '', payload.medicalConditions ? 'Médicas: ' + payload.medicalConditions : ''].filter(Boolean).join('\n'),
         emergencyName: payload.emergencyName || '',
         emergencyPhone: payload.emergencyPhone || '',
+        age: age,
+        birthDate: birthDate,
         createdAt: new Date().toISOString(),
         fromSubmission: id,
         attachments: attachments.length ? attachments : null,
@@ -1287,12 +1313,14 @@ function clientToRow(c) {
     const docsPayload = {
       attachments: Array.isArray(c.attachments) ? c.attachments : [],
       documents: c.documents && typeof c.documents === 'object' ? c.documents : null,
-      paymentProof: c.paymentProof || null
+      paymentProof: c.paymentProof || null,
+      birthDate: c.birthDate || null
     };
     if (
       (docsPayload.attachments && docsPayload.attachments.length) ||
       (docsPayload.documents && Object.keys(docsPayload.documents).length) ||
-      docsPayload.paymentProof
+      docsPayload.paymentProof ||
+      docsPayload.birthDate
     ) {
       documents_json = JSON.stringify(docsPayload);
     } else if (c.documents_json != null) {
@@ -1344,10 +1372,11 @@ function rowToClient(r) {
   try {
     if (schedule && schedule.charAt(0) === '[') schedule = JSON.parse(schedule);
   } catch (_) {}
-  // Restore attachments / documents / paymentProof from documents_json
+  // Restore attachments / documents / paymentProof / birthDate from documents_json
   let attachments = null;
   let documents = null;
   let paymentProof = null;
+  let birthDate = null;
   try {
     if (r.documents_json) {
       const parsed = typeof r.documents_json === 'string' ? JSON.parse(r.documents_json) : r.documents_json;
@@ -1356,6 +1385,7 @@ function rowToClient(r) {
         else if (Array.isArray(parsed)) attachments = parsed; // legacy: bare array
         if (parsed.documents && typeof parsed.documents === 'object') documents = parsed.documents;
         if (parsed.paymentProof) paymentProof = parsed.paymentProof;
+        if (parsed.birthDate) birthDate = parsed.birthDate;
       }
     }
   } catch (_) {}
@@ -1366,7 +1396,8 @@ function rowToClient(r) {
     phone: r.phone,
     email: r.email,
     area: r.area,
-    age: r.age,
+    age: r.age != null ? r.age : ageFromBirthDateISO(birthDate),
+    birthDate: birthDate,
     schedule: schedule,
     hasCard: r.has_card,
     planId: r.plan_id,

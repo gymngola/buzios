@@ -870,6 +870,88 @@ a { color: var(--admin-accent); }
   border-color: #999;
 }
 
+/* —— Styled admin dialogs (confirm / prompt / pay edit) —— */
+.modal-backdrop.admin-dialog-backdrop {
+  z-index: 320;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal.admin-dialog-modal {
+  max-width: 400px;
+  border-radius: 16px;
+  padding: 1.25rem 1.35rem 1.35rem;
+  max-height: min(90dvh, 560px);
+}
+
+.admin-dialog-msg {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #444;
+  margin: 0 0 1.15rem;
+  white-space: pre-line;
+}
+
+.admin-dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.btn-dialog-cancel {
+  flex: 1;
+  height: 42px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.btn-dialog-cancel:hover {
+  background: #f5f5f5;
+}
+
+.btn-dialog-ok {
+  flex: 1;
+  height: 42px;
+  border: none;
+  border-radius: 8px;
+  background: #0f2a32;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.btn-dialog-ok:hover {
+  background: #1a3d47;
+}
+
+.btn-dialog-ok.is-danger {
+  background: #b33;
+}
+
+.btn-dialog-ok.is-danger:hover {
+  background: #992222;
+}
+
+#adminPromptInput {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+#payEditModal .form-row {
+  margin-bottom: 0.75rem;
+}
+
 /* Status chips */
 .client-status-chips {
   display: flex;

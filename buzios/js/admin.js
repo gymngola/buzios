@@ -192,6 +192,111 @@
     setTimeout(() => el.classList.remove('show'), 2800);
   }
 
+  /**
+   * Styled confirm — replaces window.confirm.
+   * opts: { title, confirmLabel, cancelLabel, danger }
+   * @returns {Promise<boolean>}
+   */
+  function adminConfirm(message, opts) {
+    opts = opts || {};
+    const modal = $('#adminConfirmModal');
+    if (!modal) return Promise.resolve(window.confirm(message));
+    const titleEl = $('#adminConfirmTitle');
+    const msgEl = $('#adminConfirmMsg');
+    const okBtn = $('#adminConfirmOk');
+    const cancelBtn = $('#adminConfirmCancel');
+    if (titleEl) titleEl.textContent = opts.title || 'Confirmar';
+    if (msgEl) msgEl.textContent = message || '';
+    if (okBtn) {
+      okBtn.textContent = opts.confirmLabel || 'Confirmar';
+      okBtn.classList.toggle('is-danger', !!opts.danger);
+    }
+    if (cancelBtn) cancelBtn.textContent = opts.cancelLabel || 'Cancelar';
+    modal.classList.add('open');
+    return new Promise((resolve) => {
+      function finish(val) {
+        modal.classList.remove('open');
+        okBtn && okBtn.removeEventListener('click', onOk);
+        cancelBtn && cancelBtn.removeEventListener('click', onCancel);
+        modal.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKey);
+        resolve(val);
+      }
+      function onOk(e) { e.preventDefault(); finish(true); }
+      function onCancel(e) { e.preventDefault(); finish(false); }
+      function onBackdrop(e) { if (e.target === modal) finish(false); }
+      function onKey(e) {
+        if (e.key === 'Escape') finish(false);
+        if (e.key === 'Enter') finish(true);
+      }
+      okBtn && okBtn.addEventListener('click', onOk);
+      cancelBtn && cancelBtn.addEventListener('click', onCancel);
+      modal.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => { try { okBtn && okBtn.focus(); } catch (_) {} }, 30);
+    });
+  }
+
+  /**
+   * Styled single-field prompt — replaces window.prompt.
+   * @returns {Promise<string|null>} null if cancelled
+   */
+  function adminPrompt(message, defaultValue, opts) {
+    opts = opts || {};
+    const modal = $('#adminPromptModal');
+    if (!modal) return Promise.resolve(window.prompt(message, defaultValue));
+    const titleEl = $('#adminPromptTitle');
+    const msgEl = $('#adminPromptMsg');
+    const input = $('#adminPromptInput');
+    const okBtn = $('#adminPromptOk');
+    const cancelBtn = $('#adminPromptCancel');
+    if (titleEl) titleEl.textContent = opts.title || 'Editar';
+    if (msgEl) {
+      msgEl.textContent = message || '';
+      msgEl.style.display = message ? '' : 'none';
+    }
+    if (input) {
+      input.type = opts.inputType || 'text';
+      input.value = defaultValue != null ? String(defaultValue) : '';
+      input.placeholder = opts.placeholder || '';
+    }
+    if (okBtn) okBtn.textContent = opts.confirmLabel || 'OK';
+    if (cancelBtn) cancelBtn.textContent = opts.cancelLabel || 'Cancelar';
+    modal.classList.add('open');
+    return new Promise((resolve) => {
+      function finish(val) {
+        modal.classList.remove('open');
+        okBtn && okBtn.removeEventListener('click', onOk);
+        cancelBtn && cancelBtn.removeEventListener('click', onCancel);
+        modal.removeEventListener('click', onBackdrop);
+        document.removeEventListener('keydown', onKey);
+        resolve(val);
+      }
+      function onOk(e) {
+        e.preventDefault();
+        finish(input ? input.value : '');
+      }
+      function onCancel(e) { e.preventDefault(); finish(null); }
+      function onBackdrop(e) { if (e.target === modal) finish(null); }
+      function onKey(e) {
+        if (e.key === 'Escape') finish(null);
+        if (e.key === 'Enter') finish(input ? input.value : '');
+      }
+      okBtn && okBtn.addEventListener('click', onOk);
+      cancelBtn && cancelBtn.addEventListener('click', onCancel);
+      modal.addEventListener('click', onBackdrop);
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => {
+        try {
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        } catch (_) {}
+      }, 30);
+    });
+  }
+
   // Password show/hide
   const passToggle = $('#passToggle');
   if (passToggle) {
@@ -371,9 +476,10 @@
   }
 
   $('#forceLogoutAllBtn')?.addEventListener('click', async () => {
-    if (!confirm('Terminar a sessão em TODOS os dispositivos com o painel aberto?\n\nTodos (incluindo você) terão de entrar de novo.')) {
-      return;
-    }
+    if (!(await adminConfirm(
+      'Terminar a sessão em TODOS os dispositivos com o painel aberto?\n\nTodos (incluindo você) terão de entrar de novo.',
+      { title: 'Terminar sessões', confirmLabel: 'Terminar todas', danger: true }
+    ))) return;
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
@@ -1248,7 +1354,9 @@
           ${s.annualFee ? '<div class="meta">Inscrição anual ginásio: sim</div>' : ''}
           ${s.extras && s.extras.length ? '<div class="meta">Extras: ' + escapeHtml(s.extras.map(id => friendlyPlanName(id) || id).join(', ')) + '</div>' : ''}
           ${s.estimatedTotal != null ? '<div class="meta"><strong>Total estimado:</strong> ' + Number(s.estimatedTotal).toLocaleString('pt') + ' Kz</div>' : ''}
-          ${s.age ? '<div class="meta">Idade: ' + escapeHtml(String(s.age)) + '</div>' : ''}
+          ${s.birthDate
+            ? '<div class="meta">Nascimento: ' + escapeHtml(formatDatePT(s.birthDate)) + (s.age != null ? ' · Idade ' + escapeHtml(String(s.age)) : '') + '</div>'
+            : (s.age ? '<div class="meta">Idade: ' + escapeHtml(String(s.age)) + '</div>' : '')}
           ${s.email ? '<div class="meta">Email: ' + escapeHtml(s.email) + '</div>' : ''}
           ${s.emergencyName || s.emergencyPhone
             ? '<div class="meta">Emergência: ' + escapeHtml([s.emergencyName, s.emergencyPhone].filter(Boolean).join(' — ')) + '</div>'
@@ -1552,7 +1660,9 @@
         e.stopPropagation();
         const url = btn.getAttribute('data-doc-del-url');
         if (!url || !editingClientId) return;
-        if (!confirm('Remover este documento do cliente?')) return;
+        if (!(await adminConfirm('Remover este documento do cliente?', {
+          title: 'Remover documento', confirmLabel: 'Remover', danger: true
+        }))) return;
         await removeClientAttachment(url);
       });
     });
@@ -1745,7 +1855,9 @@
     if (!editingClientId) return;
     const existing = (store.clients || []).find(x => x.id === editingClientId);
     if (!existing) return;
-    if (!confirm('Remover a foto de perfil deste cliente?')) return;
+    if (!(await adminConfirm('Remover a foto de perfil deste cliente?', {
+      title: 'Remover foto', confirmLabel: 'Remover', danger: true
+    }))) return;
     const data = enrichClient(Object.assign({}, existing, { photoUrl: null }));
     const saved = await adminAction('update_client', data);
     if (saved) {
@@ -1780,8 +1892,12 @@
         if (!id) return;
         const purge = btn.getAttribute('data-purge') === '1';
         if (purge) {
-          if (!confirm('Apagar definitivamente? Já não poderá restaurar.')) return;
-        } else if (!confirm('Mover para a lixeira? Pode restaurar nos próximos 30 dias.')) {
+          if (!(await adminConfirm('Apagar definitivamente? Já não poderá restaurar.', {
+            title: 'Apagar inscrição', confirmLabel: 'Apagar já', danger: true
+          }))) return;
+        } else if (!(await adminConfirm('Mover para a lixeira? Pode restaurar nos próximos 30 dias.', {
+          title: 'Lixeira', confirmLabel: 'Mover para lixeira', danger: true
+        }))) {
           return;
         }
         btn.disabled = true;
@@ -1970,7 +2086,10 @@
     }
 
     if (action === 'delete') {
-      if (!confirm('Mover ' + ids.length + ' item(ns) para a lixeira?\nPode restaurar nos próximos 30 dias.')) return;
+      if (!(await adminConfirm(
+        'Mover ' + ids.length + ' item(ns) para a lixeira?\nPode restaurar nos próximos 30 dias.',
+        { title: 'Lixeira', confirmLabel: 'Mover para lixeira', danger: true }
+      ))) return;
     }
 
     let ok = 0;
@@ -2073,7 +2192,9 @@
 
     list.querySelectorAll('[data-del-nl]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Apagar este número da newsletter?')) return;
+        if (!(await adminConfirm('Apagar este número da newsletter?', {
+          title: 'Newsletter', confirmLabel: 'Apagar', danger: true
+        }))) return;
         await adminAction('delete_newsletter', { id: btn.dataset.delNl });
         toast('Número apagado');
       });
@@ -2103,6 +2224,53 @@
   let clientsAgeFilter = '';
 
   const CYCLE_MONTHS = { mensal: 1, trimestral: 3, anual: 12, pacote: 1 };
+  const ANNUAL_FEE_ID = 'inscricao-anual';
+  const ANNUAL_FEE_DEFAULT = 6500;
+
+  /** Full years from YYYY-MM-DD. */
+  function ageFromBirthDate(iso) {
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return null;
+    const parts = String(iso).split('-').map(Number);
+    const y = parts[0];
+    const m = parts[1];
+    const day = parts[2];
+    if (!y || !m || !day) return null;
+    const today = new Date();
+    let age = today.getFullYear() - y;
+    const md = today.getMonth() + 1;
+    const dd = today.getDate();
+    if (md < m || (md === m && dd < day)) age -= 1;
+    if (age < 0 || age > 120) return null;
+    return age;
+  }
+
+  function annualFeeAmount() {
+    const p = (products || []).find(x => x.id === ANNUAL_FEE_ID);
+    const n = p && p.price != null ? Number(p.price) : ANNUAL_FEE_DEFAULT;
+    return Number.isFinite(n) && n >= 0 ? n : ANNUAL_FEE_DEFAULT;
+  }
+
+  /** Recurring plan price from form (cPrice), ignoring annual fee addon. */
+  function planPriceFromForm() {
+    const raw = $('#cPrice') && $('#cPrice').value;
+    if (raw === '' || raw == null) return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+
+  /**
+   * Keep cPayAmount in sync with plan price ± inscrição anual checkbox.
+   * Does not change cPrice (that stays the recurring plan amount).
+   */
+  function syncPayAmountWithAnnual() {
+    const payEl = $('#cPayAmount');
+    if (!payEl) return;
+    const base = planPriceFromForm();
+    const withAnnual = !!( $('#cAnnualFee') && $('#cAnnualFee').checked );
+    const total = base + (withAnnual ? annualFeeAmount() : 0);
+    payEl.value = total > 0 ? total : '';
+    updatePayPreview();
+  }
 
   function todayISO() {
     const d = new Date();
@@ -2527,7 +2695,10 @@
       btn.addEventListener('click', async () => {
         const existing = (store.clients || []).find(x => String(x.id) === String(btn.dataset.archiveCli));
         if (!existing) return;
-        if (!confirm('Arquivar ' + (existing.name || 'este cliente') + '? Pode reactivar depois no filtro Arquivados.')) return;
+        if (!(await adminConfirm(
+          'Arquivar ' + (existing.name || 'este cliente') + '? Pode reactivar depois no filtro Arquivados.',
+          { title: 'Arquivar cliente', confirmLabel: 'Arquivar' }
+        ))) return;
         const ok = await adminAction('delete_client', { id: existing.id, hard: false });
         if (ok) toast('Cliente arquivado');
       });
@@ -2538,11 +2709,17 @@
         if (!existing) return;
         const purge = btn.getAttribute('data-purge') === '1';
         if (purge) {
-          if (!confirm('Apagar definitivamente ' + (existing.name || 'este cliente') + '?\nJá não poderá restaurar.')) return;
+          if (!(await adminConfirm(
+            'Apagar definitivamente ' + (existing.name || 'este cliente') + '?\nJá não poderá restaurar.',
+            { title: 'Apagar cliente', confirmLabel: 'Apagar já', danger: true }
+          ))) return;
           const ok = await adminAction('delete_client', { id: existing.id, hard: true, purge: true });
           if (ok) toast('Cliente apagado definitivamente');
         } else {
-          if (!confirm('Mover ' + (existing.name || 'este cliente') + ' para a lixeira?\nPode restaurar nos próximos 30 dias. (Prefira Arquivar se só quiser esconder da lista principal.)')) return;
+          if (!(await adminConfirm(
+            'Mover ' + (existing.name || 'este cliente') + ' para a lixeira?\nPode restaurar nos próximos 30 dias. (Prefira Arquivar se só quiser esconder da lista principal.)',
+            { title: 'Lixeira', confirmLabel: 'Mover para lixeira', danger: true }
+          ))) return;
           const ok = await adminAction('delete_client', { id: existing.id, hard: true });
           if (ok) toast('Cliente na lixeira (30 dias)');
         }
@@ -2636,7 +2813,9 @@
     const p = payments[idx];
     const label = (p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : 'pagamento') +
       (p.paidAt ? ' · ' + new Date(p.paidAt).toLocaleString('pt') : '');
-    if (!confirm('Apagar este pagamento?\n' + label)) return;
+    if (!(await adminConfirm('Apagar este pagamento?\n' + label, {
+      title: 'Apagar pagamento', confirmLabel: 'Apagar', danger: true
+    }))) return;
     payments.splice(idx, 1);
     const data = enrichClient(Object.assign({}, existing, {
       payments: payments.slice(0, 50),
@@ -2659,56 +2838,91 @@
     return d.toISOString();
   }
 
-  async function editPayment(payId) {
+  let _payEditCtx = null; // { payId, clientId }
+
+  function closePayEditModal() {
+    const modal = $('#payEditModal');
+    if (modal) modal.classList.remove('open');
+    _payEditCtx = null;
+  }
+
+  function openPayEditModal(payId) {
     if (!editingClientId) return;
     const existing = (store.clients || []).find(x => x.id === editingClientId);
     if (!existing) return;
-    const payments = (existing.payments || []).slice();
+    const payments = existing.payments || [];
     const idx = findPaymentIndex(payments, payId);
     if (idx < 0) return toast('Pagamento não encontrado');
     const p = payments[idx];
+    _payEditCtx = { payId: p.id || payId, clientId: editingClientId, idx: idx };
 
-    const amountStr = prompt('Valor (Kz)', p.amount != null ? String(p.amount) : '');
-    if (amountStr === null) return;
-    const amount = Number(amountStr);
-    if (Number.isNaN(amount) || amount < 0) return toast('Valor inválido');
-
-    const methodOptions = 'cash / transfer / multicaixa / other';
-    const methodStr = prompt('Método (' + methodOptions + ')', p.method || 'cash');
-    if (methodStr === null) return;
-    const method = String(methodStr).trim().toLowerCase() || 'cash';
-
-    const defaultDate = p.paidAt ? String(p.paidAt).slice(0, 10) : todayISO();
-    const dateStr = prompt('Data do pagamento (AAAA-MM-DD)', defaultDate);
-    if (dateStr === null) return;
-    let paidAt = p.paidAt || new Date().toISOString();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr).trim())) {
-      const raw = String(dateStr).trim();
-      paidAt = raw === todayISO() ? new Date().toISOString() : new Date(raw + 'T12:00:00').toISOString();
+    if ($('#payEditAmount')) $('#payEditAmount').value = p.amount != null ? p.amount : '';
+    if ($('#payEditMethod')) {
+      const m = p.method || 'cash';
+      $('#payEditMethod').value = ['cash', 'transfer', 'multicaixa', 'other'].includes(m) ? m : 'other';
     }
+    if ($('#payEditDate')) {
+      $('#payEditDate').value = p.paidAt ? String(p.paidAt).slice(0, 10) : todayISO();
+    }
+    if ($('#payEditNote')) $('#payEditNote').value = p.note || '';
 
-    const noteStr = prompt('Nota (opcional)', p.note || '');
-    if (noteStr === null) return;
+    const modal = $('#payEditModal');
+    if (modal) modal.classList.add('open');
+    setTimeout(() => { try { $('#payEditAmount') && $('#payEditAmount').focus(); } catch (_) {} }, 40);
+  }
+
+  async function savePayEditModal() {
+    if (!_payEditCtx || !editingClientId) return closePayEditModal();
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return closePayEditModal();
+    const payments = (existing.payments || []).slice();
+    const idx = findPaymentIndex(payments, _payEditCtx.payId);
+    if (idx < 0) {
+      toast('Pagamento não encontrado');
+      return closePayEditModal();
+    }
+    const p = payments[idx];
+    const amount = Number($('#payEditAmount') && $('#payEditAmount').value);
+    if (Number.isNaN(amount) || amount < 0) return toast('Valor inválido');
+    const method = ($('#payEditMethod') && $('#payEditMethod').value) || 'cash';
+    const dateRaw = ($('#payEditDate') && $('#payEditDate').value) || '';
+    let paidAt = p.paidAt || new Date().toISOString();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
+      paidAt = dateRaw === todayISO()
+        ? new Date().toISOString()
+        : new Date(dateRaw + 'T12:00:00').toISOString();
+    }
+    const note = ($('#payEditNote') && $('#payEditNote').value.trim()) || '';
 
     payments[idx] = Object.assign({}, p, {
       id: p.id || ('pay-' + Date.now() + '-' + idx),
       amount: amount,
       method: method,
-      note: String(noteStr).trim(),
+      note: note,
       paidAt: paidAt
     });
-
-    // Keep history ordered by paidAt desc
     payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
 
     const data = enrichClient(Object.assign({}, existing, {
       payments: payments.slice(0, 50),
       lastPaymentAt: payments[0]?.paidAt || existing.lastPaymentAt || null
     }));
+    closePayEditModal();
     await adminAction('update_client', data);
     toast('Pagamento actualizado');
     openClientModal(editingClientId);
   }
+
+  function editPayment(payId) {
+    openPayEditModal(payId);
+  }
+
+  $('#closePayEditModal')?.addEventListener('click', closePayEditModal);
+  $('#payEditCancel')?.addEventListener('click', closePayEditModal);
+  $('#payEditSave')?.addEventListener('click', () => { savePayEditModal(); });
+  $('#payEditModal')?.addEventListener('click', (e) => {
+    if (e.target === $('#payEditModal')) closePayEditModal();
+  });
 
   function updateDupWarn(phone, excludeId) {
     const el = $('#cDupWarn');
@@ -2850,7 +3064,6 @@
     if ($('#cPlan')) $('#cPlan').value = p.name || '';
     if (p.price != null && $('#cPrice')) {
       $('#cPrice').value = p.price;
-      if ($('#cPayAmount')) $('#cPayAmount').value = p.price;
     }
     if (p.period && $('#cCycle')) {
       const period = String(p.period).toLowerCase();
@@ -2860,9 +3073,13 @@
         $('#cCycle').value = 'pacote';
       }
     }
+    // Selecting the annual product itself: treat as addon, not main plan price overwrite oddly
+    if (p.id === ANNUAL_FEE_ID && $('#cAnnualFee')) {
+      $('#cAnnualFee').checked = true;
+    }
     suggestPlanEnd();
     updateClientStatusChips();
-    updatePayPreview();
+    syncPayAmountWithAnnual();
   }
 
   function suggestPlanEnd() {
@@ -2979,13 +3196,19 @@
     // Structured fields — prefer real keys; fallback-parse legacy notes once
     const meta = parseClientNotesMeta(c?.notes);
     const memberNum = c?.memberNumber != null ? c.memberNumber : meta.memberNumber;
-    const age = c?.age != null ? c.age : meta.age;
+    const birthDate = c?.birthDate || null;
+    let age = c?.age != null ? c.age : meta.age;
+    if (birthDate) {
+      const computed = ageFromBirthDate(birthDate);
+      if (computed != null) age = computed;
+    }
     let schedule = c?.schedule || meta.schedule || '';
     let hasCard = c?.hasCard || meta.hasCard || '';
     if (hasCard === true || hasCard === 'SIM' || hasCard === 'Sim') hasCard = 'sim';
     if (hasCard === false || hasCard === 'N' || hasCard === 'SEM' || hasCard === 'Não' || hasCard === 'Nao') hasCard = 'nao';
 
     $('#cMemberNumber').value = memberNum != null && memberNum !== '' ? memberNum : '';
+    if ($('#cBirthDate')) $('#cBirthDate').value = birthDate || '';
     $('#cAge').value = age != null && age !== '' ? age : '';
     setScheduleSelect(schedule);
     $('#cHasCard').value = hasCard === 'sim' || hasCard === 'nao' ? hasCard : '';
@@ -3001,6 +3224,7 @@
     populatePlanSelect(c?.planId || '', c?.planName || '');
     $('#cPrice').value = c?.price != null ? c.price : '';
     $('#cCycle').value = c?.billingCycle || 'mensal';
+    if ($('#cAnnualFee')) $('#cAnnualFee').checked = !!c?.annualFee;
     $('#cPlanStart').value = c?.planStart || '';
     $('#cPlanEnd').value = c?.planEnd || '';
     $('#cMembership').value = c?.membershipStatus || 'pendente';
@@ -3014,10 +3238,11 @@
     }
     $('#cEmergencyName').value = c?.emergencyName || '';
     $('#cEmergencyPhone').value = c?.emergencyPhone || '';
-    $('#cPayAmount').value = c?.price != null ? c.price : '';
     $('#cPayMethod').value = 'cash';
     $('#cPayNote').value = '';
     if ($('#cPayDate')) $('#cPayDate').value = todayISO();
+    // Pay amount = plan ± annual (checkbox); do not bake annual into cPrice
+    syncPayAmountWithAnnual();
     renderPayHistory(c?.payments);
 
     const archBtn = $('#archiveClientBtn');
@@ -3116,7 +3341,15 @@
       email: $('#cEmail').value.trim(),
       area: $('#cArea').value,
       memberNumber: memberRaw === '' || memberRaw == null ? null : Number(memberRaw),
-      age: ageRaw === '' || ageRaw == null ? null : Number(ageRaw),
+      birthDate: ($('#cBirthDate') && $('#cBirthDate').value) || existing?.birthDate || null,
+      age: (() => {
+        const bd = ($('#cBirthDate') && $('#cBirthDate').value) || '';
+        if (bd) {
+          const a = ageFromBirthDate(bd);
+          if (a != null) return a;
+        }
+        return ageRaw === '' || ageRaw == null ? null : Number(ageRaw);
+      })(),
       schedule: scheduleVal || '',
       hasCard: hasCardVal || '',
       planName: planName,
@@ -3136,6 +3369,7 @@
       fromSubmission: existing?.fromSubmission || null,
       fromImport: existing?.fromImport || null,
       archivedAt: existing?.archivedAt || null,
+      annualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ),
       attachments: existing?.attachments || null,
       documents: existing?.documents || null,
       paymentProof: existing?.paymentProof || null,
@@ -3154,9 +3388,10 @@
       : todayISO();
     const end = addMonthsISO(start, months);
     const amount = existing.price != null ? Number(existing.price) : 0;
-    if (!confirm('Renovar ' + (existing.name || 'cliente') + ' até ' + formatDatePT(end) + (amount ? ' (' + amount.toLocaleString('pt') + ' Kz)?' : '?'))) {
-      return;
-    }
+    if (!(await adminConfirm(
+      'Renovar ' + (existing.name || 'cliente') + ' até ' + formatDatePT(end) + (amount ? ' (' + amount.toLocaleString('pt') + ' Kz)?' : '?'),
+      { title: 'Renovar período', confirmLabel: 'Renovar' }
+    ))) return;
     const payment = {
       id: 'pay-' + Date.now(),
       amount: amount,
@@ -3229,7 +3464,19 @@
       email: s.email || base.email || '',
       area: s.area || base.area || 'ginasio',
       memberNumber: base.memberNumber != null ? base.memberNumber : null,
-      age: s.age != null ? Number(s.age) : (base.age != null ? base.age : null),
+      birthDate: s.birthDate || base.birthDate || null,
+      age: (() => {
+        if (s.birthDate) {
+          const a = ageFromBirthDate(s.birthDate);
+          if (a != null) return a;
+        }
+        if (s.age != null && s.age !== '') return Number(s.age);
+        if (base.birthDate) {
+          const a = ageFromBirthDate(base.birthDate);
+          if (a != null) return a;
+        }
+        return base.age != null ? base.age : null;
+      })(),
       schedule: scheduleFromSub || base.schedule || '',
       hasCard: base.hasCard || '',
       planName: s.planName || friendlyPlanName(s.planIdSwim || s.planIdGym || s.planId) || base.planName || '',
@@ -3256,6 +3503,8 @@
         if (p && p.period === 'mensal') return 'mensal';
         return base.billingCycle || 'mensal';
       })(),
+      // One-off gym annual registration (6.500 Kz) — not part of recurring plan price
+      annualFee: s.annualFee != null ? !!s.annualFee : !!base.annualFee,
       planStart: base.planStart || todayISO(),
       planEnd: base.planEnd || addMonthsISO(todayISO(), 1),
       // Pending until all documents are provided; otherwise active
@@ -3439,7 +3688,17 @@
     });
   });
   $('#cPayAmount')?.addEventListener('input', () => updatePayPreview());
-  $('#cPrice')?.addEventListener('input', () => updatePayPreview());
+  $('#cPrice')?.addEventListener('input', () => {
+    syncPayAmountWithAnnual();
+  });
+  $('#cAnnualFee')?.addEventListener('change', () => {
+    syncPayAmountWithAnnual();
+  });
+  $('#cBirthDate')?.addEventListener('change', () => {
+    const bd = $('#cBirthDate') && $('#cBirthDate').value;
+    const a = ageFromBirthDate(bd);
+    if ($('#cAge') && a != null) $('#cAge').value = a;
+  });
 
   // Quick actions
   $('#cQaWhatsApp')?.addEventListener('click', () => {
@@ -3533,9 +3792,10 @@
     const data = readClientForm(existing);
     if (!data.name) return toast('Nome obrigatório');
     const dup = findDuplicatePhone(data.phone, data.id);
-    if (dup && !confirm('Já existe cliente com este telefone (' + (dup.name || dup.phone) + '). Guardar na mesma?')) {
-      return;
-    }
+    if (dup && !(await adminConfirm(
+      'Já existe cliente com este telefone (' + (dup.name || dup.phone) + '). Guardar na mesma?',
+      { title: 'Telefone duplicado', confirmLabel: 'Guardar mesmo assim', danger: true }
+    ))) return;
     const btn = $('#saveClientBtn');
     if (btn) btn.disabled = true;
     const ok = await adminAction('update_client', data);
@@ -3551,7 +3811,9 @@
     if (!editingClientId) return;
     const existing = (store.clients || []).find(x => String(x.id) === String(editingClientId));
     if (!existing) return;
-    if (!confirm('Arquivar ' + (existing.name || 'este cliente') + '?')) return;
+    if (!(await adminConfirm('Arquivar ' + (existing.name || 'este cliente') + '?', {
+      title: 'Arquivar cliente', confirmLabel: 'Arquivar'
+    }))) return;
     const ok = await adminAction('delete_client', { id: editingClientId, hard: false });
     if (ok) {
       $('#clientModal').classList.remove('open');
@@ -3563,7 +3825,10 @@
     if (!editingClientId) return;
     const existing = (store.clients || []).find(x => String(x.id) === String(editingClientId));
     if (!existing) return;
-    if (!confirm('Mover ' + (existing.name || 'este cliente') + ' para a lixeira?\nPode restaurar nos próximos 30 dias.\n(Prefira Arquivar se só quiser esconder da lista principal.)')) return;
+    if (!(await adminConfirm(
+      'Mover ' + (existing.name || 'este cliente') + ' para a lixeira?\nPode restaurar nos próximos 30 dias.\n(Prefira Arquivar se só quiser esconder da lista principal.)',
+      { title: 'Lixeira', confirmLabel: 'Mover para lixeira', danger: true }
+    ))) return;
     const ok = await adminAction('delete_client', { id: editingClientId, hard: true });
     if (ok) {
       $('#clientModal').classList.remove('open');
@@ -3585,21 +3850,31 @@
     const paidAt = paidAtFromForm();
     const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
     const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
-    if (!confirm(
+    const includeAnnualPreview = !!( $('#cAnnualFee') && $('#cAnnualFee').checked );
+    if (!(await adminConfirm(
       'Registar pagamento e renovar?\n\n' +
       'Valor: ' + amtLabel + '\n' +
       'Data do pagamento: ' + formatDatePT(payDateLabel) + '\n' +
+      (includeAnnualPreview ? 'Inclui inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz\n' : '') +
       'Novo fim do plano: ' + formatDatePT(end) + '\n' +
-      'Estado → Activo · Faturação → Em dia'
-    )) return;
+      'Estado → Activo · Faturação → Em dia',
+      { title: 'Pagar e renovar', confirmLabel: 'Confirmar' }
+    ))) return;
+    const includeAnnual = includeAnnualPreview;
+    let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
+    if (includeAnnual) {
+      const feeLabel = 'Inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz';
+      payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
+    }
     const payment = {
       id: 'pay-' + Date.now(),
       amount: amount,
       paidAt: paidAt,
       method: $('#cPayMethod').value,
-      note: $('#cPayNote').value.trim(),
+      note: payNote,
       periodStart: start,
-      periodEnd: end
+      periodEnd: end,
+      includesAnnualFee: includeAnnual || undefined
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
@@ -3608,7 +3883,8 @@
     $('#cPlanEnd').value = end;
     $('#cMembership').value = 'activo';
     $('#cBilling').value = 'em_dia';
-    if (amount && !$('#cPrice').value) $('#cPrice').value = amount;
+    // After charging annual once, clear the addon so the next renew is plan-only
+    if (includeAnnual && $('#cAnnualFee')) $('#cAnnualFee').checked = false;
     const data = readClientForm(Object.assign({}, existing, { payments: payments.slice(0, 50), lastPaymentAt: payment.paidAt }));
     data.planStart = data.planStart || start;
     data.planEnd = end;
@@ -3617,7 +3893,9 @@
     data.lastPaymentAt = payments[0]?.paidAt || paidAt;
     data.payments = payments.slice(0, 50);
     data.billingCycle = cycle;
-    if (amount) data.price = amount;
+    // Keep recurring plan price (cPrice) — never overwrite with total that includes annual
+    data.price = planPriceFromForm() || existing.price || null;
+    data.annualFee = false;
     await adminAction('update_client', data);
     toast('Pagamento registado · válido até ' + formatDatePT(end));
     openClientModal(editingClientId);
@@ -3632,25 +3910,35 @@
     const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
     const paidAt = paidAtFromForm();
     const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
+    const includeAnnual = !!( $('#cAnnualFee') && $('#cAnnualFee').checked );
     const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
-    if (!confirm(
+    if (!(await adminConfirm(
       'Apenas registar pagamento?\n\n' +
       'Valor: ' + amtLabel + '\n' +
       'Data: ' + formatDatePT(payDateLabel) + '\n' +
+      (includeAnnual ? 'Inclui inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz\n' : '') +
       'Faturação → Em dia\n' +
-      'Datas do plano e estado de membro não são alterados.'
-    )) return;
+      'Datas do plano e estado de membro não são alterados.',
+      { title: 'Registar pagamento', confirmLabel: 'Registar' }
+    ))) return;
+    let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
+    if (includeAnnual) {
+      const feeLabel = 'Inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz';
+      payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
+    }
     const payment = {
       id: 'pay-' + Date.now(),
       amount: amount,
       paidAt: paidAt,
       method: $('#cPayMethod').value,
-      note: $('#cPayNote').value.trim()
+      note: payNote,
+      includesAnnualFee: includeAnnual || undefined
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
     payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
     $('#cBilling').value = 'em_dia';
+    if (includeAnnual && $('#cAnnualFee')) $('#cAnnualFee').checked = false;
     const data = readClientForm(Object.assign({}, existing, {
       payments: payments.slice(0, 50),
       lastPaymentAt: payments[0]?.paidAt || paidAt
@@ -3658,6 +3946,7 @@
     data.billingStatus = 'em_dia';
     data.lastPaymentAt = payments[0]?.paidAt || paidAt;
     data.payments = payments.slice(0, 50);
+    data.annualFee = false;
     await adminAction('update_client', data);
     toast('Pagamento registado · ' + formatDatePT(payDateLabel) + ' · faturação em dia');
     openClientModal(editingClientId);
@@ -3854,7 +4143,11 @@
     // Fast path: no prompt. Hold Alt/Option while clicking for optional note.
     let note = '';
     if (opts && opts.askNote) {
-      note = prompt('Nota (opcional)', '') || '';
+      const n = await adminPrompt('Nota para este treino (opcional)', '', {
+        title: 'Nota do treino', confirmLabel: 'Continuar'
+      });
+      if (n === null) return;
+      note = n;
     }
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
@@ -3885,7 +4178,9 @@
 
   async function deleteTrainingSession(id) {
     if (!id) return;
-    if (!confirm('Apagar esta sessão de treino?')) return;
+    if (!(await adminConfirm('Apagar esta sessão de treino?', {
+      title: 'Apagar treino', confirmLabel: 'Apagar', danger: true
+    }))) return;
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
@@ -3924,7 +4219,9 @@
       }
     } catch (_) {}
 
-    const whenStr = prompt('Data e hora do treino (AAAA-MM-DDTHH:MM)', defaultLocal || '');
+    const whenStr = await adminPrompt('Data e hora (AAAA-MM-DDTHH:MM)', defaultLocal || '', {
+      title: 'Editar treino', confirmLabel: 'Seguinte'
+    });
     if (whenStr === null) return; // cancelled
     let trainedAt;
     try {
@@ -3938,7 +4235,9 @@
       toast('Data/hora inválida');
       return;
     }
-    const note = prompt('Nota (opcional)', cur.note || '');
+    const note = await adminPrompt('Nota (opcional)', cur.note || '', {
+      title: 'Nota do treino', confirmLabel: 'Guardar'
+    });
     if (note === null) return;
 
     try {
@@ -4500,12 +4799,13 @@
       btn.addEventListener('click', () => openProductModal(btn.dataset.edit));
     });
     list.querySelectorAll('[data-del]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (confirm('Apagar este plano?')) {
-          products = products.filter(x => x.id !== btn.dataset.del);
-          markDirty();
-          renderProducts();
-        }
+      btn.addEventListener('click', async () => {
+        if (!(await adminConfirm('Apagar este plano?', {
+          title: 'Apagar plano', confirmLabel: 'Apagar', danger: true
+        }))) return;
+        products = products.filter(x => x.id !== btn.dataset.del);
+        markDirty();
+        renderProducts();
       });
     });
   }
@@ -4841,7 +5141,10 @@
 
   // —— Publish ——
   async function publish() {
-    if (!confirm('Publicar no website?\n\nActualiza planos, textos e imagens para todos os visitantes.')) return;
+    if (!(await adminConfirm(
+      'Publicar no website?\n\nActualiza planos, textos e imagens para todos os visitantes.',
+      { title: 'Publicar', confirmLabel: 'Publicar' }
+    ))) return;
     $$('[data-text-key]').forEach(ta => {
       if (!texts.pt) texts.pt = {};
       texts.pt[ta.dataset.textKey] = ta.value;
@@ -4882,7 +5185,10 @@
       toast('Não há rascunho local neste browser');
       return;
     }
-    if (!confirm('Descartar rascunho local?\n\nAs alterações de planos, imagens ou textos deste browser (ainda não publicadas) serão apagadas. O site continua como está.')) return;
+    if (!(await adminConfirm(
+      'Descartar rascunho local?\n\nAs alterações de planos, imagens ou textos deste browser (ainda não publicadas) serão apagadas. O site continua como está.',
+      { title: 'Descartar rascunho', confirmLabel: 'Descartar', danger: true }
+    ))) return;
     try {
       localStorage.removeItem(LS.dirty);
       localStorage.removeItem(LS.products);

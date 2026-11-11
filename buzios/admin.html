@@ -506,7 +506,10 @@
               <div class="form-row"><label>Nº sócio</label><input type="number" id="cMemberNumber" inputmode="numeric" min="1" step="1" placeholder="ex. 1344"></div>
             </div>
             <div class="form-grid-2">
-              <div class="form-row"><label>Idade</label><input type="number" id="cAge" inputmode="numeric" min="1" max="120" step="1" placeholder="ex. 23"></div>
+              <div class="form-row"><label>Data de nascimento</label><input type="date" id="cBirthDate"></div>
+              <div class="form-row"><label>Idade</label><input type="number" id="cAge" inputmode="numeric" min="1" max="120" step="1" placeholder="auto"></div>
+            </div>
+            <div class="form-grid-2">
               <div class="form-row"><label>Horário</label>
                 <select id="cSchedule">
                   <option value="">—</option>
@@ -526,13 +529,13 @@
                   <option value="20:00">20:00</option>
                 </select>
               </div>
-            </div>
-            <div class="form-row"><label>Cartão de acesso</label>
-              <select id="cHasCard">
-                <option value="">—</option>
-                <option value="sim">Sim</option>
-                <option value="nao">Não</option>
-              </select>
+              <div class="form-row"><label>Cartão de acesso</label>
+                <select id="cHasCard">
+                  <option value="">—</option>
+                  <option value="sim">Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </div>
             </div>
           </div>
         </section>
@@ -564,6 +567,15 @@
                   <option value="pacote">Pacote / avulso</option>
                 </select>
               </div>
+            </div>
+            <div class="form-row" style="margin-top:0.15rem">
+              <label class="client-check-label" style="display:flex;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
+                <input type="checkbox" id="cAnnualFee" style="margin-top:0.2rem;width:auto">
+                <span>
+                  <strong>Inscrição anual (ginásio)</strong> — <span style="color:#c45c26">6.500 Kz</span><br>
+                  <span class="muted" style="font-size:0.78rem;font-weight:400">Soma ao valor a cobrar neste pagamento (não altera o preço do plano). Obrigatória na 1ª vez / após 90 dias de ausência.</span>
+                </span>
+              </label>
             </div>
             <div class="form-grid-2">
               <div class="form-row"><label>Início do plano</label><input type="date" id="cPlanStart"></div>
@@ -704,6 +716,58 @@
     <p id="photoLightboxCaption" class="photo-lightbox-caption"></p>
   </div>
 
+  <!-- Styled confirm dialog (replaces window.confirm) -->
+  <div class="modal-backdrop admin-dialog-backdrop" id="adminConfirmModal" role="dialog" aria-modal="true" aria-labelledby="adminConfirmTitle">
+    <div class="modal admin-dialog-modal">
+      <h2 id="adminConfirmTitle">Confirmar</h2>
+      <p id="adminConfirmMsg" class="admin-dialog-msg"></p>
+      <div class="form-actions admin-dialog-actions">
+        <button type="button" id="adminConfirmCancel" class="btn-dialog-cancel">Cancelar</button>
+        <button type="button" id="adminConfirmOk" class="btn-dialog-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Styled single-field prompt (replaces window.prompt) -->
+  <div class="modal-backdrop admin-dialog-backdrop" id="adminPromptModal" role="dialog" aria-modal="true" aria-labelledby="adminPromptTitle">
+    <div class="modal admin-dialog-modal">
+      <h2 id="adminPromptTitle">Editar</h2>
+      <p id="adminPromptMsg" class="admin-dialog-msg"></p>
+      <div class="form-row" style="margin-bottom:1rem">
+        <input type="text" id="adminPromptInput" autocomplete="off">
+      </div>
+      <div class="form-actions admin-dialog-actions">
+        <button type="button" id="adminPromptCancel" class="btn-dialog-cancel">Cancelar</button>
+        <button type="button" id="adminPromptOk" class="btn-dialog-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit payment (amount, method, date, note) -->
+  <div class="modal-backdrop admin-dialog-backdrop" id="payEditModal" role="dialog" aria-modal="true" aria-labelledby="payEditTitle">
+    <div class="modal admin-dialog-modal" style="max-width:420px">
+      <button type="button" class="modal-close" id="closePayEditModal" aria-label="Fechar">×</button>
+      <h2 id="payEditTitle">Editar pagamento</h2>
+      <div class="form-grid-2">
+        <div class="form-row"><label>Valor (Kz)</label><input type="number" id="payEditAmount" inputmode="decimal" min="0" step="100"></div>
+        <div class="form-row"><label>Método</label>
+          <select id="payEditMethod">
+            <option value="cash">Numerário</option>
+            <option value="transfer">Transferência</option>
+            <option value="multicaixa">Multicaixa</option>
+            <option value="other">Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row"><label>Data do pagamento</label><input type="date" id="payEditDate"></div>
+      <div class="form-row"><label>Nota</label><input type="text" id="payEditNote" placeholder="Opcional"></div>
+      <div class="form-actions admin-dialog-actions" style="margin-top:1rem">
+        <button type="button" id="payEditCancel" class="btn-dialog-cancel">Cancelar</button>
+        <button type="button" id="payEditSave" class="btn-dialog-ok">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Install admin app help -->
   <div class="modal-backdrop" id="installAppModal">
     <div class="modal" style="max-width:420px">
@@ -723,7 +787,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261110f"></script>
+  <script src="js/admin.js?v=20261111c"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

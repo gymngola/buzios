@@ -303,9 +303,10 @@
               <label>Email <span class="req">*</span></label>
               <input type="email" id="eEmail" required autocomplete="email" placeholder="email@exemplo.com">
             </div>
-            <div class="form-group" id="ageGroup" style="display:none">
-              <label>Idade (natação)</label>
-              <input type="number" id="eAge" min="0" max="120" inputmode="numeric">
+            <div class="form-group">
+              <label>Data de nascimento <span class="req">*</span></label>
+              <input type="date" id="eBirthDate" required autocomplete="bday" max="">
+              <p class="muted" style="font-size:0.75rem;margin-top:0.35rem">Usada para calcular a idade no painel da equipa.</p>
             </div>
             <div class="form-group">
               <label>Contacto de emergência — nome <span class="req">*</span></label>
@@ -424,6 +425,24 @@
   <script src="js/app.js?v=20261105p"></script>
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
+    (function initBirthDateMax() {
+      const el = document.getElementById('eBirthDate');
+      if (!el) return;
+      const d = new Date();
+      el.max = d.toISOString().slice(0, 10);
+    })();
+
+    function ageFromBirthDate(iso) {
+      if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+      const [y, m, day] = iso.split('-').map(Number);
+      const today = new Date();
+      let age = today.getFullYear() - y;
+      const md = today.getMonth() + 1;
+      const dd = today.getDate();
+      if (md < m || (md === m && dd < day)) age -= 1;
+      if (age < 0 || age > 120) return null;
+      return age;
+    }
 
     const SUBMIT_URL = 'https://buzios-publish.gymngola.workers.dev/submit';
     const CLOUD_NAME = 'ogtzpc3v';
@@ -453,7 +472,7 @@
     const annualGroup = document.getElementById('annualGroup');
     const swimInscrGroup = document.getElementById('swimInscrGroup');
     const extrasGroup = document.getElementById('extrasGroup');
-    const ageGroup = document.getElementById('ageGroup');
+    const birthDateInput = document.getElementById('eBirthDate');
     const docsCopy = document.getElementById('docsCopy');
     const annualCb = document.getElementById('eAnnual');
     const swimInscrCb = document.getElementById('eSwimInscr');
@@ -571,7 +590,6 @@
       const isGym = area === 'ginasio' || area === 'ambos';
       const isSwim = area === 'natacao' || area === 'ambos';
 
-      ageGroup.style.display = isSwim ? 'block' : 'none';
       annualGroup.style.display = isGym ? 'block' : 'none';
       swimInscrGroup.style.display = isSwim ? 'block' : 'none';
       extrasGroup.style.display = isGym ? 'block' : 'none';
@@ -919,7 +937,8 @@
         name: document.getElementById('eName').value.trim(),
         phone: document.getElementById('ePhone').value.trim(),
         email: document.getElementById('eEmail').value.trim(),
-        age: document.getElementById('eAge').value || null,
+        birthDate: (document.getElementById('eBirthDate') && document.getElementById('eBirthDate').value) || null,
+        age: ageFromBirthDate(document.getElementById('eBirthDate') && document.getElementById('eBirthDate').value),
         emergency,
         emergencyName,
         emergencyPhone,

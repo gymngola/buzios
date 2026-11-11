@@ -341,6 +341,7 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 
 ### 2026-11-11
 
+- **D1 free-tier read budget:** store poll **30s** focused / **90s** hidden (was 3.5s / 12s); presence heartbeat **~2.5 min** and only while tab visible; `trainings_summary` only on Treinos panel (not on every Clientes open). Prevents daily row-read limit exhaustion on Free plan.
 - **Inscrição → client restore:** when a linked client is in Lixeira, the inscrição card shows **Restaurar cliente** + **Ver cliente** (trash banner in the client modal). Permanent purge keeps the link broken and falls back to **Criar cliente**.
 - **Live nav badges + toasts:** Inscrições / Contactos count `novo`; Newsletter counts unseen signups until the panel is opened. Silent poll toasts new rows; background poll kept so badges update with the tab hidden.
 - **Bulk selection persistence:** selected rows survive D1 overlay / poll re-renders for Inscrições, Contactos, Newsletter, Clientes.

@@ -573,10 +573,7 @@
     if (name === 'newsletters') {
       markNewslettersSeen();
     }
-    if (name === 'clients') {
-      // Month training counts for list badges
-      refreshTrainingsSummary().then(() => renderClients()).catch(() => {});
-    }
+    // Trainings summary is loaded only on the Treinos panel (avoids heavy D1 reads on Clientes).
     if (name === 'trainings') {
       refreshStoreIfChanged();
       loadTrainingsPanel();
@@ -700,8 +697,9 @@
   let localWriteInFlight = 0;
   let localWriteUntil = 0; // pause remote poll briefly after local write
   let storeSyncTimer = null;
-  const STORE_SYNC_FOCUS_MS = 3500;
-  const STORE_SYNC_HIDDEN_MS = 12000;
+  // D1 free-tier: keep polls sparse. Focused tab ~30s; background ~90s.
+  const STORE_SYNC_FOCUS_MS = 30000;
+  const STORE_SYNC_HIDDEN_MS = 90000;
   const LOCAL_WRITE_COOLDOWN_MS = 1800;
   let syncChannel = null;
   try {
@@ -853,9 +851,15 @@
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_submissions' }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
-      if (!res.ok) return false;
+      if (!res.ok) {
+        console.warn('D1 submissions overlay HTTP', res.status);
+        return false;
+      }
       const data = await res.json();
-      if (!data.ok || !Array.isArray(data.submissions)) return false;
+      if (!data.ok || !Array.isArray(data.submissions)) {
+        console.warn('D1 submissions overlay bad payload', data && data.error);
+        return false;
+      }
       if (data.submissions.length === 0 && (store.submissions || []).length > 0) return false;
 
       const next = data.submissions;
@@ -991,9 +995,15 @@
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_newsletters' }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
-      if (!res.ok) return false;
+      if (!res.ok) {
+        console.warn('D1 newsletters overlay HTTP', res.status);
+        return false;
+      }
       const data = await res.json();
-      if (!data.ok || !Array.isArray(data.newsletters)) return false;
+      if (!data.ok || !Array.isArray(data.newsletters)) {
+        console.warn('D1 newsletters overlay bad payload', data && data.error);
+        return false;
+      }
       if (data.newsletters.length === 0 && (store.newsletters || []).length > 0) return false;
 
       const next = data.newsletters;
@@ -1143,7 +1153,7 @@
   }
 
   async function refreshStoreIfChanged() {
-    // Still poll when the tab is hidden so new enrollments can toast / notify.
+    // Background tabs use the long interval only; skip if a fetch is already running.
     if (storeFetchInFlight) return;
     if (Date.now() < localWriteUntil) return;
     await loadStore({ silent: true, workerOnly: true });
@@ -1233,7 +1243,8 @@
   }
 
   // —— Admin presence (open panels) ——
-  const PRESENCE_INTERVAL_MS = 40000;
+  // Presence is nice-to-have only — 2.5 min keeps “who is online” without burning D1 reads.
+  const PRESENCE_INTERVAL_MS = 150000;
   let presenceTimer = null;
   let presenceSessionId = '';
 
@@ -4664,7 +4675,8 @@
     renderTrainingsPanel();
   }
 
-  async function refreshTrainingsSummary() {
+  async function refreshTrainingsSummary(opts) {
+    const silent = !!(opts && opts.silent);
     const date = trainingSelectedDate();
     trainingsLoading = true;
     try {
@@ -4691,10 +4703,14 @@
           todayTotal: data.todayTotal || 0,
           monthTotal: data.monthTotal || 0
         };
+      } else if (!silent) {
+        toast('Erro ao carregar treinos');
       }
     } catch (e) {
       console.warn('trainings_summary failed', e);
-      toast(isTimeoutError(e) ? 'Servidor não respondeu (treinos)' : 'Erro ao carregar treinos');
+      if (!silent) {
+        toast(isTimeoutError(e) ? 'Servidor não respondeu (treinos)' : 'Erro ao carregar treinos');
+      }
     } finally {
       trainingsLoading = false;
     }

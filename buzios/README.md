@@ -313,7 +313,9 @@ Enrollment pipeline (reversible statuses):
 
 Several staff devices can keep admin open:
 
-- Store polled about every **3.5s** while the tab is focused, **~12s** when hidden (still polls so new leads update badges)
+- Store polled about every **30s** while the tab is focused, **~90s** when hidden (keeps new-lead badges without burning D1 free-tier reads)
+- Presence (“X online”) every **~2.5 min** and only while the tab is visible
+- `trainings_summary` loads only on the **Treinos** panel (not on every Clientes open)
 - Newer `store.updatedAt` wins; toast **Actualizado noutro dispositivo**
 - Worker `update_client` re-loads store before write (reduces lost updates across devices)
 - Same client edited at the same time → last write wins
@@ -321,10 +323,11 @@ Several staff devices can keep admin open:
 
 ## Recent changes
 
-### 2026-11-11 — Inscrição restore, live badges, selection, notes
+### 2026-11-11 — D1 read budget + earlier fixes
 
+- **D1 free-tier:** poll 30s / 90s; presence ~2.5 min; no trainings fetch on Clientes (only on Treinos). Avoids daily row-read limit exhaustion.
 - **Restaurar cliente** from Inscrições when the linked client is in Lixeira; trash banner in client modal.
-- Nav badges + toasts for new Inscrições, Contactos, Newsletter; background poll kept for badge updates.
+- Nav badges + toasts for new Inscrições, Contactos, Newsletter.
 - Bulk selection no longer clears on list re-render (Inscrições / Contactos / Newsletter / Clientes).
 - Client notes from enrollment: full labels, no duplicated Objectivos/Médicas/Notas lines. Redeploy Worker if auto-create notes path is still in use.
 

@@ -569,10 +569,6 @@
     if (name === 'inbox' || name === 'contacts' || name === 'clients' || name === 'newsletters') {
       refreshStoreIfChanged();
     }
-    // Opening Newsletter clears the "unseen" badge (no status field on rows)
-    if (name === 'newsletters') {
-      markNewslettersSeen();
-    }
     if (name === 'clients') {
       // Month training counts for list badges
       refreshTrainingsSummary().then(() => renderClients()).catch(() => {});
@@ -833,17 +829,6 @@
     }
   }
 
-  /** Ids already known this session (null = not seeded yet → no toast on first load). */
-  let knownEnrollmentIds = null;
-  let knownContactIds = null;
-  let knownNewsletterIds = null;
-  /** Newsletter has no status field — badge uses unseen ids until staff opens the panel. */
-  let unseenNewsletterIds = new Set();
-
-  function isContactSubmission(s) {
-    return !!(s && (s.type === 'contact' || (!s.type && s.message)));
-  }
-
   /** Overlay store.submissions with D1 list (inbox + contacts). Same safety as clients. */
   async function overlaySubmissionsFromD1() {
     try {
@@ -857,46 +842,7 @@
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.submissions)) return false;
       if (data.submissions.length === 0 && (store.submissions || []).length > 0) return false;
-
-      const next = data.submissions;
-      store.submissions = next;
-
-      // —— New enrollments ——
-      const enrollmentIds = next
-        .filter(s => s && s.type === 'enrollment' && !isInTrash(s))
-        .map(s => String(s.id));
-      if (knownEnrollmentIds == null) {
-        knownEnrollmentIds = new Set(enrollmentIds);
-      } else {
-        const fresh = next.filter(s =>
-          s && s.type === 'enrollment' && !isInTrash(s) && s.id != null &&
-          !knownEnrollmentIds.has(String(s.id))
-        );
-        if (fresh.length) {
-          fresh.forEach(s => knownEnrollmentIds.add(String(s.id)));
-          notifyNewInboxItems('enrollment', fresh);
-        }
-        enrollmentIds.forEach(id => knownEnrollmentIds.add(id));
-      }
-
-      // —— New contact messages ——
-      const contactIds = next
-        .filter(s => isContactSubmission(s) && !isInTrash(s))
-        .map(s => String(s.id));
-      if (knownContactIds == null) {
-        knownContactIds = new Set(contactIds);
-      } else {
-        const fresh = next.filter(s =>
-          isContactSubmission(s) && !isInTrash(s) && s.id != null &&
-          !knownContactIds.has(String(s.id))
-        );
-        if (fresh.length) {
-          fresh.forEach(s => knownContactIds.add(String(s.id)));
-          notifyNewInboxItems('contact', fresh);
-        }
-        contactIds.forEach(id => knownContactIds.add(id));
-      }
-
+      store.submissions = data.submissions;
       renderInbox();
       renderContacts();
       return true;
@@ -905,81 +851,6 @@
       if (!lastOpsLoadError) lastOpsLoadError = isTimeoutError(e) ? 'timeout' : 'network';
       return false;
     }
-  }
-
-  /**
-   * Toast + title flash + optional OS notification for new enrollments / contacts / newsletters.
-   * kind: 'enrollment' | 'contact' | 'newsletter'
-   */
-  function notifyNewInboxItems(kind, list) {
-    if (!list || !list.length) return;
-    let msg;
-    let notifTitle;
-    let panel;
-    let tag;
-    if (kind === 'enrollment') {
-      const names = list.map(s => s.name || 'Sem nome');
-      msg = list.length === 1
-        ? 'Nova inscrição: ' + names[0]
-        : list.length + ' novas inscrições: ' + names.slice(0, 3).join(', ') + (names.length > 3 ? '…' : '');
-      notifTitle = 'Búzios Admin — nova inscrição';
-      panel = 'inbox';
-      tag = 'buzios-enrollment';
-    } else if (kind === 'contact') {
-      const names = list.map(s => s.name || s.phone || 'Sem nome');
-      msg = list.length === 1
-        ? 'Novo contacto: ' + names[0]
-        : list.length + ' novos contactos: ' + names.slice(0, 3).join(', ') + (names.length > 3 ? '…' : '');
-      notifTitle = 'Búzios Admin — novo contacto';
-      panel = 'contacts';
-      tag = 'buzios-contact';
-    } else {
-      const phones = list.map(n => n.phone || n.name || '—');
-      msg = list.length === 1
-        ? 'Nova newsletter: ' + phones[0]
-        : list.length + ' novos na newsletter: ' + phones.slice(0, 3).join(', ') + (phones.length > 3 ? '…' : '');
-      notifTitle = 'Búzios Admin — newsletter';
-      panel = 'newsletters';
-      tag = 'buzios-newsletter';
-    }
-    toast(msg);
-    try {
-      const base = document.title.replace(/^\(\d+\+?\)\s*/, '');
-      document.title = '(' + (list.length > 99 ? '99+' : list.length) + ') ' + base;
-      clearTimeout(notifyNewInboxItems._titleTimer);
-      notifyNewInboxItems._titleTimer = setTimeout(() => {
-        document.title = base;
-      }, 8000);
-    } catch (e) { /* ignore */ }
-    try {
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
-        const n = new Notification(notifTitle, {
-          body: msg,
-          tag: tag,
-          renotify: true
-        });
-        n.onclick = () => {
-          try { window.focus(); } catch (e) {}
-          activatePanel(panel);
-          if (panel === 'inbox') {
-            inboxFilter = 'novo';
-            $('#inboxFilters')?.querySelectorAll('[data-inbox-filter]').forEach(b => {
-              b.classList.toggle('active', b.dataset.inboxFilter === 'novo');
-            });
-            renderInbox();
-          } else if (panel === 'contacts') {
-            contactsFilter = 'novo';
-            $('#contactsFilters')?.querySelectorAll('[data-contacts-filter]').forEach(b => {
-              b.classList.toggle('active', b.dataset.contactsFilter === 'novo');
-            });
-            renderContacts();
-          } else {
-            renderNewsletters();
-          }
-          n.close();
-        };
-      }
-    } catch (e) { /* ignore */ }
   }
 
   /** Overlay store.newsletters with D1 list. Same safety as clients/submissions. */
@@ -995,25 +866,7 @@
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.newsletters)) return false;
       if (data.newsletters.length === 0 && (store.newsletters || []).length > 0) return false;
-
-      const next = data.newsletters;
-      store.newsletters = next;
-
-      const ids = next.filter(n => n && n.id != null).map(n => String(n.id));
-      if (knownNewsletterIds == null) {
-        knownNewsletterIds = new Set(ids);
-      } else {
-        const fresh = next.filter(n => n && n.id != null && !knownNewsletterIds.has(String(n.id)));
-        if (fresh.length) {
-          fresh.forEach(n => {
-            knownNewsletterIds.add(String(n.id));
-            unseenNewsletterIds.add(String(n.id));
-          });
-          notifyNewInboxItems('newsletter', fresh);
-        }
-        ids.forEach(id => knownNewsletterIds.add(id));
-      }
-
+      store.newsletters = data.newsletters;
       renderNewsletters();
       return true;
     } catch (e) {
@@ -1143,7 +996,7 @@
   }
 
   async function refreshStoreIfChanged() {
-    // Still poll when the tab is hidden so new enrollments can toast / notify.
+    if (document.hidden) return;
     if (storeFetchInFlight) return;
     if (Date.now() < localWriteUntil) return;
     await loadStore({ silent: true, workerOnly: true });
@@ -1460,41 +1313,9 @@
     return btns.join('');
   }
 
-  function countNewEnrollments() {
-    return (store.submissions || []).filter(
-      s => s.type === 'enrollment' && !isInTrash(s) && (s.status || 'novo') === 'novo'
-    ).length;
-  }
-
-  function updateInboxNavBadge() {
-    const btn = document.querySelector('.admin-tabs button[data-panel="inbox"]');
-    if (!btn) return;
-    let badge = btn.querySelector('.nav-badge');
-    const n = countNewEnrollments();
-    if (n > 0) {
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'nav-badge';
-        btn.appendChild(badge);
-      }
-      badge.textContent = n > 99 ? '99+' : String(n);
-      badge.style.display = '';
-      badge.title = n === 1 ? '1 inscrição nova' : n + ' inscrições novas';
-    } else if (badge) {
-      badge.style.display = 'none';
-      badge.title = '';
-    }
-    // Mirror count on the "Novos" filter chip
-    const novoBtn = $('#inboxFilters')?.querySelector('[data-inbox-filter="novo"]');
-    if (novoBtn) {
-      novoBtn.textContent = n > 0 ? ('Novos (' + n + ')') : 'Novos';
-    }
-  }
-
   function renderInbox() {
     const list = $('#inboxList');
     if (!list) return;
-    updateInboxNavBadge();
     let items = (store.submissions || []).filter(s => s.type === 'enrollment');
     if (inboxFilter === 'lixeira') {
       items = items.filter(isInTrash);
@@ -1516,7 +1337,6 @@
           ? 'Nenhuma inscrição neste filtro.'
           : 'Nenhuma inscrição ainda. Aparecem quando alguém preenche o formulário de inscrição.') +
         '</p>';
-      // Keep selection in memory; only the visible list is empty for this filter
       updateBulkBar('inbox');
       return;
     }
@@ -1554,10 +1374,10 @@
           ${s.emergencyName || s.emergencyPhone
             ? '<div class="meta">Emergência: ' + escapeHtml([s.emergencyName, s.emergencyPhone].filter(Boolean).join(' — ')) + '</div>'
             : (s.emergency ? '<div class="meta">Emergência: ' + escapeHtml(s.emergency) + '</div>' : '')}
-          ${s.goals ? '<div class="meta"><strong>Objectivos de treino:</strong> ' + escapeHtml(s.goals) + '</div>' : ''}
+          ${s.goals ? '<div class="meta"><strong>Objectivos:</strong> ' + escapeHtml(s.goals) + '</div>' : ''}
           ${s.medicalConditions ? '<div class="meta"><strong>Condições médicas:</strong> ' + escapeHtml(s.medicalConditions) + '</div>' : ''}
           ${schedule}
-          ${s.notes ? '<div class="meta"><strong>Notas ou questões:</strong> ' + escapeHtml(s.notes) + '</div>' : ''}
+          ${s.notes ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + escapeHtml(s.notes) + '</p>' : ''}
           ${s.docsLater ? '<div class="meta">Documentos: a entregar no local</div>' : ''}
           ${renderAttachmentGallery(s)}
           ${(() => {
@@ -1635,7 +1455,6 @@
       });
     });
     bindBulkItemChecks('inbox');
-    restoreBulkSelection('inbox');
     updateBulkBar('inbox');
   }
 
@@ -1675,41 +1494,10 @@
     return btns.join('');
   }
 
-  function countNewContacts() {
-    return (store.submissions || []).filter(
-      s => isContactSubmission(s) && !isInTrash(s) && (s.status || 'novo') === 'novo'
-    ).length;
-  }
-
-  function updateContactsNavBadge() {
-    const btn = document.querySelector('.admin-tabs button[data-panel="contacts"]');
-    if (!btn) return;
-    let badge = btn.querySelector('.nav-badge');
-    const n = countNewContacts();
-    if (n > 0) {
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'nav-badge';
-        btn.appendChild(badge);
-      }
-      badge.textContent = n > 99 ? '99+' : String(n);
-      badge.style.display = '';
-      badge.title = n === 1 ? '1 contacto novo' : n + ' contactos novos';
-    } else if (badge) {
-      badge.style.display = 'none';
-      badge.title = '';
-    }
-    const novoBtn = $('#contactsFilters')?.querySelector('[data-contacts-filter="novo"]');
-    if (novoBtn) {
-      novoBtn.textContent = n > 0 ? ('Novos (' + n + ')') : 'Novos';
-    }
-  }
-
   function renderContacts() {
     const list = $('#contactsList');
     if (!list) return;
-    updateContactsNavBadge();
-    let items = (store.submissions || []).filter(s => isContactSubmission(s));
+    let items = (store.submissions || []).filter(s => s.type === 'contact' || (!s.type && s.message));
     if (contactsFilter === 'lixeira') {
       items = items.filter(isInTrash);
     } else {
@@ -1765,7 +1553,6 @@
 
     bindSubmissionActions(list);
     bindBulkItemChecks('contacts');
-    restoreBulkSelection('contacts');
     updateBulkBar('contacts');
   }
 
@@ -2312,35 +2099,8 @@
   }
 
   // —— Bulk selection ——
-  // Survives list re-renders (poll / D1 overlay used to wipe checkbox state).
-  const bulkSelected = {
-    clients: new Set(),
-    inbox: new Set(),
-    contacts: new Set(),
-    newsletters: new Set()
-  };
-
   function getSelectedIds(listName) {
-    const set = bulkSelected[listName];
-    if (set) return Array.from(set);
     return $$('.bulk-item[data-list="' + listName + '"]:checked').map(el => el.dataset.id).filter(Boolean);
-  }
-
-  function clearBulkSelection(listName) {
-    const set = bulkSelected[listName];
-    if (set) set.clear();
-  }
-
-  /** After re-render, re-check boxes that were selected before the DOM was rebuilt.
-   * Does not drop ids just because a filter hides them — only clearBulkSelection does.
-   */
-  function restoreBulkSelection(listName) {
-    const set = bulkSelected[listName];
-    if (!set || !set.size) return;
-    $$('.bulk-item[data-list="' + listName + '"]').forEach(cb => {
-      const id = String(cb.dataset.id || '');
-      cb.checked = !!(id && set.has(id));
-    });
   }
 
   function idsMatch(a, b) {
@@ -2395,7 +2155,7 @@
     bar.style.display = items.length ? '' : 'none';
     const all = bar.querySelector('.bulk-select-all[data-list="' + listName + '"]');
     if (all) {
-      all.checked = items.length > 0 && selected.length === items.length && items.length > 0;
+      all.checked = items.length > 0 && selected.length === items.length;
       all.indeterminate = selected.length > 0 && selected.length < items.length;
     }
     // Floating action bar for clients when something is selected
@@ -2415,15 +2175,8 @@
   }
 
   function bindBulkItemChecks(listName) {
-    const set = bulkSelected[listName] || (bulkSelected[listName] = new Set());
     $$('.bulk-item[data-list="' + listName + '"]').forEach(cb => {
-      cb.addEventListener('change', () => {
-        const id = String(cb.dataset.id || '');
-        if (!id) return;
-        if (cb.checked) set.add(id);
-        else set.delete(id);
-        updateBulkBar(listName);
-      });
+      cb.addEventListener('change', () => updateBulkBar(listName));
     });
   }
 
@@ -2544,8 +2297,6 @@
       }
       if (success) ok++;
     }
-    // Clear selection for processed ids so they don't stick after re-render
-    clearBulkSelection(listName);
     renderInbox();
     renderContacts();
     renderNewsletters();
@@ -2557,13 +2308,8 @@
   $$('.bulk-select-all').forEach(all => {
     all.addEventListener('change', () => {
       const listName = all.dataset.list;
-      const set = bulkSelected[listName] || (bulkSelected[listName] = new Set());
       $$('.bulk-item[data-list="' + listName + '"]').forEach(cb => {
         cb.checked = all.checked;
-        const id = String(cb.dataset.id || '');
-        if (!id) return;
-        if (all.checked) set.add(id);
-        else set.delete(id);
       });
       updateBulkBar(listName);
     });
@@ -2574,7 +2320,6 @@
     runBulkAction(btn.dataset.list, btn.dataset.action);
   });
   $('#clientsBulkClear')?.addEventListener('click', () => {
-    clearBulkSelection('clients');
     $$('.bulk-item[data-list="clients"]').forEach(cb => { cb.checked = false; });
     updateBulkBar('clients');
   });
@@ -2597,40 +2342,9 @@
   });
 
   // —— Newsletter phones ——
-  function updateNewslettersNavBadge() {
-    const btn = document.querySelector('.admin-tabs button[data-panel="newsletters"]');
-    if (!btn) return;
-    let badge = btn.querySelector('.nav-badge');
-    // Drop ids that no longer exist (deleted)
-    const live = new Set((store.newsletters || []).map(n => String(n.id)));
-    unseenNewsletterIds.forEach(id => {
-      if (!live.has(id)) unseenNewsletterIds.delete(id);
-    });
-    const n = unseenNewsletterIds.size;
-    if (n > 0) {
-      if (!badge) {
-        badge = document.createElement('span');
-        badge.className = 'nav-badge';
-        btn.appendChild(badge);
-      }
-      badge.textContent = n > 99 ? '99+' : String(n);
-      badge.style.display = '';
-      badge.title = n === 1 ? '1 novo na newsletter' : n + ' novos na newsletter';
-    } else if (badge) {
-      badge.style.display = 'none';
-      badge.title = '';
-    }
-  }
-
-  function markNewslettersSeen() {
-    unseenNewsletterIds.clear();
-    updateNewslettersNavBadge();
-  }
-
   function renderNewsletters() {
     const list = $('#newslettersList');
     if (!list) return;
-    updateNewslettersNavBadge();
     const items = store.newsletters || [];
     if (!items.length) {
       list.innerHTML = '<p style="color:#666;font-size:0.9rem">Nenhum número ainda. Aparecem quando alguém preenche o formulário no rodapé do site.</p>';
@@ -2664,7 +2378,6 @@
       });
     });
     bindBulkItemChecks('newsletters');
-    restoreBulkSelection('newsletters');
     updateBulkBar('newsletters');
   }
 
@@ -3296,7 +3009,6 @@
       });
     });
     bindBulkItemChecks('clients');
-    restoreBulkSelection('clients');
     updateBulkBar('clients');
   }
 
@@ -4005,45 +3717,6 @@
     toast('Período renovado até ' + formatDatePT(end));
   }
 
-  /**
-   * Remove previously embedded enrollment lines from client notes so promote
-   * does not duplicate Objectivos / Condições médicas / Notas.
-   */
-  function stripEnrollmentNoteLines(text) {
-    return String(text || '')
-      .split(/\r?\n/)
-      .map(l => l.trim())
-      .filter(l => {
-        if (!l) return false;
-        const lower = l.toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
-        return !(
-          lower.startsWith('objectivos') ||
-          lower.startsWith('objetivos') ||
-          lower.startsWith('medicas') ||
-          lower.startsWith('condicoes medicas') ||
-          lower.startsWith('notas ou questoes') ||
-          lower.startsWith('notas:') ||
-          lower.startsWith('aguarda documentos')
-        );
-      })
-      .join('\n')
-      .trim();
-  }
-
-  /** Format enrollment fields with the same labels used on the public form. */
-  function formatEnrollmentNotesForClient(s) {
-    const lines = [];
-    const goals = String((s && s.goals) || '').trim();
-    const medical = String((s && s.medicalConditions) || '').trim();
-    const notes = String((s && s.notes) || '').trim();
-    if (goals) lines.push('Objectivos de treino: ' + goals);
-    if (medical) lines.push('Condições médicas: ' + medical);
-    if (notes) lines.push('Notas ou questões: ' + notes);
-    return lines.join('\n');
-  }
-
   /** Create or update client from an enrollment submission. */
   async function promoteSubmissionToClient(subId, opts) {
     const asPending = !!(opts && opts.asPending);
@@ -4154,8 +3827,10 @@
       emergencyName: s.emergencyName || base.emergencyName || '',
       emergencyPhone: s.emergencyPhone || base.emergencyPhone || '',
       notes: [
-        stripEnrollmentNoteLines(base.notes),
-        formatEnrollmentNotesForClient(s),
+        base.notes,
+        s.goals ? 'Objectivos: ' + s.goals : '',
+        s.medicalConditions ? 'Condições médicas: ' + s.medicalConditions : '',
+        s.notes,
         pendingNote
       ].filter(Boolean).join('\n').trim(),
       payments: base.payments || [],

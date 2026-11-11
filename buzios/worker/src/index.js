@@ -279,11 +279,7 @@ async function handleSubmit(request, env) {
         billingStatus: 'em_dia',
         lastPaymentAt: null,
         payments: [],
-        notes: [
-          payload.goals ? 'Objectivos de treino: ' + payload.goals : '',
-          payload.medicalConditions ? 'Condições médicas: ' + payload.medicalConditions : '',
-          payload.notes ? 'Notas ou questões: ' + payload.notes : ''
-        ].filter(Boolean).join('\n'),
+        notes: [payload.notes, payload.goals ? 'Objectivos: ' + payload.goals : '', payload.medicalConditions ? 'Médicas: ' + payload.medicalConditions : ''].filter(Boolean).join('\n'),
         emergencyName: payload.emergencyName || '',
         emergencyPhone: payload.emergencyPhone || '',
         age: age,

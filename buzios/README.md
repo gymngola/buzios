@@ -298,18 +298,35 @@ Enrollment pipeline (reversible statuses):
 - **Criar cliente** — membership **activo**, submission **inscrito**
 - **Criar pendente (docs)** — membership **pendente** until documents are complete
 - **Arquivar** closes the ticket (does not delete the client in Clientes)
-- Filters + bulk status actions; see `BLUEPRINT.md` §4.1
+- **Restaurar cliente** when the linked client is in Lixeira (same record; inscrição status unchanged)
+- Notes copied to the client use form labels once: Objectivos de treino / Condições médicas / Notas ou questões
+- Filters + bulk status actions; bulk selection survives list refresh — see `BLUEPRINT.md` §4.1
+
+## Admin — live badges & alerts
+
+- **Inscrições / Contactos** nav badges = count of status `novo`
+- **Newsletter** badge = new signups since the panel was last opened
+- **Clientes** badge = em dívida + expirados (unchanged)
+- New rows toast during poll; optional browser notification if permission already granted and the tab is hidden
 
 ## Multi-device admin
 
 Several staff devices can keep admin open:
 
-- Store polled about every **7 seconds** while the tab is visible; also on tab focus
+- Store polled about every **3.5s** while the tab is focused, **~12s** when hidden (still polls so new leads update badges)
 - Newer `store.updatedAt` wins; toast **Actualizado noutro dispositivo**
 - Worker `update_client` re-loads store before write (reduces lost updates across devices)
 - Same client edited at the same time → last write wins
+- Bulk checkbox selection is kept in memory across poll re-renders
 
 ## Recent changes
+
+### 2026-11-11 — Inscrição restore, live badges, selection, notes
+
+- **Restaurar cliente** from Inscrições when the linked client is in Lixeira; trash banner in client modal.
+- Nav badges + toasts for new Inscrições, Contactos, Newsletter; background poll kept for badge updates.
+- Bulk selection no longer clears on list re-render (Inscrições / Contactos / Newsletter / Clientes).
+- Client notes from enrollment: full labels, no duplicated Objectivos/Médicas/Notas lines. Redeploy Worker if auto-create notes path is still in use.
 
 ### 2026-11-09 — Treinos, client history, named admins, force logout
 

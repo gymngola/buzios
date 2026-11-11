@@ -133,13 +133,7 @@ Password gate → sections:
 
 - Only Planos / Imagens / Textos need **Publicar no website**.
 - Clientes / inscrições / contactos / newsletter / treinos persist via `/admin/data` → **D1** automatically.
-- **Nav badges:**
-  - **Clientes** — count of em dívida + expirados
-  - **Inscrições** — count of status `novo` (also mirrored on the Novos filter chip)
-  - **Contactos** — count of status `novo`
-  - **Newsletter** — count of signups not yet opened this session (clears when the Newsletter panel is opened)
-- **Live alerts:** on silent poll, new inscrição / contacto / newsletter rows toast in-panel; tab title flashes briefly; OS `Notification` only if permission already granted and the tab is hidden. Poll continues while the tab is in the background so badges still update.
-- **Bulk selection** is held in memory across list re-renders (D1 overlay / poll). Checkboxes are restored after each render for Inscrições, Contactos, Newsletter, and Clientes. Selection is cleared after a bulk action or explicit deselect — not by filter changes alone.
+- Nav badge on Clientes when debt + expired count > 0.
 - Active panel remembered in `sessionStorage`.
 - **Session:** login requires **staff name** (dropdown) + shared Worker secret password (`action: "auth"`). Names: Julio Figueiredo, Nataniel Figueiredo, Keuria, Garcia Kissanga, Amarildo Salvador. Auth flag `buzios_admin_auth`; password in `sessionStorage` (`buzios_admin_pw`); name in session/local (`buzios_admin_name`). Hard reload does **not** clear the session. **Sair** clears password + flags. **Guia → Terminar todas as sessões** bumps D1 `auth_epoch` so every open panel logs out within ~40s (presence heartbeat).
 - **Presence:** sidebar/meta shows who is online by name (last ~2 min).
@@ -174,11 +168,6 @@ Suggested path: **Novo → Contactado → Aguarda docs → Inscrito**, then **Ar
 - If the linked client was **permanently purged**, the card falls back to **Criar cliente** / **Criar pendente** (new client id).
 - **Arquivar** removes from the daily queue; does **not** delete the client in Clientes.
 - **Apagar** deletes only the enrollment submission. Deleting a client in Clientes does **not** remove the inscrição (intentional).
-- **Notes copied onto the client** use the public form labels, once only (no duplicate lines):
-  - `Objectivos de treino: …`
-  - `Condições médicas: …`
-  - `Notas ou questões: …`
-  Promote strips any prior enrollment-prefixed lines from existing client notes before rewriting. Worker auto-create (if still used) writes the same format.
 
 ---
 
@@ -338,13 +327,6 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Client documents in edit panel**: upload images/PDFs via Cloudinary from client modal (`+ Adicionar`); remove with trash icon; stored on client `attachments` (and clears matching `documents` / `paymentProof` URLs on delete).
 - **Force logout all devices**: Guia → “Terminar todas as sessões”. Bumps D1 `admin_settings.auth_epoch` (migration `0007_admin_settings.sql`); presence heartbeats detect the new epoch and log every open panel out within ~40s. Explains why hard reload alone does not clear the session (password lives in `sessionStorage`).
 - **Histórico do cliente**: unified timeline in client edit modal — payments + trainings + audit/status events + “cliente criado”, with year filter and summary counts. Worker action `get_client_history` (trainings + audit for client).
-
-### 2026-11-11
-
-- **Inscrição → client restore:** when a linked client is in Lixeira, the inscrição card shows **Restaurar cliente** + **Ver cliente** (trash banner in the client modal). Permanent purge keeps the link broken and falls back to **Criar cliente**.
-- **Live nav badges + toasts:** Inscrições / Contactos count `novo`; Newsletter counts unseen signups until the panel is opened. Silent poll toasts new rows; background poll kept so badges update with the tab hidden.
-- **Bulk selection persistence:** selected rows survive D1 overlay / poll re-renders for Inscrições, Contactos, Newsletter, Clientes.
-- **Enrollment notes on client:** promote (and Worker auto-create notes) write `Objectivos de treino` / `Condições médicas` / `Notas ou questões` once, without duplicating older short labels (`Objectivos:`, `Médicas:`).
 
 ### 2026-11-08
 

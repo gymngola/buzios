@@ -574,8 +574,8 @@
       markNewslettersSeen();
     }
     if (name === 'clients') {
-      // Month training counts for list badges (silent — don't toast on this panel)
-      refreshTrainingsSummary({ silent: true }).then(() => renderClients()).catch(() => {});
+      // Month training counts for list badges
+      refreshTrainingsSummary().then(() => renderClients()).catch(() => {});
     }
     if (name === 'trainings') {
       refreshStoreIfChanged();
@@ -853,15 +853,9 @@
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_submissions' }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
-      if (!res.ok) {
-        console.warn('D1 submissions overlay HTTP', res.status);
-        return false;
-      }
+      if (!res.ok) return false;
       const data = await res.json();
-      if (!data.ok || !Array.isArray(data.submissions)) {
-        console.warn('D1 submissions overlay bad payload', data && data.error);
-        return false;
-      }
+      if (!data.ok || !Array.isArray(data.submissions)) return false;
       if (data.submissions.length === 0 && (store.submissions || []).length > 0) return false;
 
       const next = data.submissions;
@@ -997,15 +991,9 @@
         body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_newsletters' }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
-      if (!res.ok) {
-        console.warn('D1 newsletters overlay HTTP', res.status);
-        return false;
-      }
+      if (!res.ok) return false;
       const data = await res.json();
-      if (!data.ok || !Array.isArray(data.newsletters)) {
-        console.warn('D1 newsletters overlay bad payload', data && data.error);
-        return false;
-      }
+      if (!data.ok || !Array.isArray(data.newsletters)) return false;
       if (data.newsletters.length === 0 && (store.newsletters || []).length > 0) return false;
 
       const next = data.newsletters;
@@ -4676,8 +4664,7 @@
     renderTrainingsPanel();
   }
 
-  async function refreshTrainingsSummary(opts) {
-    const silent = !!(opts && opts.silent);
+  async function refreshTrainingsSummary() {
     const date = trainingSelectedDate();
     trainingsLoading = true;
     try {
@@ -4704,14 +4691,10 @@
           todayTotal: data.todayTotal || 0,
           monthTotal: data.monthTotal || 0
         };
-      } else if (!silent) {
-        toast('Erro ao carregar treinos');
       }
     } catch (e) {
       console.warn('trainings_summary failed', e);
-      if (!silent) {
-        toast(isTimeoutError(e) ? 'Servidor não respondeu (treinos)' : 'Erro ao carregar treinos');
-      }
+      toast(isTimeoutError(e) ? 'Servidor não respondeu (treinos)' : 'Erro ao carregar treinos');
     } finally {
       trainingsLoading = false;
     }

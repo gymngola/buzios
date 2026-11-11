@@ -833,8 +833,15 @@ a { color: var(--admin-accent); }
   color: #b33;
 }
 
+.form-actions-pay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .btn-pay-renew {
   flex: 1;
+  min-width: 10rem;
   height: 42px;
   background: #c45c26;
   color: #fff;
@@ -843,6 +850,24 @@ a { color: var(--admin-accent); }
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 500;
+}
+
+.btn-pay-only {
+  flex: 1;
+  min-width: 10rem;
+  height: 42px;
+  background: #fff;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.btn-pay-only:hover {
+  background: #f5f5f5;
+  border-color: #999;
 }
 
 /* Status chips */

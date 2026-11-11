@@ -373,6 +373,17 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Login flash:** early `admin-authed` class so reload does not show login when session is valid
 - **Public mobile:** tighter layout for ≤600px / ≤380px (iPhone 6s-class); SW `buzios-v3` network-first for HTML/JS/CSS
 
+### 2026-11-11 — enrollment docs surviving promote
+
+**Bug:** Changing inscrição status (Contactado / Aguarda docs / …) or linking `fromClientId` on promote sent a *partial* `update_submission` payload. The Worker wrote that object as the full `payload_json`, wiping `attachments`, `documents`, line items, goals, etc. After that, **Criar cliente** had nothing to copy, so the client page showed no documents/images.
+
+**Fix (Worker + admin):**
+- `update_submission` now loads the existing D1 row and **merges** the partial update (status / fromClientId) into the full submission before upsert.
+- Enrollment `/submit` auto-created clients now receive `attachments` / `documents` / `paymentProof` at creation time.
+- Promote still copies normalized attachments + documents map onto the client.
+
+**Deploy:** redeploy Worker from `worker/` (`npx wrangler deploy`). Static `js/admin.js` must be published with the site. Already-wiped submissions cannot be recovered from D1; re-upload docs on the client if needed.
+
 ---
 
 *When this blueprint diverges from the running site, treat the code as source of truth and update this file in the same change set.*

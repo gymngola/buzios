@@ -237,6 +237,8 @@ async function handleSubmit(request, env) {
     store.submissions.unshift(newSubmission);
     store.clients = store.clients || [];
     if (!store.clients.some(c => c.phone === payload.phone)) {
+      // Copy enrollment docs onto the auto-created client so they survive
+      // status-only updates on the submission (which used to wipe payload_json).
       newClient = {
         id: 'cli-' + Date.now(),
         name: payload.name,
@@ -257,7 +259,12 @@ async function handleSubmit(request, env) {
         emergencyName: payload.emergencyName || '',
         emergencyPhone: payload.emergencyPhone || '',
         createdAt: new Date().toISOString(),
-        fromSubmission: id
+        fromSubmission: id,
+        attachments: attachments.length ? attachments : null,
+        documents: payload.documents && typeof payload.documents === 'object' && Object.keys(payload.documents).length
+          ? payload.documents
+          : null,
+        paymentProof: payload.paymentProof || null
       };
       store.clients.unshift(newClient);
     }
@@ -428,9 +435,18 @@ async function handleAdminData(request, env) {
   }
 
   if (action === 'update_submission' && data && data.id) {
-    const saved = Object.assign({}, data, { id: data.id });
+    // Merge partial updates into the existing submission. Status-only (or
+    // fromClientId-only) payloads must NOT replace payload_json — that was
+    // wiping attachments, documents, lineItems, goals, etc.
+    let saved = Object.assign({}, data, { id: data.id });
     if (env.DB) {
       try {
+        const existing = await d1FindSubmissionById(env, data.id);
+        if (existing) {
+          saved = Object.assign({}, existing, data, { id: data.id });
+          // Never let a partial update clear createdAt
+          if (!saved.createdAt && existing.createdAt) saved.createdAt = existing.createdAt;
+        }
         await d1UpsertSubmission(env, saved);
         await d1Audit(env, 'save_submission', 'submission', String(data.id), saved.name || saved.status || '', adminName);
       } catch (e) {
@@ -1416,6 +1432,17 @@ async function d1ListSubmissions(env) {
     'SELECT * FROM submissions ORDER BY created_at DESC'
   ).all();
   return (res.results || []).map(rowToSubmission);
+}
+
+/** Load one submission by id (full payload, including attachments). */
+async function d1FindSubmissionById(env, id) {
+  if (!id || !env.DB) return null;
+  const res = await env.DB.prepare(
+    'SELECT * FROM submissions WHERE id = ? LIMIT 1'
+  )
+    .bind(String(id))
+    .first();
+  return res ? rowToSubmission(res) : null;
 }
 
 function rowToNewsletter(r) {

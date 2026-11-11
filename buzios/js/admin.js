@@ -3172,7 +3172,9 @@
     const pendingNote = asPending
       ? 'Aguarda documentos completos — activar quando a documentação estiver completa.'
       : '';
-    // Copy enrollment documents onto the client so they appear on Clientes
+    // Copy enrollment documents onto the client so they appear on Clientes.
+    // Prefer a full normalized list so we still work if only `documents` or
+    // only `attachments` is present on the submission.
     const subAttachments = normalizeAttachments(s);
     const existingAttachments = normalizeAttachments(base);
     const mergedAttachments = (() => {
@@ -3185,6 +3187,13 @@
         }
       });
       return out;
+    })();
+    // Keep structured documents map when present (enrollment keys: id, medical, photo1, …)
+    const mergedDocuments = (() => {
+      const fromSub = (s.documents && typeof s.documents === 'object') ? s.documents : null;
+      const fromBase = (base.documents && typeof base.documents === 'object') ? base.documents : null;
+      if (!fromSub && !fromBase) return null;
+      return Object.assign({}, fromBase || {}, fromSub || {});
     })();
 
     const data = enrichClient({
@@ -3240,7 +3249,7 @@
       createdAt: base.createdAt || new Date().toISOString(),
       fromSubmission: s.id,
       attachments: mergedAttachments.length ? mergedAttachments : (base.attachments || null),
-      documents: base.documents || null,
+      documents: mergedDocuments,
       paymentProof: s.paymentProof || base.paymentProof || null
     });
     const ok = await adminAction('update_client', data);
@@ -3581,6 +3590,42 @@
     if (amount) data.price = amount;
     await adminAction('update_client', data);
     toast('Pagamento registado · válido até ' + formatDatePT(end));
+    openClientModal(editingClientId);
+  });
+
+  // Payment only: history + em dia, no plan date / membership change
+  $('#payOnlyBtn')?.addEventListener('click', async () => {
+    if (!editingClientId) return toast('Guarde o cliente primeiro');
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    const amountStr = $('#cPayAmount').value;
+    const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
+    const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
+    if (!confirm(
+      'Apenas registar pagamento?\n\n' +
+      'Valor: ' + amtLabel + '\n' +
+      'Faturação → Em dia\n' +
+      'Datas do plano e estado de membro não são alterados.'
+    )) return;
+    const payment = {
+      id: 'pay-' + Date.now(),
+      amount: amount,
+      paidAt: new Date().toISOString(),
+      method: $('#cPayMethod').value,
+      note: $('#cPayNote').value.trim()
+    };
+    const payments = (existing.payments || []).slice();
+    payments.unshift(payment);
+    $('#cBilling').value = 'em_dia';
+    const data = readClientForm(Object.assign({}, existing, {
+      payments: payments.slice(0, 50),
+      lastPaymentAt: payment.paidAt
+    }));
+    data.billingStatus = 'em_dia';
+    data.lastPaymentAt = payment.paidAt;
+    data.payments = payments.slice(0, 50);
+    await adminAction('update_client', data);
+    toast('Pagamento registado · faturação em dia');
     openClientModal(editingClientId);
   });
 

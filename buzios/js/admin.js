@@ -2036,6 +2036,47 @@
     return $$('.bulk-item[data-list="' + listName + '"]:checked').map(el => el.dataset.id).filter(Boolean);
   }
 
+  function idsMatch(a, b) {
+    return a != null && b != null && String(a) === String(b);
+  }
+
+  function clientById(id) {
+    return (store.clients || []).find(c => idsMatch(c.id, id)) || null;
+  }
+
+  /** Swap bulk action buttons for normal vs lixeira view. */
+  function syncClientsBulkActionsForFilter() {
+    const inTrash = clientsFilter === 'lixeira';
+    $$('#clientsBulkBar .bulk-action, #clientsBulkFloat .bulk-action').forEach(btn => {
+      const act = btn.dataset.action;
+      if (!act) return;
+      if (inTrash) {
+        // Trash: Restaurar / Apagar já / WhatsApp / Exportar
+        if (act === 'suspend' || act === 'archive') {
+          btn.style.display = 'none';
+        } else if (act === 'restore') {
+          btn.style.display = '';
+        } else if (act === 'delete') {
+          btn.style.display = '';
+          btn.textContent = 'Apagar já';
+          btn.title = 'Apagar definitivamente';
+        } else {
+          btn.style.display = '';
+        }
+      } else {
+        if (act === 'restore') {
+          btn.style.display = 'none';
+        } else if (act === 'delete') {
+          btn.style.display = '';
+          btn.textContent = 'Apagar';
+          btn.title = 'Mover para a lixeira';
+        } else {
+          btn.style.display = '';
+        }
+      }
+    });
+  }
+
   function updateBulkBar(listName) {
     const bar = document.querySelector('.bulk-bar[data-list="' + listName + '"]');
     if (!bar) return;
@@ -2052,6 +2093,7 @@
     }
     // Floating action bar for clients when something is selected
     if (listName === 'clients') {
+      syncClientsBulkActionsForFilter();
       const float = $('#clientsBulkFloat');
       if (float) {
         if (selected.length > 0) {
@@ -2077,10 +2119,9 @@
 
     // Clients: bulk WhatsApp / export selected
     if (listName === 'clients' && action === 'whatsapp') {
-      const clients = (store.clients || []).filter(c => ids.includes(c.id));
+      const clients = (store.clients || []).filter(c => ids.some(id => idsMatch(c.id, id)));
       const phones = clients.map(c => c.phone).filter(Boolean);
       if (!phones.length) return toast('Nenhum telefone nos seleccionados');
-      // Open first WhatsApp; copy all numbers for the rest
       const first = clients.find(c => c.phone);
       const wa = first ? whatsappUrl(first.phone) : null;
       try {
@@ -2093,7 +2134,7 @@
       return;
     }
     if (listName === 'clients' && action === 'export') {
-      const items = getVisibleClients().filter(c => ids.includes(c.id));
+      const items = getVisibleClients().filter(c => ids.some(id => idsMatch(c.id, id)));
       if (!items.length) return toast('Nada para exportar');
       const headers = ['Nº', 'Nome', 'Telefone', 'Email', 'Área', 'Idade', 'Horário', 'Cartão', 'Plano', 'Preço', 'Ciclo', 'Início', 'Fim', 'Membership', 'Faturação', 'Emergência', 'Tel. emergência', 'Notas'];
       const rows = items.map(c => [
@@ -2116,11 +2157,33 @@
       return;
     }
 
-    if (action === 'delete') {
+    if (listName === 'clients' && action === 'restore') {
       if (!(await adminConfirm(
-        'Mover ' + ids.length + ' item(ns) para a lixeira?\nPode restaurar nos próximos 30 dias.',
-        { title: 'Lixeira', confirmLabel: 'Mover para lixeira', danger: true }
+        'Restaurar ' + ids.length + ' cliente(s) da lixeira?',
+        { title: 'Restaurar', confirmLabel: 'Restaurar' }
       ))) return;
+      let ok = 0;
+      for (const id of ids) {
+        if (await adminAction('restore_client', { id }, { silent: true })) ok++;
+      }
+      renderClients();
+      toast(ok + ' de ' + ids.length + ' restaurado(s)');
+      return;
+    }
+
+    if (action === 'delete') {
+      const inTrash = listName === 'clients' && clientsFilter === 'lixeira';
+      if (inTrash) {
+        if (!(await adminConfirm(
+          'Apagar definitivamente ' + ids.length + ' cliente(s)?\nEsta acção não pode ser desfeita.',
+          { title: 'Apagar já', confirmLabel: 'Apagar definitivamente', danger: true }
+        ))) return;
+      } else {
+        if (!(await adminConfirm(
+          'Mover ' + ids.length + ' item(ns) para a lixeira?\nPode restaurar nos próximos 30 dias.',
+          { title: 'Lixeira', confirmLabel: 'Mover para lixeira', danger: true }
+        ))) return;
+      }
     }
 
     let ok = 0;
@@ -2138,14 +2201,31 @@
         }
       } else if (listName === 'clients') {
         if (action === 'delete') {
-          success = await adminAction('delete_client', { id, hard: true }, { silent: true });
+          const inTrash = clientsFilter === 'lixeira';
+          success = await adminAction(
+            'delete_client',
+            inTrash ? { id, hard: true, purge: true } : { id, hard: true },
+            { silent: true }
+          );
         } else if (action === 'archive') {
+          const existing = clientById(id);
+          if (existing && isInTrash(existing)) {
+            toast('Na lixeira: use Restaurar, não Arquivar');
+            continue;
+          }
           success = await adminAction('delete_client', { id, hard: false }, { silent: true });
         } else if (action === 'suspend') {
-          const existing = (store.clients || []).find(c => c.id === id);
-          if (existing) {
-            success = await adminAction('update_client', enrichClient(Object.assign({}, existing, { membershipStatus: 'suspenso' })), { silent: true });
+          const existing = clientById(id);
+          if (!existing) continue;
+          if (isInTrash(existing)) {
+            toast('Na lixeira: use Restaurar primeiro');
+            continue;
           }
+          success = await adminAction(
+            'update_client',
+            enrichClient(Object.assign({}, existing, { membershipStatus: 'suspenso' })),
+            { silent: true }
+          );
         }
       }
       if (success) ok++;
@@ -2706,11 +2786,18 @@
              <span class="row-avatar-initials">${escapeHtml(initials)}</span>
            </button>`;
 
-      const btnRenew = `<button type="button" class="icon-btn btn-renew" data-renew-cli="${c.id}" title="Renovar" aria-label="Renovar">${ICO.renew}</button>`;
+      const btnRenew = isInTrash(c)
+        ? ''
+        : `<button type="button" class="icon-btn btn-renew" data-renew-cli="${c.id}" title="Renovar" aria-label="Renovar">${ICO.renew}</button>`;
       const btnWa = wa
         ? `<a class="icon-btn wa-btn" href="${wa}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">${ICO.wa}</a>`
         : '';
-      const btnEdit = `<button type="button" class="icon-btn" data-edit-cli="${c.id}" title="Editar" aria-label="Editar">${ICO.edit}</button>`;
+      const btnEdit = isInTrash(c)
+        ? ''
+        : `<button type="button" class="icon-btn" data-edit-cli="${c.id}" title="Editar" aria-label="Editar">${ICO.edit}</button>`;
+      const btnRestore = isInTrash(c)
+        ? `<button type="button" class="icon-btn btn-restore" data-restore-cli="${c.id}" title="Restaurar cliente" aria-label="Restaurar" style="background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7">↩</button>`
+        : '';
 
       const secondaryButtons = isInTrash(c)
         ? `
@@ -2758,8 +2845,9 @@
             ${daysPillHtml(days)}
           </div>
           <div class="row-actions">
-            ${needsAttention ? btnRenew + btnWa : btnEdit + btnRenew + btnWa}
-            ${needsAttention ? btnEdit : ''}
+            ${isInTrash(c)
+              ? (btnRestore + btnWa)
+              : (needsAttention ? btnRenew + btnWa : btnEdit + btnRenew + btnWa) + (needsAttention ? btnEdit : '')}
             <details class="row-more">
               <summary class="icon-btn" title="Mais acções" aria-label="Mais acções">${ICO.more}</summary>
               <div class="more-menu">

@@ -141,15 +141,15 @@ Password gate → sections:
 - **Live alerts:** on silent poll, new inscrição / contacto / newsletter rows toast in-panel; tab title flashes briefly; OS `Notification` only if permission already granted and the tab is hidden. Poll continues while the tab is in the background so badges still update.
 - **Bulk selection** is held in memory across list re-renders (D1 overlay / poll). Checkboxes are restored after each render for Inscrições, Contactos, Newsletter, and Clientes. Selection is cleared after a bulk action or explicit deselect — not by filter changes alone.
 - Active panel remembered in `sessionStorage`.
-- **Session:** login requires **staff name** (dropdown) + shared Worker secret password (`action: "auth"`). Names: Julio Figueiredo, Nataniel Figueiredo, Keuria, Garcia Kissanga, Amarildo Salvador. Auth flag `buzios_admin_auth`; password in `sessionStorage` (`buzios_admin_pw`); name in session/local (`buzios_admin_name`). Hard reload does **not** clear the session. **Sair** clears password + flags. **Guia → Terminar todas as sessões** bumps D1 `auth_epoch` so every open panel logs out within ~40s (presence heartbeat).
-- **Presence:** sidebar/meta shows who is online by name (last ~2 min).
-- **Multi-device sync:** while admin is open, store is polled on an interval (and on tab focus). D1 overlays refresh clients / inbox / newsletter. Writes pause polling briefly.
+- **Session:** login requires **staff name** (dropdown) + shared Worker secret password (`action: "auth"`). Names: Julio Figueiredo, Nataniel Figueiredo, Keuria, Garcia Kissanga, Amarildo Salvador. Auth flag `buzios_admin_auth`; password in `sessionStorage` (`buzios_admin_pw`); name in session/local (`buzios_admin_name`). Hard reload does **not** clear the session. **Sair** clears password + flags. **Guia → Terminar todas as sessões** bumps D1 `auth_epoch` so every open panel logs out within one store poll (~60s).
+- **Presence:** removed (saved D1 reads). Admin bar no longer shows who is online.
+- **Multi-device sync:** while admin is open, store is polled ~60s focused / ~10 min hidden (and immediately on tab focus). D1 overlays refresh clients / inbox / newsletter. Writes pause polling briefly.
 
 **Admin chrome**
 
 - Login: logo + “Búzios Admin” + name select + password
 - Sidebar brand: logo (+ text on wide nav)
-- Bar meta: current user · sync status · who is online
+- Bar meta: current user · sync status
 - Sidebar footer actions: **Website** (opens public site), **Instalar app**, **Sair**
 - Icons: `icons/admin-192.png`, `admin-512.png` (from same logo artwork)
 
@@ -341,7 +341,7 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 
 ### 2026-11-11
 
-- **D1 free-tier read budget:** store poll **30s** focused / **90s** hidden (was 3.5s / 12s); presence heartbeat **~2.5 min** and only while tab visible; `trainings_summary` only on Treinos panel (not on every Clientes open). Prevents daily row-read limit exhaustion on Free plan.
+- **D1 free-tier read budget:** presence removed; store poll **60s** focused / **10 min** hidden; refresh on tab focus still immediate; `trainings_summary` only on Treinos panel. Prevents daily row-read limit exhaustion on Free plan.
 - **Inscrição → client restore:** when a linked client is in Lixeira, the inscrição card shows **Restaurar cliente** + **Ver cliente** (trash banner in the client modal). Permanent purge keeps the link broken and falls back to **Criar cliente**.
 - **Live nav badges + toasts:** Inscrições / Contactos count `novo`; Newsletter counts unseen signups until the panel is opened. Silent poll toasts new rows; background poll kept so badges update with the tab hidden.
 - **Bulk selection persistence:** selected rows survive D1 overlay / poll re-renders for Inscrições, Contactos, Newsletter, Clientes.

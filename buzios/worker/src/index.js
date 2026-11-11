@@ -401,7 +401,8 @@ async function handleAdminData(request, env) {
   let store = await loadStore(env);
 
   if (action === 'get' || !action) {
-    return json({ ok: true, store });
+    const authEpoch = env.DB ? await d1GetAuthEpoch(env) : null;
+    return json({ ok: true, store, authEpoch });
   }
 
   // Debug: compare cache vs Cloudinary + raw fetch probes (no write)
@@ -715,13 +716,6 @@ async function handleAdminData(request, env) {
   if (action === 'force_logout_all') {
     try {
       const authEpoch = await d1BumpAuthEpoch(env);
-      // Clear presence so "online" resets immediately
-      if (env.DB) {
-        try {
-          await d1EnsurePresenceTable(env);
-          await env.DB.prepare('DELETE FROM admin_presence').run();
-        } catch (e) { /* ignore */ }
-      }
       await d1Audit(env, 'force_logout_all', 'admin', '', 'all sessions invalidated', adminName);
       return json({ ok: true, authEpoch, message: 'Todas as sessões foram invalidadas' });
     } catch (e) {
@@ -916,49 +910,6 @@ async function handleAdminData(request, env) {
     } catch (e) {
       console.error('import_trainings_bulk', e && e.message);
       return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
-    }
-  }
-
-  // —— Admin presence (open panels) ——
-  if (action === 'presence_heartbeat') {
-    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
-    const sessionId = String((data && data.sessionId) || '').slice(0, 64);
-    if (!sessionId) return json({ error: 'sessionId required' }, 400);
-    const ua = String((data && data.userAgent) || '').slice(0, 180);
-    const name = String((data && data.adminName) || adminName || '').trim().slice(0, 80);
-    try {
-      const result = await d1PresenceHeartbeat(env, sessionId, ua, name);
-      const authEpoch = await d1GetAuthEpoch(env);
-      return json({ ok: true, online: result.online, names: result.names, authEpoch });
-    } catch (e) {
-      console.error('presence_heartbeat', e && e.message);
-      return json({ error: 'presence failed: ' + (e && e.message) }, 500);
-    }
-  }
-
-  if (action === 'presence_leave') {
-    if (!env.DB) return json({ ok: true, online: 0, names: [] });
-    const sessionId = String((data && data.sessionId) || '').slice(0, 64);
-    if (sessionId) {
-      try {
-        await env.DB.prepare('DELETE FROM admin_presence WHERE session_id = ?').bind(sessionId).run();
-      } catch (e) { /* ignore */ }
-    }
-    try {
-      const result = await d1PresenceList(env);
-      return json({ ok: true, online: result.online, names: result.names });
-    } catch (e) {
-      return json({ ok: true, online: 0, names: [] });
-    }
-  }
-
-  if (action === 'presence_get') {
-    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
-    try {
-      const result = await d1PresenceList(env);
-      return json({ ok: true, online: result.online, names: result.names });
-    } catch (e) {
-      return json({ error: 'presence failed: ' + (e && e.message) }, 500);
     }
   }
 
@@ -2019,74 +1970,6 @@ async function d1TrainingsSummary(env, date, month) {
     monthTotal,
     daySessions: (daySessions || []).map(trainingRowFromDb)
   };
-}
-
-/** Sessions with last_seen within this window count as online. */
-const PRESENCE_ONLINE_MS = 2 * 60 * 1000;
-
-async function d1EnsurePresenceTable(env) {
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS admin_presence (
-      session_id TEXT PRIMARY KEY,
-      last_seen TEXT NOT NULL,
-      user_agent TEXT,
-      created_at TEXT,
-      admin_name TEXT
-    )`
-  ).run();
-  // Best-effort add column for existing deployments
-  try {
-    await env.DB.prepare('ALTER TABLE admin_presence ADD COLUMN admin_name TEXT').run();
-  } catch (e) { /* already exists */ }
-}
-
-async function d1PresenceHeartbeat(env, sessionId, userAgent, adminName) {
-  await d1EnsurePresenceTable(env);
-  const now = new Date().toISOString();
-  const name = String(adminName || '').slice(0, 80);
-  await env.DB.prepare(
-    `INSERT INTO admin_presence (session_id, last_seen, user_agent, created_at, admin_name)
-     VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(session_id) DO UPDATE SET
-       last_seen = excluded.last_seen,
-       user_agent = excluded.user_agent,
-       admin_name = excluded.admin_name`
-  )
-    .bind(sessionId, now, userAgent || '', now, name)
-    .run();
-
-  // Drop stale sessions (older than 10 minutes) so the table stays small
-  const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  await env.DB.prepare('DELETE FROM admin_presence WHERE last_seen < ?').bind(staleBefore).run();
-
-  return d1PresenceList(env);
-}
-
-async function d1PresenceCount(env) {
-  const result = await d1PresenceList(env);
-  return result.online;
-}
-
-async function d1PresenceList(env) {
-  await d1EnsurePresenceTable(env);
-  const since = new Date(Date.now() - PRESENCE_ONLINE_MS).toISOString();
-  const { results } = await env.DB.prepare(
-    'SELECT admin_name FROM admin_presence WHERE last_seen >= ? ORDER BY last_seen DESC'
-  )
-    .bind(since)
-    .all();
-  const rows = results || [];
-  const names = [];
-  const seen = Object.create(null);
-  for (const r of rows) {
-    const n = (r && r.admin_name) ? String(r.admin_name).trim() : '';
-    if (n && !seen[n]) {
-      seen[n] = true;
-      names.push(n);
-    }
-  }
-  // Count sessions (not unique names) so multiple devices by same person still show activity
-  return { online: rows.length, names };
 }
 
 /** Permanent delete (after 30-day trash or explicit purge). */

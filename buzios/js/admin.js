@@ -105,7 +105,6 @@
 
   function forceRemoteLogout(message) {
     stopStoreSync();
-    stopPresence(false);
     setSessionPassword('');
     setAuthEpoch(null);
     try { sessionStorage.removeItem('buzios_admin_name'); } catch (e) {}
@@ -348,12 +347,10 @@
     await loadStore();
     renderAll();
     startStoreSync();
-    startPresence();
   }
 
   function logoutAdmin() {
     stopStoreSync();
-    stopPresence(true);
     setSessionPassword('');
     setAuthEpoch(null);
     // Keep last selected name in localStorage for convenience; clear session only
@@ -697,9 +694,9 @@
   let localWriteInFlight = 0;
   let localWriteUntil = 0; // pause remote poll briefly after local write
   let storeSyncTimer = null;
-  // D1 free-tier: keep polls sparse. Focused tab ~30s; background ~90s.
-  const STORE_SYNC_FOCUS_MS = 30000;
-  const STORE_SYNC_HIDDEN_MS = 90000;
+  // D1 free-tier: sparse polls. Focused tab ~60s; background ~10 min (tab return refreshes immediately).
+  const STORE_SYNC_FOCUS_MS = 60000;
+  const STORE_SYNC_HIDDEN_MS = 600000;
   const LOCAL_WRITE_COOLDOWN_MS = 1800;
   let syncChannel = null;
   try {
@@ -1065,6 +1062,7 @@
         }
         if (res.ok) {
           const data = await res.json();
+          if (data.authEpoch != null) checkAuthEpochFromServer(data.authEpoch);
           if (data.store) fromWorker = data.store;
         }
       } catch (e) {
@@ -1241,134 +1239,6 @@
       }
     }
   }
-
-  // —— Admin presence (open panels) ——
-  // Presence is nice-to-have only — 2.5 min keeps “who is online” without burning D1 reads.
-  const PRESENCE_INTERVAL_MS = 150000;
-  let presenceTimer = null;
-  let presenceSessionId = '';
-
-  function getPresenceSessionId() {
-    if (presenceSessionId) return presenceSessionId;
-    try {
-      presenceSessionId = sessionStorage.getItem('buzios_admin_sid') || '';
-    } catch (e) {}
-    if (!presenceSessionId) {
-      presenceSessionId =
-        's_' +
-        Date.now().toString(36) +
-        '_' +
-        Math.random().toString(36).slice(2, 10);
-      try {
-        sessionStorage.setItem('buzios_admin_sid', presenceSessionId);
-      } catch (e) {}
-    }
-    return presenceSessionId;
-  }
-
-  function setPresenceLabel(n, names) {
-    const el = $('#presenceStatus');
-    if (!el) return;
-    const list = Array.isArray(names) ? names.filter(Boolean) : [];
-    if (typeof n !== 'number' || n < 1) {
-      el.textContent = '0 online';
-      el.setAttribute('data-count', '0');
-      el.title = 'Ninguém com o painel aberto';
-      return;
-    }
-    if (list.length) {
-      el.textContent = list.length === 1
-        ? list[0] + ' online'
-        : list.length + ' online: ' + list.join(', ');
-      el.title = 'Online agora: ' + list.join(', ');
-    } else {
-      el.textContent = n === 1 ? '1 online' : n + ' online';
-      el.title = n + ' painel(is) aberto(s) (últimos 2 min)';
-    }
-    el.setAttribute('data-count', String(n));
-  }
-
-  async function sendPresenceHeartbeat() {
-    const password = getAdminPassword();
-    if (!password || document.hidden) return;
-    try {
-      const res = await fetchWithTimeout(
-        ADMIN_DATA_URL,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            password: password,
-            action: 'presence_heartbeat',
-            adminName: getAdminName(),
-            data: {
-              sessionId: getPresenceSessionId(),
-              userAgent: (navigator.userAgent || '').slice(0, 180),
-              adminName: getAdminName()
-            }
-          }),
-          cache: 'no-store'
-        },
-        8000
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data && data.ok) {
-        if (data.authEpoch != null) checkAuthEpochFromServer(data.authEpoch);
-        setPresenceLabel(
-          typeof data.online === 'number' ? data.online : (data.names || []).length,
-          data.names
-        );
-      }
-    } catch (e) {
-      /* silent — presence is best-effort */
-    }
-  }
-
-  function startPresence() {
-    stopPresence(false);
-    setPresenceLabel(1);
-    sendPresenceHeartbeat();
-    presenceTimer = setInterval(sendPresenceHeartbeat, PRESENCE_INTERVAL_MS);
-  }
-
-  function stopPresence(sendLeave) {
-    if (presenceTimer) {
-      clearInterval(presenceTimer);
-      presenceTimer = null;
-    }
-    if (!sendLeave) return;
-    const password = getAdminPassword();
-    const sid = presenceSessionId || (function () {
-      try { return sessionStorage.getItem('buzios_admin_sid') || ''; } catch (e) { return ''; }
-    })();
-    if (!password || !sid) return;
-    const payload = JSON.stringify({
-      password: password,
-      action: 'presence_leave',
-      data: { sessionId: sid }
-    });
-    try {
-      if (navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: 'application/json' });
-        navigator.sendBeacon(ADMIN_DATA_URL, blob);
-      } else {
-        fetch(ADMIN_DATA_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-          keepalive: true,
-          cache: 'no-store'
-        }).catch(function () {});
-      }
-    } catch (e) { /* ignore */ }
-    setPresenceLabel(0);
-  }
-
-  document.addEventListener('visibilitychange', function () {
-    if (!document.documentElement.classList.contains('admin-authed')) return;
-    if (!document.hidden) sendPresenceHeartbeat();
-  });
 
   function currentSyncInterval() {
     return document.hidden ? STORE_SYNC_HIDDEN_MS : STORE_SYNC_FOCUS_MS;

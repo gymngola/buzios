@@ -313,8 +313,8 @@ Enrollment pipeline (reversible statuses):
 
 Several staff devices can keep admin open:
 
-- Store polled about every **30s** while the tab is focused, **~90s** when hidden (keeps new-lead badges without burning D1 free-tier reads)
-- Presence (“X online”) every **~2.5 min** and only while the tab is visible
+- Store polled about every **60s** while the tab is focused, **~10 min** when hidden (tab return refreshes immediately)
+- Presence (“X online”) **removed** — saved D1 reads; force-logout still works via auth epoch
 - `trainings_summary` loads only on the **Treinos** panel (not on every Clientes open)
 - Newer `store.updatedAt` wins; toast **Actualizado noutro dispositivo**
 - Worker `update_client` re-loads store before write (reduces lost updates across devices)
@@ -322,6 +322,13 @@ Several staff devices can keep admin open:
 - Bulk checkbox selection is kept in memory across poll re-renders
 
 ## Recent changes
+
+### 2026-11-11 — D1 read budget (presence removed)
+
+- **Presence removed** entirely (UI + heartbeats + worker actions).
+- **Poll:** focused ~60s / background ~10 min; refresh on tab focus still immediate.
+- **authEpoch** returned on regular `get` so “Terminar todas as sessões” still logs others out within one poll.
+- No trainings fetch on Clientes (only on Treinos).
 
 ### 2026-11-11 — D1 read budget + earlier fixes
 

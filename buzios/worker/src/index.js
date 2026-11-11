@@ -290,7 +290,27 @@ async function handleSubmit(request, env) {
         documents: payload.documents && typeof payload.documents === 'object' && Object.keys(payload.documents).length
           ? payload.documents
           : null,
-        paymentProof: payload.paymentProof || null
+        paymentProof: payload.paymentProof || null,
+        // Prefer "Foto tipo passe 1" (then 2) as profile photo
+        photoUrl: (() => {
+          const docs = payload.documents && typeof payload.documents === 'object' ? payload.documents : null;
+          function u(entry) {
+            if (!entry) return null;
+            if (typeof entry === 'string') return entry;
+            return entry.url || entry.secure_url || null;
+          }
+          if (docs) {
+            const p1 = u(docs.photo1);
+            if (p1) return p1;
+            const p2 = u(docs.photo2);
+            if (p2) return p2;
+          }
+          const att = (attachments || []).find(a =>
+            a && a.url && (a.key === 'photo1' || a.key === 'photo2' || /foto|photo|passe/i.test(String(a.label || ''))) &&
+            !/\.pdf($|\?)/i.test(a.url)
+          );
+          return att ? att.url : null;
+        })()
       };
       store.clients.unshift(newClient);
     }

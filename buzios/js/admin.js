@@ -1530,6 +1530,37 @@
     return lab ? (lab.length > 18 ? lab.slice(0, 16) + '…' : lab) : 'Documento';
   }
 
+  /**
+   * Prefer enrollment "Foto tipo passe" (photo1, then photo2) as client profile photo.
+   * Falls back to any image-like attachment labeled as foto.
+   */
+  function profilePhotoFromEnrollment(s) {
+    if (!s) return null;
+    const docs = s.documents && typeof s.documents === 'object' ? s.documents : null;
+    function urlFromDoc(entry) {
+      if (!entry) return null;
+      if (typeof entry === 'string') return entry;
+      return entry.url || entry.secure_url || null;
+    }
+    if (docs) {
+      const p1 = urlFromDoc(docs.photo1);
+      if (p1) return p1;
+      const p2 = urlFromDoc(docs.photo2);
+      if (p2) return p2;
+    }
+    const atts = normalizeAttachments(s);
+    const photoAtt = atts.find(a =>
+      a && a.url && (
+        a.key === 'photo1' || a.key === 'photo2' ||
+        /foto|photo|passe/i.test(String(a.label || ''))
+      ) && !/\.pdf($|\?)/i.test(a.url)
+    );
+    if (photoAtt) return photoAtt.url;
+    // Last resort: first non-PDF image attachment
+    const anyImg = atts.find(a => a && a.url && !/\.pdf($|\?)/i.test(a.url) && /\.(jpe?g|png|webp|gif)($|\?)/i.test(a.url));
+    return anyImg ? anyImg.url : null;
+  }
+
   function normalizeAttachments(s) {
     const list = [];
     const seen = new Set();
@@ -3538,7 +3569,9 @@
       fromSubmission: s.id,
       attachments: mergedAttachments.length ? mergedAttachments : (base.attachments || null),
       documents: mergedDocuments,
-      paymentProof: s.paymentProof || base.paymentProof || null
+      paymentProof: s.paymentProof || base.paymentProof || null,
+      // Use "Foto tipo passe" from inscrição as profile photo when client has none yet
+      photoUrl: base.photoUrl || profilePhotoFromEnrollment(s) || null
     });
     const ok = await adminAction('update_client', data);
     if (!ok) return;
@@ -3975,6 +4008,32 @@
     return todayISO();
   }
 
+  function shiftISODate(iso, days) {
+    const base = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : todayISO();
+    const d = new Date(base + 'T12:00:00');
+    d.setDate(d.getDate() + days);
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  function updateTrainingDayHint() {
+    const hint = $('#trainingDayHint');
+    if (!hint) return;
+    const date = trainingSelectedDate();
+    const today = todayISO();
+    if (date === today) {
+      hint.style.display = 'none';
+      hint.textContent = '';
+      return;
+    }
+    const label = formatDatePT(date);
+    const isPast = date < today;
+    hint.style.display = '';
+    hint.textContent = isPast
+      ? 'A ver ' + label + ' (dia passado). «+ Neste dia» regista o treino nessa data — útil se alguém esqueceu de marcar ontem.'
+      : 'A ver ' + label + ' (dia futuro). Os novos registos ficam neste dia.';
+  }
+
   async function loadTrainingsPanel() {
     const dateInput = $('#trainingDate');
     if (dateInput && !dateInput.value) dateInput.value = todayISO();
@@ -4110,20 +4169,30 @@
           '<div class="row-contact">' + escapeHtml([c.phone, c.planName || c.planId].filter(Boolean).join(' · ') || '—') + '</div>' +
         '</div>' +
         '<div class="training-counts">' +
-          '<span class="t-count" title="Sessões neste dia"><strong>' + todayN + '</strong> hoje</span>' +
+          '<span class="t-count" title="Sessões neste dia"><strong>' + todayN + '</strong> ' + (date === todayISO() ? 'hoje' : 'neste dia') + '</span>' +
           '<span class="t-count" title="Sessões neste mês"><strong>' + monthN + '</strong> mês</span>' +
         '</div>' +
         '<div class="training-actions">' +
-          '<button type="button" class="btn-train" data-add-training="' + escapeHtml(c.id) + '" title="Registar treino (Alt+clique para nota)">+ Treino</button>' +
+          '<button type="button" class="btn-train" data-add-training="' + escapeHtml(c.id) + '" title="Registo rápido neste dia. Clique longo / Alt para escolher data, hora e nota.">' +
+            (date === todayISO() ? '+ Treino' : '+ Neste dia') +
+          '</button>' +
         '</div>' +
         (sessionsHtml ? '<div class="training-sessions">' + sessionsHtml + '</div>' : '') +
       '</div>';
     }).join('');
 
+    updateTrainingDayHint();
+
     list.querySelectorAll('[data-add-training]').forEach(btn => {
-      btn.addEventListener('click', (e) =>
-        addTrainingForClient(btn.getAttribute('data-add-training'), { askNote: !!(e && e.altKey) })
-      );
+      btn.addEventListener('click', (e) => {
+        const id = btn.getAttribute('data-add-training');
+        // Alt/Option or Shift = open full form (date/time/note); plain click = fast register for selected day
+        if (e && (e.altKey || e.shiftKey)) {
+          openTrainingAddModal(id, { date: trainingSelectedDate() });
+        } else {
+          addTrainingForClient(id, { quick: true });
+        }
+      });
     });
     list.querySelectorAll('[data-del-training]').forEach(btn => {
       btn.addEventListener('click', () => deleteTrainingSession(btn.getAttribute('data-del-training')));
@@ -4144,24 +4213,67 @@
     });
   }
 
-  async function addTrainingForClient(clientId, opts) {
+  let _trainingAddClientId = null;
+
+  function closeTrainingAddModal() {
+    const modal = $('#trainingAddModal');
+    if (modal) modal.classList.remove('open');
+    _trainingAddClientId = null;
+  }
+
+  function openTrainingAddModal(clientId, opts) {
     if (!clientId) return;
-    const date = trainingSelectedDate();
-    const now = new Date();
-    let trainedAt = now.toISOString();
-    // If viewing another day, default to noon on that day
-    if (date !== todayISO()) {
-      trainedAt = date + 'T12:00:00.000Z';
+    _trainingAddClientId = clientId;
+    const client = (store.clients || []).find(c => String(c.id) === String(clientId));
+    const label = $('#trainingAddClientLabel');
+    if (label) {
+      label.textContent = client
+        ? ((client.memberNumber != null ? 'Nº ' + client.memberNumber + ' · ' : '') + (client.name || ''))
+        : '';
     }
-    // Fast path: no prompt. Hold Alt/Option while clicking for optional note.
-    let note = '';
-    if (opts && opts.askNote) {
-      const n = await adminPrompt('Nota para este treino (opcional)', '', {
-        title: 'Nota do treino', confirmLabel: 'Continuar'
-      });
-      if (n === null) return;
-      note = n;
+    const preferDate = (opts && opts.date) || trainingSelectedDate() || todayISO();
+    const nowParts = toLocalDateAndTime(new Date());
+    if ($('#trainingAddDate')) $('#trainingAddDate').value = preferDate;
+    if ($('#trainingAddTime')) {
+      // Same day as "now" → current time; other day → 12:00
+      $('#trainingAddTime').value = preferDate === todayISO() ? nowParts.time : '12:00';
     }
+    if ($('#trainingAddNote')) $('#trainingAddNote').value = (opts && opts.note) || '';
+    const modal = $('#trainingAddModal');
+    if (modal) modal.classList.add('open');
+    setTimeout(() => {
+      try { $('#trainingAddDate') && $('#trainingAddDate').focus(); } catch (_) {}
+    }, 40);
+  }
+
+  async function saveTrainingAddModal() {
+    if (!_trainingAddClientId) return closeTrainingAddModal();
+    const dateVal = ($('#trainingAddDate') && $('#trainingAddDate').value) || '';
+    const timeVal = ($('#trainingAddTime') && $('#trainingAddTime').value) || '12:00';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) {
+      toast('Escolha a data do treino');
+      return;
+    }
+    const timeNorm = /^\d{2}:\d{2}/.test(timeVal) ? timeVal.slice(0, 5) : '12:00';
+    let trainedAt;
+    try {
+      const parsed = new Date(dateVal + 'T' + timeNorm + ':00');
+      if (isNaN(parsed.getTime())) {
+        toast('Data/hora inválida');
+        return;
+      }
+      trainedAt = parsed.toISOString();
+    } catch (_) {
+      toast('Data/hora inválida');
+      return;
+    }
+    const note = ($('#trainingAddNote') && $('#trainingAddNote').value.trim()) || '';
+    const clientId = _trainingAddClientId;
+    closeTrainingAddModal();
+    await persistNewTraining(clientId, trainedAt, note);
+  }
+
+  async function persistNewTraining(clientId, trainedAt, note) {
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
@@ -4170,23 +4282,42 @@
           password: getAdminPassword(),
           action: 'add_training',
           adminName: getAdminName(),
-          data: { clientId, trainedAt, note: String(note).trim() }
+          data: { clientId, trainedAt, note: String(note || '').trim() }
         }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) throw new Error('status ' + res.status);
       const data = await res.json();
       if (!data || !data.ok) throw new Error((data && data.error) || 'fail');
-      toast('Treino registado');
+      const day = (trainedAt || '').slice(0, 10);
+      toast(day && day !== todayISO()
+        ? 'Treino registado em ' + formatDatePT(day)
+        : 'Treino registado');
       await refreshTrainingsSummary();
       renderTrainingsPanel();
-      if (editingClientId === clientId) {
-        await loadClientTrainings(clientId);
-      }
+      if (editingClientId) await loadClientTrainings(editingClientId);
     } catch (e) {
       console.warn('add_training failed', e);
       toast(isTimeoutError(e) ? 'Servidor não respondeu' : 'Erro ao registar treino');
     }
+  }
+
+  async function addTrainingForClient(clientId, opts) {
+    if (!clientId) return;
+    // From client card without "quick": open form so staff can pick yesterday if needed
+    if (!(opts && opts.quick)) {
+      openTrainingAddModal(clientId, { date: todayISO() });
+      return;
+    }
+    const date = trainingSelectedDate();
+    const now = new Date();
+    let trainedAt = now.toISOString();
+    // Viewing another day → local noon on that day (not UTC)
+    if (date !== todayISO()) {
+      const localNoon = new Date(date + 'T12:00:00');
+      trainedAt = isNaN(localNoon.getTime()) ? (date + 'T12:00:00.000Z') : localNoon.toISOString();
+    }
+    await persistNewTraining(clientId, trainedAt, '');
   }
 
   async function deleteTrainingSession(id) {
@@ -4415,7 +4546,7 @@
         '<div class="client-history-stats">' +
           '<strong>' + todayN + '</strong> hoje · <strong>' + monthN + '</strong> este mês · <strong>' + trainings.length + '</strong> no total' +
         '</div>' +
-        '<button type="button" class="btn-train" id="cAddTrainingBtn">+ Treino hoje</button>' +
+        '<button type="button" class="btn-train" id="cAddTrainingBtn" title="Registar treino em qualquer dia">+ Treino</button>' +
       '</div>' +
       (monthRows
         ? '<div class="t-month-summary"><div class="t-month-title">Por mês</div>' + monthRows + '</div>'
@@ -4437,10 +4568,10 @@
               '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>' +
               '</button></span></li>';
           }).join('') + '</ul>'
-        : '<p class="muted" style="font-size:0.85rem">Ainda sem treinos registados. Use <strong>+ Treino hoje</strong> ou o painel Treinos.</p>');
+        : '<p class="muted" style="font-size:0.85rem">Ainda sem treinos registados. Use <strong>+ Treino</strong> (pode escolher ontem) ou o painel Treinos.</p>');
 
     const addBtn = host.querySelector('#cAddTrainingBtn');
-    if (addBtn) addBtn.addEventListener('click', () => addTrainingForClient(clientId));
+    if (addBtn) addBtn.addEventListener('click', () => openTrainingAddModal(clientId, { date: todayISO() }));
     host.querySelectorAll('[data-edit-training]').forEach(btn => {
       btn.addEventListener('click', () => {
         editTrainingSession(btn.getAttribute('data-edit-training'), {
@@ -4590,14 +4721,46 @@
     return host;
   }
 
+  async function setTrainingDateAndRefresh(iso) {
+    const el = $('#trainingDate');
+    if (el) el.value = iso;
+    updateTrainingDayHint();
+    await refreshTrainingsSummary();
+    renderTrainingsPanel();
+    const report = $('#trainingMonthReport');
+    if (report && report.classList.contains('is-open')) renderTrainingMonthReport();
+  }
+
   $('#trainingDate')?.addEventListener('change', async () => {
+    updateTrainingDayHint();
     await refreshTrainingsSummary();
     renderTrainingsPanel();
     const report = $('#trainingMonthReport');
     if (report && report.classList.contains('is-open')) renderTrainingMonthReport();
   });
+  $('#trainingDayPrev')?.addEventListener('click', () => {
+    setTrainingDateAndRefresh(shiftISODate(trainingSelectedDate(), -1));
+  });
+  $('#trainingDayNext')?.addEventListener('click', () => {
+    setTrainingDateAndRefresh(shiftISODate(trainingSelectedDate(), 1));
+  });
+  $('#trainingDayToday')?.addEventListener('click', () => setTrainingDateAndRefresh(todayISO()));
+  $('#trainingDayYesterday')?.addEventListener('click', () => setTrainingDateAndRefresh(shiftISODate(todayISO(), -1)));
   $('#trainingSearch')?.addEventListener('input', () => renderTrainingsPanel());
   $('#trainingFilter')?.addEventListener('change', () => renderTrainingsPanel());
+
+  $('#closeTrainingAddModal')?.addEventListener('click', closeTrainingAddModal);
+  $('#trainingAddCancel')?.addEventListener('click', closeTrainingAddModal);
+  $('#trainingAddSave')?.addEventListener('click', () => { saveTrainingAddModal(); });
+  $('#trainingAddModal')?.addEventListener('click', (e) => {
+    if (e.target === $('#trainingAddModal')) closeTrainingAddModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if ($('#trainingAddModal') && $('#trainingAddModal').classList.contains('open')) {
+      closeTrainingAddModal();
+    }
+  });
 
   function closeTrainingMonthReport() {
     const host = $('#trainingMonthReport');

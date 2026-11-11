@@ -245,13 +245,20 @@
       <!-- Trainings / attendance -->
       <div id="panel-trainings" class="panel">
         <div class="clients-page-head">
-          <p class="clients-desc">Quando o cliente chega ao ginásio, registe o treino aqui. No fim do mês o relatório mostra quantas vezes cada um treinou.</p>
-          <div class="clients-head-actions">
-            <input type="date" id="trainingDate" aria-label="Data dos treinos" style="height:38px;border:1px solid #ddd;border-radius:8px;padding:0 0.6rem;font-size:0.85rem">
+          <p class="clients-desc">Quando o cliente chega, registe o treino com <strong>+ Treino</strong>. Para um dia em atraso, mude a data acima (ou use Ontem) e registe normalmente — o treino fica nesse dia.</p>
+          <div class="clients-head-actions" style="display:flex;flex-wrap:wrap;gap:0.4rem;align-items:center">
+            <div class="training-day-nav" style="display:inline-flex;align-items:center;gap:0.25rem">
+              <button type="button" id="trainingDayPrev" class="btn-secondary" title="Dia anterior" style="min-width:38px;padding:0 0.55rem">‹</button>
+              <input type="date" id="trainingDate" aria-label="Data dos treinos" style="height:38px;border:1px solid #ddd;border-radius:8px;padding:0 0.6rem;font-size:0.85rem">
+              <button type="button" id="trainingDayNext" class="btn-secondary" title="Dia seguinte" style="min-width:38px;padding:0 0.55rem">›</button>
+              <button type="button" id="trainingDayToday" class="btn-secondary" title="Ir para hoje">Hoje</button>
+              <button type="button" id="trainingDayYesterday" class="btn-secondary" title="Ir para ontem">Ontem</button>
+            </div>
             <button type="button" id="trainingMonthReportBtn" class="btn-secondary" title="Relatório do mês (estilo Excel)">Relatório do mês</button>
             <button type="button" id="trainingExportMonthBtn" class="btn-secondary" title="Exportar CSV do mês">CSV mês</button>
           </div>
         </div>
+        <p id="trainingDayHint" class="muted" style="display:none;font-size:0.82rem;margin:0 0 0.65rem;padding:0.45rem 0.7rem;background:#fff8f0;border:1px solid #f0d9c0;border-radius:8px;color:#6b3d12"></p>
         <div class="clients-sticky">
           <div class="clients-summary" id="trainingsSummary"></div>
           <div class="client-toolbar">
@@ -785,6 +792,25 @@
     </div>
   </div>
 
+  <!-- Register training (any day) -->
+  <div class="modal-backdrop admin-dialog-backdrop" id="trainingAddModal" role="dialog" aria-modal="true" aria-labelledby="trainingAddTitle">
+    <div class="modal admin-dialog-modal" style="max-width:420px">
+      <button type="button" class="modal-close" id="closeTrainingAddModal" aria-label="Fechar">×</button>
+      <h2 id="trainingAddTitle">Registar treino</h2>
+      <p id="trainingAddClientLabel" class="muted" style="font-size:0.85rem;margin:0 0 0.75rem"></p>
+      <div class="form-grid-2">
+        <div class="form-row"><label>Data</label><input type="date" id="trainingAddDate"></div>
+        <div class="form-row"><label>Hora</label><input type="time" id="trainingAddTime"></div>
+      </div>
+      <div class="form-row"><label>Nota</label><input type="text" id="trainingAddNote" placeholder="Opcional"></div>
+      <p class="muted" style="font-size:0.78rem;margin:0.35rem 0 0">Para um treino de ontem, escolha a data de ontem. A hora pode ser aproximada.</p>
+      <div class="form-actions admin-dialog-actions" style="margin-top:1rem">
+        <button type="button" id="trainingAddCancel" class="btn-dialog-cancel">Cancelar</button>
+        <button type="button" id="trainingAddSave" class="btn-dialog-ok">Registar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Install admin app help -->
   <div class="modal-backdrop" id="installAppModal">
     <div class="modal" style="max-width:420px">
@@ -804,7 +830,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261111d"></script>
+  <script src="js/admin.js?v=20261111f"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

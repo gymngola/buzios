@@ -2257,6 +2257,12 @@
   const CYCLE_MONTHS = { mensal: 1, trimestral: 3, anual: 12, pacote: 1 };
   const ANNUAL_FEE_ID = 'inscricao-anual';
   const ANNUAL_FEE_DEFAULT = 6500;
+  const SWIM_FEE_ID = 'natacao-inscricao';
+  const SWIM_FEE_DEFAULT = 10500;
+  const EXTRA_AVALIACAO_ID = 'avaliacao-fisica';
+  const EXTRA_AVALIACAO_DEFAULT = 5000;
+  const EXTRA_AVULSAS_ID = 'aulas-avulsas';
+  const EXTRA_AVULSAS_DEFAULT = 30000;
 
   /** Full years from YYYY-MM-DD. */
   function ageFromBirthDate(iso) {
@@ -2275,13 +2281,17 @@
     return age;
   }
 
-  function annualFeeAmount() {
-    const p = (products || []).find(x => x.id === ANNUAL_FEE_ID);
-    const n = p && p.price != null ? Number(p.price) : ANNUAL_FEE_DEFAULT;
-    return Number.isFinite(n) && n >= 0 ? n : ANNUAL_FEE_DEFAULT;
+  function productPrice(id, fallback) {
+    const p = (products || []).find(x => x.id === id);
+    const n = p && p.price != null ? Number(p.price) : fallback;
+    return Number.isFinite(n) && n >= 0 ? n : fallback;
   }
+  function annualFeeAmount() { return productPrice(ANNUAL_FEE_ID, ANNUAL_FEE_DEFAULT); }
+  function swimFeeAmount() { return productPrice(SWIM_FEE_ID, SWIM_FEE_DEFAULT); }
+  function avaliacaoAmount() { return productPrice(EXTRA_AVALIACAO_ID, EXTRA_AVALIACAO_DEFAULT); }
+  function avulsasAmount() { return productPrice(EXTRA_AVULSAS_ID, EXTRA_AVULSAS_DEFAULT); }
 
-  /** Recurring plan price from form (cPrice), ignoring annual fee addon. */
+  /** Recurring plan price from form (cPrice), ignoring one-off addons. */
   function planPriceFromForm() {
     const raw = $('#cPrice') && $('#cPrice').value;
     if (raw === '' || raw == null) return 0;
@@ -2289,18 +2299,87 @@
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
-  /**
-   * Keep cPayAmount in sync with plan price ± inscrição anual checkbox.
-   * Does not change cPrice (that stays the recurring plan amount).
-   */
+  function formatKzLabel(n) {
+    return Number(n).toLocaleString('pt') + ' Kz';
+  }
+
+  function updateClientAddonVisibility() {
+    const area = ($('#cArea') && $('#cArea').value) || 'ginasio';
+    const isGym = area === 'ginasio' || area === 'ambos';
+    const isSwim = area === 'natacao' || area === 'ambos';
+    const setDisp = (sel, show) => {
+      const el = $(sel);
+      if (!el) return;
+      el.style.display = show ? 'flex' : 'none';
+    };
+    setDisp('#cAnnualFeeRow', isGym);
+    setDisp('#cExtraAvaliacaoRow', isGym);
+    setDisp('#cExtraAvulsasRow', isGym);
+    setDisp('#cSwimFeeRow', isSwim);
+    if ($('#cAnnualFeePrice')) $('#cAnnualFeePrice').textContent = formatKzLabel(annualFeeAmount());
+    if ($('#cSwimFeePrice')) $('#cSwimFeePrice').textContent = formatKzLabel(swimFeeAmount());
+    if ($('#cExtraAvaliacaoPrice')) $('#cExtraAvaliacaoPrice').textContent = formatKzLabel(avaliacaoAmount());
+    if ($('#cExtraAvulsasPrice')) $('#cExtraAvulsasPrice').textContent = formatKzLabel(avulsasAmount());
+  }
+
+  function addonsTotalFromForm() {
+    let t = 0;
+    const area = ($('#cArea') && $('#cArea').value) || 'ginasio';
+    const isGym = area === 'ginasio' || area === 'ambos';
+    const isSwim = area === 'natacao' || area === 'ambos';
+    if (isGym && $('#cAnnualFee') && $('#cAnnualFee').checked) t += annualFeeAmount();
+    if (isSwim && $('#cSwimFee') && $('#cSwimFee').checked) t += swimFeeAmount();
+    if (isGym && $('#cExtraAvaliacao') && $('#cExtraAvaliacao').checked) t += avaliacaoAmount();
+    if (isGym && $('#cExtraAvulsas') && $('#cExtraAvulsas').checked) t += avulsasAmount();
+    return t;
+  }
+
+  function addonLabelsFromForm() {
+    const labels = [];
+    const area = ($('#cArea') && $('#cArea').value) || 'ginasio';
+    const isGym = area === 'ginasio' || area === 'ambos';
+    const isSwim = area === 'natacao' || area === 'ambos';
+    if (isGym && $('#cAnnualFee') && $('#cAnnualFee').checked) labels.push('Inscrição anual ' + formatKzLabel(annualFeeAmount()));
+    if (isSwim && $('#cSwimFee') && $('#cSwimFee').checked) labels.push('Inscrição natação ' + formatKzLabel(swimFeeAmount()));
+    if (isGym && $('#cExtraAvaliacao') && $('#cExtraAvaliacao').checked) labels.push('Avaliação física ' + formatKzLabel(avaliacaoAmount()));
+    if (isGym && $('#cExtraAvulsas') && $('#cExtraAvulsas').checked) labels.push('Aulas avulsas ' + formatKzLabel(avulsasAmount()));
+    return labels;
+  }
+
+  /** cPayAmount = plan + selected one-offs. cPrice stays recurring only. */
   function syncPayAmountWithAnnual() {
     const payEl = $('#cPayAmount');
     if (!payEl) return;
-    const base = planPriceFromForm();
-    const withAnnual = !!( $('#cAnnualFee') && $('#cAnnualFee').checked );
-    const total = base + (withAnnual ? annualFeeAmount() : 0);
+    const total = planPriceFromForm() + addonsTotalFromForm();
     payEl.value = total > 0 ? total : '';
     updatePayPreview();
+  }
+
+  function clearAddonCheckboxes() {
+    ['cAnnualFee', 'cSwimFee', 'cExtraAvaliacao', 'cExtraAvulsas'].forEach(id => {
+      if ($('#' + id)) $('#' + id).checked = false;
+    });
+  }
+
+  function clientExtrasFromForm() {
+    const extras = [];
+    if ($('#cExtraAvaliacao') && $('#cExtraAvaliacao').checked) extras.push(EXTRA_AVALIACAO_ID);
+    if ($('#cExtraAvulsas') && $('#cExtraAvulsas').checked) extras.push(EXTRA_AVULSAS_ID);
+    return extras;
+  }
+
+  function addonsFromSubmission(s) {
+    const lines = Array.isArray(s && s.lineItems) ? s.lineItems : [];
+    const extraIds = Array.isArray(s && s.extras) ? s.extras.slice() : [];
+    lines.forEach(l => {
+      if (l && l.id && !extraIds.includes(l.id)) extraIds.push(l.id);
+    });
+    const has = (id) => extraIds.includes(id) || lines.some(l => l && l.id === id);
+    return {
+      annualFee: !!(s && s.annualFee) || has(ANNUAL_FEE_ID),
+      swimFee: has(SWIM_FEE_ID),
+      extras: [EXTRA_AVALIACAO_ID, EXTRA_AVULSAS_ID].filter(id => has(id))
+    };
   }
 
   function todayISO() {
@@ -3269,6 +3348,11 @@
     $('#cPrice').value = c?.price != null ? c.price : '';
     $('#cCycle').value = c?.billingCycle || 'mensal';
     if ($('#cAnnualFee')) $('#cAnnualFee').checked = !!c?.annualFee;
+    if ($('#cSwimFee')) $('#cSwimFee').checked = !!c?.swimFee;
+    const extras = Array.isArray(c?.extras) ? c.extras : [];
+    if ($('#cExtraAvaliacao')) $('#cExtraAvaliacao').checked = extras.includes(EXTRA_AVALIACAO_ID);
+    if ($('#cExtraAvulsas')) $('#cExtraAvulsas').checked = extras.includes(EXTRA_AVULSAS_ID);
+    updateClientAddonVisibility();
     $('#cPlanStart').value = c?.planStart || '';
     $('#cPlanEnd').value = c?.planEnd || '';
     $('#cMembership').value = c?.membershipStatus || 'pendente';
@@ -3285,7 +3369,7 @@
     $('#cPayMethod').value = 'cash';
     $('#cPayNote').value = '';
     if ($('#cPayDate')) $('#cPayDate').value = todayISO();
-    // Pay amount = plan ± annual (checkbox); do not bake annual into cPrice
+    // Pay amount = plan ± one-off addons (not baked into cPrice)
     syncPayAmountWithAnnual();
     renderPayHistory(c?.payments);
 
@@ -3414,6 +3498,8 @@
       fromImport: existing?.fromImport || null,
       archivedAt: existing?.archivedAt || null,
       annualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ),
+      swimFee: !!( $('#cSwimFee') && $('#cSwimFee').checked ),
+      extras: clientExtrasFromForm(),
       attachments: existing?.attachments || null,
       documents: existing?.documents || null,
       paymentProof: existing?.paymentProof || null,
@@ -3547,8 +3633,20 @@
         if (p && p.period === 'mensal') return 'mensal';
         return base.billingCycle || 'mensal';
       })(),
-      // One-off gym annual registration (6.500 Kz) — not part of recurring plan price
-      annualFee: s.annualFee != null ? !!s.annualFee : !!base.annualFee,
+      // One-off fees from enrollment (not part of recurring plan price)
+      annualFee: (() => {
+        const a = addonsFromSubmission(s);
+        return a.annualFee || !!base.annualFee;
+      })(),
+      swimFee: (() => {
+        const a = addonsFromSubmission(s);
+        return a.swimFee || !!base.swimFee;
+      })(),
+      extras: (() => {
+        const a = addonsFromSubmission(s);
+        const baseEx = Array.isArray(base.extras) ? base.extras : [];
+        return Array.from(new Set(a.extras.concat(baseEx)));
+      })(),
       planStart: base.planStart || todayISO(),
       planEnd: base.planEnd || addMonthsISO(todayISO(), 1),
       // Pending until all documents are provided; otherwise active
@@ -3737,7 +3835,11 @@
   $('#cPrice')?.addEventListener('input', () => {
     syncPayAmountWithAnnual();
   });
-  $('#cAnnualFee')?.addEventListener('change', () => {
+  ['cAnnualFee', 'cSwimFee', 'cExtraAvaliacao', 'cExtraAvulsas'].forEach(id => {
+    $('#' + id)?.addEventListener('change', () => syncPayAmountWithAnnual());
+  });
+  $('#cArea')?.addEventListener('change', () => {
+    updateClientAddonVisibility();
     syncPayAmountWithAnnual();
   });
   $('#cBirthDate')?.addEventListener('change', () => {
@@ -3896,20 +3998,19 @@
     const paidAt = paidAtFromForm();
     const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
     const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
-    const includeAnnualPreview = !!( $('#cAnnualFee') && $('#cAnnualFee').checked );
+    const addonLabels = addonLabelsFromForm();
     if (!(await adminConfirm(
       'Registar pagamento e renovar?\n\n' +
       'Valor: ' + amtLabel + '\n' +
       'Data do pagamento: ' + formatDatePT(payDateLabel) + '\n' +
-      (includeAnnualPreview ? 'Inclui inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz\n' : '') +
+      (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
       'Novo fim do plano: ' + formatDatePT(end) + '\n' +
       'Estado → Activo · Faturação → Em dia',
       { title: 'Pagar e renovar', confirmLabel: 'Confirmar' }
     ))) return;
-    const includeAnnual = includeAnnualPreview;
     let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
-    if (includeAnnual) {
-      const feeLabel = 'Inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz';
+    if (addonLabels.length) {
+      const feeLabel = addonLabels.join(' · ');
       payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
     }
     const payment = {
@@ -3920,7 +4021,7 @@
       note: payNote,
       periodStart: start,
       periodEnd: end,
-      includesAnnualFee: includeAnnual || undefined
+      includesAnnualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ) || undefined
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
@@ -3929,8 +4030,8 @@
     $('#cPlanEnd').value = end;
     $('#cMembership').value = 'activo';
     $('#cBilling').value = 'em_dia';
-    // After charging annual once, clear the addon so the next renew is plan-only
-    if (includeAnnual && $('#cAnnualFee')) $('#cAnnualFee').checked = false;
+    // After charging one-offs once, clear so the next renew is plan-only
+    clearAddonCheckboxes();
     const data = readClientForm(Object.assign({}, existing, { payments: payments.slice(0, 50), lastPaymentAt: payment.paidAt }));
     data.planStart = data.planStart || start;
     data.planEnd = end;
@@ -3939,9 +4040,11 @@
     data.lastPaymentAt = payments[0]?.paidAt || paidAt;
     data.payments = payments.slice(0, 50);
     data.billingCycle = cycle;
-    // Keep recurring plan price (cPrice) — never overwrite with total that includes annual
+    // Keep recurring plan price (cPrice) — never overwrite with total that includes addons
     data.price = planPriceFromForm() || existing.price || null;
     data.annualFee = false;
+    data.swimFee = false;
+    data.extras = [];
     await adminAction('update_client', data);
     toast('Pagamento registado · válido até ' + formatDatePT(end));
     openClientModal(editingClientId);
@@ -3956,20 +4059,20 @@
     const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
     const paidAt = paidAtFromForm();
     const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
-    const includeAnnual = !!( $('#cAnnualFee') && $('#cAnnualFee').checked );
+    const addonLabels = addonLabelsFromForm();
     const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
     if (!(await adminConfirm(
       'Apenas registar pagamento?\n\n' +
       'Valor: ' + amtLabel + '\n' +
       'Data: ' + formatDatePT(payDateLabel) + '\n' +
-      (includeAnnual ? 'Inclui inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz\n' : '') +
+      (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
       'Faturação → Em dia\n' +
       'Datas do plano e estado de membro não são alterados.',
       { title: 'Registar pagamento', confirmLabel: 'Registar' }
     ))) return;
     let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
-    if (includeAnnual) {
-      const feeLabel = 'Inscrição anual ' + annualFeeAmount().toLocaleString('pt') + ' Kz';
+    if (addonLabels.length) {
+      const feeLabel = addonLabels.join(' · ');
       payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
     }
     const payment = {
@@ -3978,13 +4081,13 @@
       paidAt: paidAt,
       method: $('#cPayMethod').value,
       note: payNote,
-      includesAnnualFee: includeAnnual || undefined
+      includesAnnualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ) || undefined
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
     payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
     $('#cBilling').value = 'em_dia';
-    if (includeAnnual && $('#cAnnualFee')) $('#cAnnualFee').checked = false;
+    clearAddonCheckboxes();
     const data = readClientForm(Object.assign({}, existing, {
       payments: payments.slice(0, 50),
       lastPaymentAt: payments[0]?.paidAt || paidAt
@@ -3993,6 +4096,8 @@
     data.lastPaymentAt = payments[0]?.paidAt || paidAt;
     data.payments = payments.slice(0, 50);
     data.annualFee = false;
+    data.swimFee = false;
+    data.extras = [];
     await adminAction('update_client', data);
     toast('Pagamento registado · ' + formatDatePT(payDateLabel) + ' · faturação em dia');
     openClientModal(editingClientId);

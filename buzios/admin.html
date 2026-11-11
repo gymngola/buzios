@@ -575,12 +575,31 @@
                 </select>
               </div>
             </div>
-            <div class="form-row" style="margin-top:0.15rem">
-              <label class="client-check-label" style="display:flex;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
+            <div id="cAddonsBlock" style="margin-top:0.35rem;display:flex;flex-direction:column;gap:0.45rem">
+              <p class="muted" style="font-size:0.75rem;margin:0">Extras somam ao valor a cobrar neste pagamento (não alteram o preço do plano). Após pagar, desmarcam-se sozinhos.</p>
+              <label class="client-check-label" id="cAnnualFeeRow" style="display:flex;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
                 <input type="checkbox" id="cAnnualFee" style="margin-top:0.2rem;width:auto">
                 <span>
-                  <strong>Inscrição anual (ginásio)</strong> — <span style="color:#c45c26">6.500 Kz</span><br>
-                  <span class="muted" style="font-size:0.78rem;font-weight:400">Soma ao valor a cobrar neste pagamento (não altera o preço do plano). Obrigatória na 1ª vez / após 90 dias de ausência.</span>
+                  <strong>Inscrição anual (ginásio)</strong> — <span style="color:#c45c26" id="cAnnualFeePrice">6.500 Kz</span><br>
+                  <span class="muted" style="font-size:0.78rem;font-weight:400">Obrigatória na 1ª vez / após 90 dias de ausência.</span>
+                </span>
+              </label>
+              <label class="client-check-label" id="cSwimFeeRow" style="display:none;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
+                <input type="checkbox" id="cSwimFee" style="margin-top:0.2rem;width:auto">
+                <span>
+                  <strong>Inscrição escola de natação</strong> — <span style="color:#c45c26" id="cSwimFeePrice">10.500 Kz</span>
+                </span>
+              </label>
+              <label class="client-check-label" id="cExtraAvaliacaoRow" style="display:flex;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
+                <input type="checkbox" id="cExtraAvaliacao" style="margin-top:0.2rem;width:auto">
+                <span>
+                  <strong>Avaliação física (bioimpedância)</strong> — <span style="color:#c45c26" id="cExtraAvaliacaoPrice">5.000 Kz</span>
+                </span>
+              </label>
+              <label class="client-check-label" id="cExtraAvulsasRow" style="display:flex;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
+                <input type="checkbox" id="cExtraAvulsas" style="margin-top:0.2rem;width:auto">
+                <span>
+                  <strong>Aulas avulsas (cartão 6 aulas)</strong> — <span style="color:#c45c26" id="cExtraAvulsasPrice">30.000 Kz</span>
                 </span>
               </label>
             </div>
@@ -830,7 +849,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261111f"></script>
+  <script src="js/admin.js?v=20261111g"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

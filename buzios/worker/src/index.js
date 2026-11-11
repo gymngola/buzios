@@ -1334,13 +1334,19 @@ function clientToRow(c) {
       attachments: Array.isArray(c.attachments) ? c.attachments : [],
       documents: c.documents && typeof c.documents === 'object' ? c.documents : null,
       paymentProof: c.paymentProof || null,
-      birthDate: c.birthDate || null
+      birthDate: c.birthDate || null,
+      annualFee: !!c.annualFee,
+      swimFee: !!c.swimFee,
+      extras: Array.isArray(c.extras) ? c.extras : []
     };
     if (
       (docsPayload.attachments && docsPayload.attachments.length) ||
       (docsPayload.documents && Object.keys(docsPayload.documents).length) ||
       docsPayload.paymentProof ||
-      docsPayload.birthDate
+      docsPayload.birthDate ||
+      docsPayload.annualFee ||
+      docsPayload.swimFee ||
+      (docsPayload.extras && docsPayload.extras.length)
     ) {
       documents_json = JSON.stringify(docsPayload);
     } else if (c.documents_json != null) {
@@ -1397,6 +1403,9 @@ function rowToClient(r) {
   let documents = null;
   let paymentProof = null;
   let birthDate = null;
+  let annualFee = false;
+  let swimFee = false;
+  let extras = [];
   try {
     if (r.documents_json) {
       const parsed = typeof r.documents_json === 'string' ? JSON.parse(r.documents_json) : r.documents_json;
@@ -1406,6 +1415,9 @@ function rowToClient(r) {
         if (parsed.documents && typeof parsed.documents === 'object') documents = parsed.documents;
         if (parsed.paymentProof) paymentProof = parsed.paymentProof;
         if (parsed.birthDate) birthDate = parsed.birthDate;
+        if (parsed.annualFee) annualFee = true;
+        if (parsed.swimFee) swimFee = true;
+        if (Array.isArray(parsed.extras)) extras = parsed.extras;
       }
     }
   } catch (_) {}
@@ -1418,6 +1430,9 @@ function rowToClient(r) {
     area: r.area,
     age: r.age != null ? r.age : ageFromBirthDateISO(birthDate),
     birthDate: birthDate,
+    annualFee: annualFee,
+    swimFee: swimFee,
+    extras: extras,
     schedule: schedule,
     hasCard: r.has_card,
     planId: r.plan_id,

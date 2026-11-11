@@ -473,6 +473,10 @@
       <button type="button" class="modal-close" id="closeClientModal" aria-label="Fechar">×</button>
       <div class="client-modal-scroll">
         <h2 id="clientModalTitle">Cliente</h2>
+        <div id="cTrashBanner" class="client-trash-banner" style="display:none" role="status">
+          Este cliente está na <strong>lixeira</strong> (recuperável 30 dias).
+          <button type="button" id="cTrashRestoreBtn" class="btn-secondary" style="margin-left:0.5rem">Restaurar cliente</button>
+        </div>
         <div id="cStatusChips" class="client-status-chips" aria-live="polite"></div>
         <div id="cQuickActions" class="client-quick-actions" style="display:none">
           <button type="button" class="cq-btn" id="cQaWhatsApp" title="Abrir WhatsApp">WhatsApp</button>
@@ -731,6 +735,7 @@
 
       <div class="client-modal-footer">
         <button type="button" id="saveClientBtn" class="btn-save-client">Guardar cliente</button>
+        <button type="button" id="restoreClientBtn" class="btn-secondary" style="display:none;background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7">Restaurar cliente</button>
         <button type="button" id="archiveClientBtn" class="btn-secondary btn-archive-client" style="display:none">Arquivar</button>
         <button type="button" id="deleteClientBtn" class="danger btn-delete-client" style="display:none">Apagar</button>
       </div>

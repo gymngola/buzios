@@ -1264,6 +1264,12 @@
   };
   const SUB_STATUS_ORDER = { novo: 0, contactado: 1, pendente_docs: 2, inscrito: 3, arquivado: 4 };
 
+  /** Resolve the client linked to a submission (null if none or permanently purged). */
+  function linkedClientForSubmission(s) {
+    if (!s || !s.fromClientId) return null;
+    return (store.clients || []).find(c => String(c.id) === String(s.fromClientId)) || null;
+  }
+
   function enrollmentActionButtons(s) {
     const status = s.status || 'novo';
     const id = s.id;
@@ -1281,9 +1287,16 @@
     if (status !== 'inscrito') {
       btns.push(`<button type="button" data-st="${id}" data-v="inscrito">Inscrito</button>`);
     }
-    // Create / open client
-    if (s.fromClientId) {
-      btns.push(`<button type="button" data-open-cli="${escapeHtml(s.fromClientId)}">Ver cliente</button>`);
+    // Create / open / restore client
+    // - Linked + in trash → Restaurar cliente + Ver cliente
+    // - Linked + active   → Ver cliente
+    // - No link or permanently purged → Criar cliente
+    const linked = linkedClientForSubmission(s);
+    if (linked && isInTrash(linked)) {
+      btns.push(`<button type="button" data-restore-cli-from-sub="${escapeHtml(linked.id)}">Restaurar cliente</button>`);
+      btns.push(`<button type="button" data-open-cli="${escapeHtml(linked.id)}">Ver cliente</button>`);
+    } else if (linked) {
+      btns.push(`<button type="button" data-open-cli="${escapeHtml(linked.id)}">Ver cliente</button>`);
     } else {
       btns.push(`<button type="button" data-promote-cli="${id}">Criar cliente</button>`);
       btns.push(`<button type="button" data-promote-cli-pend="${id}">Criar pendente (docs)</button>`);
@@ -1367,7 +1380,19 @@
           ${s.notes ? '<p style="font-size:0.85rem;margin:0.5rem 0;color:#444">' + escapeHtml(s.notes) + '</p>' : ''}
           ${s.docsLater ? '<div class="meta">Documentos: a entregar no local</div>' : ''}
           ${renderAttachmentGallery(s)}
-          ${s.fromClientId ? '<div class="meta">Cliente ligado: <code>' + escapeHtml(s.fromClientId) + '</code></div>' : ''}
+          ${(() => {
+            if (!s.fromClientId) return '';
+            const linked = linkedClientForSubmission(s);
+            if (linked && isInTrash(linked)) {
+              return '<div class="meta" style="color:#b45309">Cliente ligado (na lixeira): <code>' +
+                escapeHtml(s.fromClientId) + '</code> — use <strong>Restaurar cliente</strong></div>';
+            }
+            if (linked) {
+              return '<div class="meta">Cliente ligado: <code>' + escapeHtml(s.fromClientId) + '</code></div>';
+            }
+            // Link points at a permanently purged client
+            return '<div class="meta" style="color:#888">Cliente ligado foi apagado em definitivo — pode criar um novo</div>';
+          })()}
           <div class="actions" style="margin-top:0.65rem">
             ${enrollmentActionButtons(s)}
           </div>
@@ -1381,10 +1406,52 @@
     list.querySelectorAll('[data-promote-cli-pend]').forEach(btn => {
       btn.addEventListener('click', () => promoteSubmissionToClient(btn.dataset.promoteCliPend, { asPending: true }));
     });
+    list.querySelectorAll('[data-restore-cli-from-sub]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cid = btn.dataset.restoreCliFromSub;
+        if (!cid) return;
+        const existing = (store.clients || []).find(c => String(c.id) === String(cid));
+        if (!existing) return toast('Cliente não encontrado (pode ter sido apagado em definitivo)');
+        if (!isInTrash(existing)) {
+          toast('Cliente já não está na lixeira');
+          activatePanel('clients');
+          openClientModal(cid);
+          return;
+        }
+        btn.disabled = true;
+        const ok = await adminAction('restore_client', { id: cid });
+        if (ok) {
+          toast('Cliente restaurado');
+          activatePanel('clients');
+          // Leave filter on "all" so the restored client is visible
+          if (clientsFilter === 'lixeira') {
+            clientsFilter = 'all';
+            $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(b => {
+              b.classList.toggle('active', b.dataset.filter === 'all');
+            });
+            renderClients();
+          }
+          openClientModal(cid);
+        } else {
+          btn.disabled = false;
+          toast('Não foi possível restaurar o cliente');
+        }
+      });
+    });
     list.querySelectorAll('[data-open-cli]').forEach(btn => {
       btn.addEventListener('click', () => {
+        const cid = btn.dataset.openCli;
+        const c = (store.clients || []).find(x => String(x.id) === String(cid));
         activatePanel('clients');
-        openClientModal(btn.dataset.openCli);
+        if (c && isInTrash(c)) {
+          clientsFilter = 'lixeira';
+          $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(b => {
+            b.classList.toggle('active', b.dataset.filter === 'lixeira');
+          });
+          renderClients();
+          if (typeof syncClientsBulkActionsForFilter === 'function') syncClientsBulkActionsForFilter();
+        }
+        openClientModal(cid);
       });
     });
     bindBulkItemChecks('inbox');
@@ -3397,8 +3464,15 @@
   function openClientModal(id) {
     editingClientId = id || null;
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
+    const inTrash = !!(c && isInTrash(c));
     const title = $('#clientModalTitle');
-    if (title) title.textContent = c ? 'Editar cliente' : 'Novo cliente';
+    if (title) {
+      if (inTrash) title.textContent = 'Cliente (na lixeira)';
+      else if (c) title.textContent = 'Editar cliente';
+      else title.textContent = 'Novo cliente';
+    }
+    const trashBanner = $('#cTrashBanner');
+    if (trashBanner) trashBanner.style.display = inTrash ? '' : 'none';
     $('#cName').value = c?.name || '';
     $('#cPhone').value = c?.phone || '';
     $('#cEmail').value = c?.email || '';
@@ -3463,8 +3537,17 @@
 
     const archBtn = $('#archiveClientBtn');
     const delBtn = $('#deleteClientBtn');
-    if (archBtn) archBtn.style.display = id ? '' : 'none';
-    if (delBtn) delBtn.style.display = id ? '' : 'none';
+    const restoreBtn = $('#restoreClientBtn');
+    // In trash: show Restaurar; hide Arquivar; Apagar still available (purge from modal is separate flow)
+    if (inTrash) {
+      if (archBtn) archBtn.style.display = 'none';
+      if (delBtn) delBtn.style.display = 'none';
+      if (restoreBtn) restoreBtn.style.display = '';
+    } else {
+      if (archBtn) archBtn.style.display = id ? '' : 'none';
+      if (delBtn) delBtn.style.display = id ? '' : 'none';
+      if (restoreBtn) restoreBtn.style.display = 'none';
+    }
 
     const qa = $('#cQuickActions');
     if (qa) qa.style.display = id ? 'flex' : 'none';
@@ -3473,7 +3556,8 @@
     if (subLink) {
       if (c && c.fromSubmission) {
         subLink.style.display = '';
-        subLink.innerHTML = 'Ligado à inscrição <code>' + escapeHtml(c.fromSubmission) + '</code>';
+        subLink.innerHTML = 'Ligado à inscrição <code>' + escapeHtml(c.fromSubmission) + '</code>' +
+          (inTrash ? ' <span style="color:#b45309">(cliente na lixeira)</span>' : '');
       } else {
         subLink.style.display = 'none';
         subLink.innerHTML = '';
@@ -4071,6 +4155,27 @@
       toast('Cliente na lixeira (30 dias)');
     }
   });
+
+  async function restoreEditingClient() {
+    if (!editingClientId) return;
+    const existing = (store.clients || []).find(x => String(x.id) === String(editingClientId));
+    if (!existing) return toast('Cliente não encontrado');
+    if (!isInTrash(existing)) return toast('Cliente já não está na lixeira');
+    const ok = await adminAction('restore_client', { id: editingClientId });
+    if (ok) {
+      toast('Cliente restaurado');
+      if (clientsFilter === 'lixeira') {
+        clientsFilter = 'all';
+        $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(b => {
+          b.classList.toggle('active', b.dataset.filter === 'all');
+        });
+        if (typeof syncClientsBulkActionsForFilter === 'function') syncClientsBulkActionsForFilter();
+      }
+      openClientModal(editingClientId);
+    }
+  }
+  $('#restoreClientBtn')?.addEventListener('click', () => restoreEditingClient());
+  $('#cTrashRestoreBtn')?.addEventListener('click', () => restoreEditingClient());
 
   $('#payRenewBtn')?.addEventListener('click', async () => {
     if (!editingClientId) return toast('Guarde o cliente primeiro');

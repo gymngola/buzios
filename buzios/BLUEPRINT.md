@@ -163,9 +163,11 @@ Suggested path: **Novo → Contactado → Aguarda docs → Inscrito**, then **Ar
 - Filters + bulk actions for each status.
 - **Criar cliente** → client `membershipStatus: activo`, submission → `inscrito`, linked via `fromClientId`.
 - **Criar pendente (docs)** → client `membershipStatus: pendente`, submission → `pendente_docs`.
-- **Ver cliente** when already linked.
+- **Ver cliente** when already linked (opens client modal; if client is in Lixeira, switches Clientes filter to Lixeira and shows trash banner).
+- **Restaurar cliente** on the inscrição card when the linked client is in Lixeira (soft-delete only). Restores the same client record (member number, payments, notes kept). Enrollment status is left unchanged.
+- If the linked client was **permanently purged**, the card falls back to **Criar cliente** / **Criar pendente** (new client id).
 - **Arquivar** removes from the daily queue; does **not** delete the client in Clientes.
-- **Apagar** deletes only the enrollment submission.
+- **Apagar** deletes only the enrollment submission. Deleting a client in Clientes does **not** remove the inscrição (intentional).
 
 ---
 

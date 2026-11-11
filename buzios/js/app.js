@@ -12,7 +12,7 @@
   // Worker proxy = always fresh (Cloudinary CDN caches catalog.json for ~30 days)
   const CATALOG_JSON_URL = 'https://buzios-publish.gymngola.workers.dev/catalog';
   const SUBMIT_URL = 'https://buzios-publish.gymngola.workers.dev/submit';
-  const WHATSAPP = '244923423142';
+  const WHATSAPP = '244941390517'; // Recepção / WhatsApp principal
   const LS_CART = 'buzios_cart';
   const LS_PRODUCTS = 'buzios_products_override';
   const LS_TEXTS = 'buzios_texts_override';

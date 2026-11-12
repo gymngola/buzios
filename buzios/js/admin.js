@@ -3996,15 +3996,53 @@
   function updatePayPreview() {
     const preview = $('#cPayPreview');
     if (!preview) return;
+    const mode = typeof getSelectedPayMode === 'function' ? getSelectedPayMode() : 'none';
+    const amount = ($('#cPayAmount') && $('#cPayAmount').value) || ($('#cPrice') && $('#cPrice').value) || '';
+    const amtTxt = amount !== '' ? Number(amount).toLocaleString('pt') + ' Kz · ' : '';
     const cycle = ($('#cCycle') && $('#cCycle').value) || 'mensal';
     const months = CYCLE_MONTHS[cycle] || 1;
+
+    if (mode === 'none') {
+      preview.style.display = 'none';
+      preview.textContent = '';
+      return;
+    }
+
+    if (mode === 'only') {
+      preview.style.display = '';
+      preview.textContent =
+        'Após pagar: faturação em dia (datas do plano inalteradas)' +
+        (amtTxt ? ' · ' + amtTxt.trim() : '');
+      return;
+    }
+
+    if (mode === 'activate') {
+      // First payment: keep form dates if set, otherwise today → today+cycle
+      const formStart = ($('#cPlanStart') && $('#cPlanStart').value) || '';
+      const formEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || '';
+      const start = formStart || todayISO();
+      const end = formEnd || addMonthsISO(start, months);
+      preview.style.display = '';
+      preview.textContent =
+        'Após activar: ' +
+        formatDatePT(start) +
+        ' → ' +
+        formatDatePT(end) +
+        ' · Activo · Em dia' +
+        (amtTxt ? ' · ' + amtTxt.trim() : '');
+      return;
+    }
+
+    // renew (default preview)
     const currentEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || '';
     const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
     const end = addMonthsISO(start, months);
-    const amount = ($('#cPayAmount') && $('#cPayAmount').value) || ($('#cPrice') && $('#cPrice').value) || '';
-    const amtTxt = amount !== '' ? Number(amount).toLocaleString('pt') + ' Kz · ' : '';
     preview.style.display = '';
-    preview.textContent = 'Após pagar: novo fim ' + formatDatePT(end) + ' · Activo · Em dia' + (amtTxt ? ' · ' + amtTxt.trim() : '');
+    preview.textContent =
+      'Após renovar: novo fim ' +
+      formatDatePT(end) +
+      ' · Activo · Em dia' +
+      (amtTxt ? ' · ' + amtTxt.trim() : '');
   }
 
   function setClientSectionOpen(section, open) {
@@ -4168,8 +4206,21 @@
     if ($('#cPayNote')) $('#cPayNote').value = '';
     if ($('#cPayDate')) $('#cPayDate').value = '';
     clearAddonCheckboxes();
-    if (typeof resetPayModeToNone === 'function') resetPayModeToNone();
-    else {
+    // New client: default to "Pagar e activar" (first payment). Existing: "Só guardar dados".
+    if (!id) {
+      const activate = $('#cPayModeActivate');
+      if (activate) {
+        activate.checked = true;
+        ensurePayFieldsForMode('activate');
+      } else if (typeof resetPayModeToNone === 'function') {
+        resetPayModeToNone();
+      }
+      // Open payment section so staff sees the option
+      const paySection = $('#cPaySection');
+      if (paySection) setClientSectionOpen(paySection, true);
+    } else if (typeof resetPayModeToNone === 'function') {
+      resetPayModeToNone();
+    } else {
       const none = $('#cPayModeNone');
       if (none) none.checked = true;
     }
@@ -4856,8 +4907,8 @@
 
   /**
    * Merge a payment into client data from the open form.
-   * mode: 'only' | 'renew'
-   * Mutates form fields for renew (dates/status) so read values stay consistent.
+   * mode: 'only' | 'activate' | 'renew'
+   * Mutates form fields for activate/renew (dates/status) so read values stay consistent.
    * Returns { ok:false, error } or { ok:true, data, summary }
    */
   function buildClientDataWithPayment(existing, mode) {
@@ -4875,6 +4926,56 @@
     if (addonLabels.length) {
       const feeLabel = addonLabels.join(' · ');
       payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
+    }
+
+    // First payment / new membership: keep form dates if set, else today → today+cycle.
+    // Does NOT extend from an existing planEnd (unlike renew).
+    if (mode === 'activate') {
+      const cycle = ($('#cCycle') && $('#cCycle').value) || (existing && existing.billingCycle) || 'mensal';
+      const months = CYCLE_MONTHS[cycle] || 1;
+      const formStart = ($('#cPlanStart') && $('#cPlanStart').value) || '';
+      const formEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || '';
+      const start = formStart || todayISO();
+      const end = formEnd || addMonthsISO(start, months);
+      if ($('#cPlanStart')) $('#cPlanStart').value = start;
+      if ($('#cPlanEnd')) $('#cPlanEnd').value = end;
+      if ($('#cMembership')) $('#cMembership').value = 'activo';
+      if ($('#cBilling')) $('#cBilling').value = 'em_dia';
+      clearAddonCheckboxes();
+      const payment = {
+        id: 'pay-' + Date.now(),
+        amount: amount,
+        paidAt: paidAt,
+        method: ($('#cPayMethod') && $('#cPayMethod').value) || 'cash',
+        note: payNote,
+        periodStart: start,
+        periodEnd: end,
+        includesAnnualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ) || undefined
+      };
+      const payments = ((existing && existing.payments) || []).slice();
+      payments.unshift(payment);
+      const sortedPay = sortPaymentsNewestFirst(payments);
+      const data = readClientForm(Object.assign({}, existing || {}, {
+        payments: sortedPay.slice(0, 50),
+        lastPaymentAt: payment.paidAt
+      }));
+      data.planStart = start;
+      data.planEnd = end;
+      data.membershipStatus = 'activo';
+      data.billingStatus = 'em_dia';
+      data.lastPaymentAt = paymentAt(sortedPay[0]) || paidAt;
+      data.payments = sortedPay.slice(0, 50);
+      data.billingCycle = cycle;
+      data.price = planPriceFromForm() || (existing && existing.price) || null;
+      data.annualFee = false;
+      data.swimFee = false;
+      data.extras = [];
+      const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
+      return {
+        ok: true,
+        data: data,
+        summary: 'Pagamento + activação · ' + amtLabel + ' · ' + formatDatePT(start) + ' → ' + formatDatePT(end)
+      };
     }
 
     if (mode === 'renew') {
@@ -4966,6 +5067,24 @@
     const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
     const addonLabels = addonLabelsFromForm();
     const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
+    if (mode === 'activate') {
+      const cycle = ($('#cCycle') && $('#cCycle').value) || (existing && existing.billingCycle) || 'mensal';
+      const months = CYCLE_MONTHS[cycle] || 1;
+      const formStart = ($('#cPlanStart') && $('#cPlanStart').value) || '';
+      const formEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || '';
+      const start = formStart || todayISO();
+      const end = formEnd || addMonthsISO(start, months);
+      return adminConfirm(
+        'Guardar cliente com primeiro pagamento e activação?\n\n' +
+        'Valor: ' + amtLabel + '\n' +
+        'Data do pagamento: ' + formatDatePT(payDateLabel) + '\n' +
+        (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
+        'Plano: ' + formatDatePT(start) + ' → ' + formatDatePT(end) + '\n' +
+        'Estado → Activo · Faturação → Em dia\n\n' +
+        'As datas do formulário são mantidas se já estiverem preenchidas; caso contrário usam-se a partir de hoje.',
+        { title: 'Pagar e activar', confirmLabel: 'Guardar' }
+      );
+    }
     if (mode === 'renew') {
       const cycle = ($('#cCycle') && $('#cCycle').value) || (existing && existing.billingCycle) || 'mensal';
       const months = CYCLE_MONTHS[cycle] || 1;

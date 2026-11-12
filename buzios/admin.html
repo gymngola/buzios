@@ -717,12 +717,20 @@
                   <input type="radio" name="cPayMode" id="cPayModeOnly" value="only">
                   <span><strong>Só registar pagamento</strong> — histórico + faturação em dia (sem alterar datas do plano)</span>
                 </label>
+                <label class="pay-mode-option" id="cPayModeActivateLabel">
+                  <input type="radio" name="cPayMode" id="cPayModeActivate" value="activate">
+                  <span><strong>Pagar e activar plano</strong> — primeiro pagamento · datas do plano · activo e em dia</span>
+                </label>
                 <label class="pay-mode-option">
                   <input type="radio" name="cPayMode" id="cPayModeRenew" value="renew">
-                  <span><strong>Pagar e renovar plano</strong> — novo fim do plano, activo e em dia</span>
+                  <span><strong>Pagar e renovar plano</strong> — prolonga o fim do plano, activo e em dia</span>
                 </label>
               </fieldset>
-              <p class="client-help-text">Escolha a opção e use <strong>Guardar cliente</strong> em baixo. Tudo (plano, dados e pagamento) grava de uma vez — nada se perde.</p>
+              <p class="client-help-text">
+                <strong>Novo cliente / 1.º pagamento:</strong> use <em>Pagar e activar plano</em>.
+                <strong>Renovação:</strong> use <em>Pagar e renovar plano</em>.
+                Escolha a opção e use <strong>Guardar cliente</strong> em baixo — plano, dados e pagamento gravam de uma vez.
+              </p>
             </div>
           </div>
         </section>

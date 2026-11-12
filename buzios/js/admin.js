@@ -3274,23 +3274,41 @@
     updateBulkBar('clients');
   }
 
+  /** paidAt (new) or date (legacy import) — always prefer newest-first elsewhere */
+  function paymentAt(p) {
+    if (!p) return '';
+    return String(p.paidAt || p.date || '');
+  }
+
+  function sortPaymentsNewestFirst(list) {
+    return (list || []).slice().sort((a, b) => String(paymentAt(b)).localeCompare(String(paymentAt(a))));
+  }
+
+  function formatPaymentWhen(p) {
+    const at = paymentAt(p);
+    if (!at) return '';
+    return at.length > 12 ? formatDateTimeAO(at) : formatDatePT(at.slice(0, 10));
+  }
+
   function renderPayHistory(payments) {
     const el = $('#cPayHistory');
     if (!el) return;
-    const list = payments || [];
+    const list = sortPaymentsNewestFirst(payments);
     if (!list.length) {
       el.innerHTML = '<li style="color:#999">Ainda sem pagamentos registados.</li>';
       return;
     }
     const methodLabel = { cash: 'Numerário', transfer: 'Transferência', multicaixa: 'Multicaixa', other: 'Outro' };
-    el.innerHTML = list.slice(0, 20).map((p, idx) => {
-      const when = p.paidAt ? formatDateTimeAO(p.paidAt) : '';
+    el.innerHTML = list.slice(0, 40).map((p, idx) => {
+      const when = formatPaymentWhen(p);
       const amt = p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '';
       const method = methodLabel[p.method] || p.method || '';
       const note = p.note ? ' — ' + escapeHtml(p.note) : '';
       const pid = p.id || ('idx-' + idx);
+      const methodBit = method ? ' · ' + escapeHtml(method) : '';
+      const whenBit = when ? ' · ' + escapeHtml(when) : '';
       return `<li class="pay-row" data-pay-id="${escapeHtml(String(pid))}" data-pay-idx="${idx}">
-        <span class="pay-info"><strong>${amt}</strong> · ${escapeHtml(method)} · ${when}${note}</span>
+        <span class="pay-info"><strong>${amt}</strong>${methodBit}${whenBit}${note}</span>
         <span class="pay-actions">
           <button type="button" class="pay-icon-btn" data-pay-edit="${escapeHtml(String(pid))}" title="Editar" aria-label="Editar pagamento">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -3322,10 +3340,20 @@
     if (!payments || !payments.length) return -1;
     let idx = payments.findIndex(p => String(p.id) === String(payId));
     if (idx >= 0) return idx;
-    // fallback for older payments without id
+    // fallback for older payments without id — idx is relative to newest-first order
     if (String(payId).startsWith('idx-')) {
       const n = Number(String(payId).slice(4));
-      if (!Number.isNaN(n) && n >= 0 && n < payments.length) return n;
+      const sorted = sortPaymentsNewestFirst(payments);
+      if (!Number.isNaN(n) && n >= 0 && n < sorted.length) {
+        const target = sorted[n];
+        const byRef = payments.indexOf(target);
+        if (byRef >= 0) return byRef;
+        return payments.findIndex(p =>
+          paymentAt(p) === paymentAt(target) &&
+          Number(p.amount) === Number(target.amount) &&
+          String(p.note || '') === String(target.note || '')
+        );
+      }
     }
     return -1;
   }
@@ -3338,15 +3366,17 @@
     const idx = findPaymentIndex(payments, payId);
     if (idx < 0) return toast('Pagamento não encontrado');
     const p = payments[idx];
+    const whenLabel = formatPaymentWhen(p);
     const label = (p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : 'pagamento') +
-      (p.paidAt ? ' · ' + formatDateTimeAO(p.paidAt) : '');
+      (whenLabel ? ' · ' + whenLabel : '');
     if (!(await adminConfirm('Apagar este pagamento?\n' + label, {
       title: 'Apagar pagamento', confirmLabel: 'Apagar', danger: true
     }))) return;
     payments.splice(idx, 1);
+    const sortedLeft = sortPaymentsNewestFirst(payments);
     const data = enrichClient(Object.assign({}, existing, {
-      payments: payments.slice(0, 50),
-      lastPaymentAt: payments[0]?.paidAt || null
+      payments: sortedLeft.slice(0, 50),
+      lastPaymentAt: paymentAt(sortedLeft[0]) || null
     }));
     await adminAction('update_client', data);
     toast('Pagamento apagado');
@@ -3387,7 +3417,10 @@
       $('#payEditMethod').value = ['cash', 'transfer', 'multicaixa', 'other'].includes(m) ? m : 'other';
     }
     if ($('#payEditDate')) {
-      $('#payEditDate').value = p.paidAt ? toLocalDateAndTime(p.paidAt).date : todayISO();
+      const at = paymentAt(p);
+      $('#payEditDate').value = at
+        ? (at.length > 12 ? toLocalDateAndTime(at).date : at.slice(0, 10))
+        : todayISO();
     }
     if ($('#payEditNote')) $('#payEditNote').value = p.note || '';
 
@@ -3424,13 +3457,14 @@
       amount: amount,
       method: method,
       note: note,
-      paidAt: paidAt
+      paidAt: paidAt,
+      date: paidAt.slice(0, 10) // keep legacy field in sync
     });
-    payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
+    const sorted = sortPaymentsNewestFirst(payments);
 
     const data = enrichClient(Object.assign({}, existing, {
-      payments: payments.slice(0, 50),
-      lastPaymentAt: payments[0]?.paidAt || existing.lastPaymentAt || null
+      payments: sorted.slice(0, 50),
+      lastPaymentAt: paymentAt(sorted[0]) || existing.lastPaymentAt || null
     }));
     closePayEditModal();
     await adminAction('update_client', data);
@@ -3832,10 +3866,13 @@
         setClientSectionOpen(sec, true);
         return;
       }
-      if (key === 'pagamentos') {
-        const hasPay = !!(c && c.payments && c.payments.length);
+      if (key === 'registar-pagamento') {
+        // Open when action is likely needed (debt / expired)
         const inDebt = c && (c.billingStatus === 'em_divida' || c.billingStatus === 'atrasado' || c._expired);
-        setClientSectionOpen(sec, !!(id && (hasPay || inDebt)));
+        setClientSectionOpen(sec, !!(id && inDebt));
+      } else if (key === 'historico-pagamentos') {
+        const hasPay = !!(c && c.payments && c.payments.length);
+        setClientSectionOpen(sec, !!(id && hasPay));
       } else if (key === 'docs') {
         const n = c ? clientAttachments(c).length : 0;
         setClientSectionOpen(sec, n > 0);
@@ -4515,20 +4552,20 @@
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
-    payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
+    const sortedPay = sortPaymentsNewestFirst(payments);
     $('#cPlanStart').value = $('#cPlanStart').value || start;
     $('#cPlanEnd').value = end;
     $('#cMembership').value = 'activo';
     $('#cBilling').value = 'em_dia';
     // After charging one-offs once, clear so the next renew is plan-only
     clearAddonCheckboxes();
-    const data = readClientForm(Object.assign({}, existing, { payments: payments.slice(0, 50), lastPaymentAt: payment.paidAt }));
+    const data = readClientForm(Object.assign({}, existing, { payments: sortedPay.slice(0, 50), lastPaymentAt: payment.paidAt }));
     data.planStart = data.planStart || start;
     data.planEnd = end;
     data.membershipStatus = 'activo';
     data.billingStatus = 'em_dia';
-    data.lastPaymentAt = payments[0]?.paidAt || paidAt;
-    data.payments = payments.slice(0, 50);
+    data.lastPaymentAt = paymentAt(sortedPay[0]) || paidAt;
+    data.payments = sortedPay.slice(0, 50);
     data.billingCycle = cycle;
     // Keep recurring plan price (cPrice) — never overwrite with total that includes addons
     data.price = planPriceFromForm() || existing.price || null;
@@ -4575,16 +4612,16 @@
     };
     const payments = (existing.payments || []).slice();
     payments.unshift(payment);
-    payments.sort((a, b) => String(b.paidAt || '').localeCompare(String(a.paidAt || '')));
+    const sortedOnly = sortPaymentsNewestFirst(payments);
     $('#cBilling').value = 'em_dia';
     clearAddonCheckboxes();
     const data = readClientForm(Object.assign({}, existing, {
-      payments: payments.slice(0, 50),
-      lastPaymentAt: payments[0]?.paidAt || paidAt
+      payments: sortedOnly.slice(0, 50),
+      lastPaymentAt: paymentAt(sortedOnly[0]) || paidAt
     }));
     data.billingStatus = 'em_dia';
-    data.lastPaymentAt = payments[0]?.paidAt || paidAt;
-    data.payments = payments.slice(0, 50);
+    data.lastPaymentAt = paymentAt(sortedOnly[0]) || paidAt;
+    data.payments = sortedOnly.slice(0, 50);
     data.annualFee = false;
     data.swimFee = false;
     data.extras = [];
@@ -5195,8 +5232,9 @@
     const events = [];
     const methodLabel = { cash: 'Numerário', transfer: 'Transferência', multicaixa: 'Multicaixa', other: 'Outro' };
 
-    (cache.payments || []).forEach((p, idx) => {
-      const at = p.paidAt || '';
+    sortPaymentsNewestFirst(cache.payments || []).forEach((p, idx) => {
+      const at = paymentAt(p);
+      const method = methodLabel[p.method] || p.method || '';
       events.push({
         at,
         sortKey: at || '1970-01-01',
@@ -5204,10 +5242,11 @@
         title: 'Pagamento',
         body:
           (p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '—') +
-          ' · ' + (methodLabel[p.method] || p.method || '') +
+          (method ? ' · ' + method : '') +
           (p.note ? ' — ' + p.note : '') +
           (p.periodEnd ? ' · válido até ' + formatDatePT(p.periodEnd) : ''),
-        id: p.id || ('pay-' + idx)
+        id: p.id || ('idx-' + idx),
+        payId: p.id || ('idx-' + idx)
       });
     });
 
@@ -5296,16 +5335,41 @@
               : '—';
             const cls = typeClass[ev.type] || '';
             const who = ev.who ? ' · ' + escapeHtml(ev.who) : '';
+            const payActions = ev.type === 'payment' && ev.payId
+              ? '<span class="hist-actions">' +
+                  '<button type="button" class="pay-icon-btn" data-hist-pay-edit="' + escapeHtml(String(ev.payId)) + '" title="Editar" aria-label="Editar pagamento">' +
+                  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+                  '</button>' +
+                  '<button type="button" class="pay-icon-btn pay-icon-danger" data-hist-pay-del="' + escapeHtml(String(ev.payId)) + '" title="Apagar" aria-label="Apagar pagamento">' +
+                  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>' +
+                  '</button>' +
+                '</span>'
+              : '';
             return '<li class="hist-item ' + cls + '">' +
               '<span class="hist-dot" aria-hidden="true"></span>' +
               '<div class="hist-body">' +
                 '<div class="hist-top"><span class="hist-title">' + escapeHtml(ev.title) + '</span>' +
-                '<span class="hist-when">' + escapeHtml(when) + who + '</span></div>' +
+                '<span class="hist-when">' + escapeHtml(when) + who + '</span>' + payActions + '</div>' +
                 (ev.body ? '<div class="hist-detail">' + escapeHtml(ev.body) + '</div>' : '') +
               '</div>' +
             '</li>';
           }).join('') + '</ul>'
         : '<p class="muted" style="font-size:0.85rem">Ainda sem eventos neste filtro.</p>');
+
+    host.querySelectorAll('[data-hist-pay-edit]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editPayment(btn.getAttribute('data-hist-pay-edit'));
+      });
+    });
+    host.querySelectorAll('[data-hist-pay-del]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deletePayment(btn.getAttribute('data-hist-pay-del'));
+      });
+    });
 
     const yearSel = host.querySelector('#cHistoryYear');
     if (yearSel) {

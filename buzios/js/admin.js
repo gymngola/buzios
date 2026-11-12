@@ -2170,13 +2170,18 @@
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
+  // Photo chosen while creating a new client (before first save)
+  let pendingClientPhotoUrl = null;
+
   function renderClientPhoto(c) {
     const img = $('#cPhotoImg');
     const initials = $('#cPhotoInitials');
     const removeBtn = $('#cPhotoRemove');
     const status = $('#cPhotoStatus');
     const avatar = $('#cPhotoAvatar');
-    const url = c && c.photoUrl ? String(c.photoUrl) : '';
+    const url = (c && c.photoUrl)
+      ? String(c.photoUrl)
+      : (pendingClientPhotoUrl ? String(pendingClientPhotoUrl) : '');
     if (img) {
       if (url) {
         img.src = url;
@@ -2199,7 +2204,8 @@
       avatar.dataset.photoUrl = url || '';
       avatar.dataset.photoName = (c && c.name) ? String(c.name) : '';
     }
-    if (removeBtn) removeBtn.style.display = url && editingClientId ? '' : 'none';
+    // Allow remove for pending (new client) or saved profile photo
+    if (removeBtn) removeBtn.style.display = url ? '' : 'none';
     if (status) status.textContent = '';
   }
 
@@ -2227,16 +2233,23 @@
 
   async function uploadClientPhoto(file) {
     if (!file) return;
-    if (!editingClientId) {
-      toast('Guarde o cliente primeiro, depois adicione a foto');
-      return;
-    }
-    const existing = (store.clients || []).find(x => x.id === editingClientId);
-    if (!existing) return toast('Cliente não encontrado');
     const status = $('#cPhotoStatus');
     if (status) status.textContent = 'A carregar foto…';
     try {
       const url = await uploadToCloudinary(file);
+      // New client (not saved yet): keep URL in memory until Guardar
+      if (!editingClientId) {
+        pendingClientPhotoUrl = url;
+        if (status) status.textContent = '';
+        renderClientPhoto({ name: ($('#cName') && $('#cName').value) || '', photoUrl: url });
+        toast('Foto pronta — será guardada com o cliente');
+        return;
+      }
+      const existing = (store.clients || []).find(x => x.id === editingClientId);
+      if (!existing) {
+        if (status) status.textContent = '';
+        return toast('Cliente não encontrado');
+      }
       const data = enrichClient(Object.assign({}, existing, { photoUrl: url }));
       const saved = await adminAction('update_client', data);
       if (status) status.textContent = '';
@@ -2253,7 +2266,17 @@
   }
 
   async function removeClientPhoto() {
-    if (!editingClientId) return;
+    // New client: clear pending photo only
+    if (!editingClientId) {
+      if (!pendingClientPhotoUrl) return;
+      if (!(await adminConfirm('Remover a foto de perfil?', {
+        title: 'Remover foto', confirmLabel: 'Remover', danger: true
+      }))) return;
+      pendingClientPhotoUrl = null;
+      renderClientPhoto({ name: ($('#cName') && $('#cName').value) || '', photoUrl: null });
+      toast('Foto removida');
+      return;
+    }
     const existing = (store.clients || []).find(x => x.id === editingClientId);
     if (!existing) return;
     if (!(await adminConfirm('Remover a foto de perfil deste cliente?', {
@@ -3938,6 +3961,8 @@
 
   function openClientModal(id) {
     editingClientId = id || null;
+    // Fresh modal: drop any photo staged for a previous "novo cliente"
+    if (!id) pendingClientPhotoUrl = null;
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
     const inTrash = !!(c && isInTrash(c));
     const title = $('#clientModalTitle');
@@ -4195,7 +4220,7 @@
       attachments: existing?.attachments || null,
       documents: existing?.documents || null,
       paymentProof: existing?.paymentProof || null,
-      photoUrl: existing?.photoUrl || null
+      photoUrl: existing?.photoUrl || pendingClientPhotoUrl || null
     };
     return enrichClient(data);
   }
@@ -4898,6 +4923,7 @@
       resetPayModeToNone();
       updatePayPreview();
       clearClientFormDirty();
+      pendingClientPhotoUrl = null;
       $('#clientModal').classList.remove('open');
       toast(toastMsg);
     }

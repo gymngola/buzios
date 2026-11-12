@@ -105,13 +105,38 @@
     const closeBtn = $('#drawerClose');
     if (!hamburger || !drawer) return;
 
+    let lockedScrollY = 0;
+
+    function lockBodyScroll() {
+      lockedScrollY = window.scrollY || window.pageYOffset || 0;
+      document.body.classList.add('drawer-open');
+      // iOS Safari: overflow:hidden alone does not stop background scroll
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + lockedScrollY + 'px';
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+    }
+
+    function unlockBodyScroll() {
+      document.body.classList.remove('drawer-open');
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      window.scrollTo(0, lockedScrollY);
+    }
+
     function open() {
       hamburger.classList.add('open');
       hamburger.setAttribute('aria-expanded', 'true');
       drawer.classList.add('open');
       drawer.setAttribute('aria-hidden', 'false');
       if (overlay) overlay.classList.add('open');
-      document.body.classList.add('drawer-open');
+      lockBodyScroll();
+      // Move focus into drawer for accessibility (close button)
+      try { closeBtn && closeBtn.focus({ preventScroll: true }); } catch (e) {}
     }
     function close() {
       hamburger.classList.remove('open');
@@ -119,18 +144,38 @@
       drawer.classList.remove('open');
       drawer.setAttribute('aria-hidden', 'true');
       if (overlay) overlay.classList.remove('open');
-      document.body.classList.remove('drawer-open');
+      unlockBodyScroll();
     }
 
-    hamburger.addEventListener('click', () => {
+    hamburger.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       if (drawer.classList.contains('open')) close();
       else open();
     });
-    if (closeBtn) closeBtn.addEventListener('click', close);
-    if (overlay) overlay.addEventListener('click', close);
+    if (closeBtn) closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      close();
+    });
+    if (overlay) {
+      overlay.addEventListener('click', close);
+      // Stop touch scroll on overlay from moving the page
+      overlay.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    }
     // Close on nav link
     $$('.drawer-nav a').forEach(a => a.addEventListener('click', close));
     $('#installSiteAppBtnDrawer')?.addEventListener('click', close);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && drawer.classList.contains('open')) close();
+    });
+
+    // If orientation / resize crosses desktop breakpoint, force close
+    window.addEventListener('resize', () => {
+      if (window.matchMedia('(min-width: 900px)').matches && drawer.classList.contains('open')) {
+        close();
+      }
+    });
   }
 
   // —— i18n ——

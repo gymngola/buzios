@@ -650,14 +650,25 @@
           </div>
         </section>
 
-        <!-- Notas -->
+        <!-- Objectivos, condições médicas e notas -->
         <section class="client-section" data-section="notas">
           <button type="button" class="client-section-head" aria-expanded="true">
-            <span>Notas</span>
+            <span>Objectivos e notas</span>
             <svg class="client-section-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div class="client-section-body">
-            <div class="form-row"><label class="sr-only">Notas</label><textarea id="cNotes" rows="3" placeholder="Observações internas…"></textarea></div>
+            <div class="form-row">
+              <label for="cGoals">Objectivo de treino</label>
+              <textarea id="cGoals" rows="2" placeholder="Ex.: perder peso, ganhar massa, preparo físico…"></textarea>
+            </div>
+            <div class="form-row">
+              <label for="cMedical">Condições médicas</label>
+              <textarea id="cMedical" rows="2" placeholder="Ex.: nenhuma, hipertensão, lesão no joelho…"></textarea>
+            </div>
+            <div class="form-row">
+              <label for="cNotes">Notas internas</label>
+              <textarea id="cNotes" rows="2" placeholder="Observações da equipa…"></textarea>
+            </div>
           </div>
         </section>
 

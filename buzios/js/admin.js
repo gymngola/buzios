@@ -346,6 +346,11 @@
     await loadState();
     await loadStore();
     renderAll();
+    // Panel may have been restored before store/clients existed — load live data now
+    try {
+      const saved = sessionStorage.getItem('buzios_admin_panel');
+      if (saved && $('#panel-' + saved)) activatePanel(saved);
+    } catch (e) {}
     startStoreSync();
   }
 
@@ -544,8 +549,15 @@
   /** Panels that edit the public website catalog (need Publish). */
   const PUBLISH_PANELS = { products: true, images: true, texts: true };
 
-  function activatePanel(name) {
+  function isPanelActive(name) {
+    const panel = $('#panel-' + name);
+    return !!(panel && panel.classList.contains('active'));
+  }
+
+  function activatePanel(name, opts) {
     if (!name) return;
+    // skipFetch: UI-only switch (used on early reload restore before store is loaded)
+    const skipFetch = !!(opts && opts.skipFetch);
     $$('.admin-tabs button').forEach(b => {
       b.classList.toggle('active', b.dataset.panel === name);
     });
@@ -562,6 +574,7 @@
     try {
       sessionStorage.setItem('buzios_admin_panel', name);
     } catch (e) {}
+    if (skipFetch) return;
     // Live data panels: refresh when opened (clients force full D1 overlay)
     if (name === 'clients') {
       overlayClientsFromD1({ force: true });
@@ -587,10 +600,10 @@
     btn.addEventListener('click', () => activatePanel(btn.dataset.panel));
   });
 
-  // Keep the same tab after reload (default stays Inscrições)
+  // Keep the same tab after reload (UI only — data loads after showApp/loadStore)
   try {
     const saved = sessionStorage.getItem('buzios_admin_panel');
-    if (saved && $('#panel-' + saved)) activatePanel(saved);
+    if (saved && $('#panel-' + saved)) activatePanel(saved, { skipFetch: true });
   } catch (e) {}
 
   /**
@@ -792,6 +805,7 @@
     renderContacts();
     renderNewsletters();
     renderClients();
+    if (isPanelActive('trainings')) renderTrainingsPanel();
     if (silent && changed && prevAt) {
       const label = source === 'tab'
         ? 'Actualizado noutro separador'
@@ -851,6 +865,8 @@
       lastClientsOverlayAt = Date.now();
       lastOpsLoadError = null;
       renderClients();
+      // Treinos list depends on store.clients — refresh if that panel is open
+      if (isPanelActive('trainings')) renderTrainingsPanel();
       return true;
     } catch (e) {
       console.warn('D1 clients overlay failed', e);
@@ -1750,17 +1766,30 @@
   }
 
   const DOC_KEY_LABELS = {
-    id: 'BI / Cédula',
-    medicalCert: 'Atestado',
+    id: 'BI / Cédula / Passaporte',
+    medicalCert: 'Atestado médico',
     photo1: 'Foto 1',
     photo2: 'Foto 2',
     paymentProof: 'Pagamento',
     doc: 'Documento'
   };
 
+  /** Standard slots in the client modal — same types as inscrição. */
+  const CLIENT_DOC_SLOTS = [
+    { key: 'id', label: 'BI / Cédula / Passaporte', short: 'BI / Cédula', accept: 'image/*,.pdf,application/pdf', hint: 'Imagem ou PDF' },
+    { key: 'medicalCert', label: 'Atestado médico', short: 'Atestado', accept: 'image/*,.pdf,application/pdf', hint: 'Imagem ou PDF' },
+    { key: 'photo1', label: 'Foto 1 (tipo passe)', short: 'Foto 1', accept: 'image/*', hint: 'Só imagem' },
+    { key: 'photo2', label: 'Foto 2 (tipo passe)', short: 'Foto 2', accept: 'image/*', hint: 'Só imagem' }
+  ];
+
   function shortDocLabel(a) {
     if (!a) return 'Doc';
-    if (a.key && DOC_KEY_LABELS[a.key]) return DOC_KEY_LABELS[a.key];
+    if (a.key && DOC_KEY_LABELS[a.key]) {
+      // Compact chip labels for the list view
+      if (a.key === 'id') return 'BI / Cédula';
+      if (a.key === 'medicalCert') return 'Atestado';
+      return DOC_KEY_LABELS[a.key];
+    }
     const lab = String(a.label || '').trim();
     if (/bi|c[eé]dula|passaporte/i.test(lab)) return 'BI / Cédula';
     if (/atestado|m[eé]dic/i.test(lab)) return 'Atestado';
@@ -1769,6 +1798,22 @@
     if (/comprova|pagament|recibo/i.test(lab)) return 'Pagamento';
     if (/foto|photo|passe/i.test(lab)) return 'Foto';
     return lab ? (lab.length > 18 ? lab.slice(0, 16) + '…' : lab) : 'Documento';
+  }
+
+  /** Resolve attachment for a standard slot key (documents object or attachments list). */
+  function findDocByKey(items, key) {
+    if (!key || !items || !items.length) return null;
+    const byKey = items.find(a => a && a.key === key);
+    if (byKey) return byKey;
+    // Heuristic fallback for legacy unlabeled uploads
+    return items.find(a => {
+      const lab = String((a && (a.label || a.name)) || '');
+      if (key === 'id') return /bi|c[eé]dula|passaporte/i.test(lab);
+      if (key === 'medicalCert') return /atestado|m[eé]dic/i.test(lab);
+      if (key === 'photo1') return /foto.*1|passe\s*1/i.test(lab);
+      if (key === 'photo2') return /foto.*2|passe\s*2/i.test(lab);
+      return false;
+    }) || null;
   }
 
   /**
@@ -1887,39 +1932,95 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:0.65rem;margin-top:0.45rem">${cards}</div>`;
   }
 
-  /** Compact gallery for client modal (small thumbs + links) + upload/delete. */
+  /** Compact gallery for client modal: typed slots (BI, atestado, foto 1/2) + extras. */
   function renderClientDocsBlock(c) {
     const items = clientAttachments(c);
-    const chips = items.map((a, idx) => {
-      const href = escapeHtml(fixAttachmentUrl(a.url));
-      const label = escapeHtml(shortDocLabel(a));
-      const full = escapeHtml(a.label || a.name || label);
-      const img = isImageUrl(a.url);
-      const urlAttr = escapeHtml(a.url);
-      const body = img
-        ? `<a class="client-doc-thumb" href="${href}" target="_blank" rel="noopener" title="${full}">
-            <img src="${href}" alt="${label}" loading="lazy">
-            <span>${label}</span>
-          </a>`
-        : `<a class="client-doc-file" href="${href}" target="_blank" rel="noopener" title="${full}">📄 ${label}</a>`;
-      return `<div class="client-doc-item" data-doc-url="${urlAttr}" data-doc-idx="${idx}">
-        ${body}
-        <button type="button" class="pay-icon-btn pay-icon-danger client-doc-del" data-doc-del-url="${urlAttr}" title="Remover documento" aria-label="Remover documento">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
-        </button>
+    const usedUrls = new Set();
+
+    const slotsHtml = CLIENT_DOC_SLOTS.map(slot => {
+      const found = findDocByKey(items, slot.key);
+      if (found && found.url) usedUrls.add(found.url);
+      const label = escapeHtml(slot.label);
+      const short = escapeHtml(slot.short || slot.label);
+      if (found && found.url) {
+        const href = escapeHtml(fixAttachmentUrl(found.url));
+        const urlAttr = escapeHtml(found.url);
+        const img = isImageUrl(found.url);
+        const preview = img
+          ? `<a class="client-doc-slot-preview" href="${href}" target="_blank" rel="noopener" title="Abrir ${label}">
+               <img src="${href}" alt="${short}" loading="lazy">
+             </a>`
+          : `<a class="client-doc-slot-preview is-file" href="${href}" target="_blank" rel="noopener" title="Abrir ${label}">📄 PDF</a>`;
+        return `<div class="client-doc-slot is-filled" data-doc-key="${escapeHtml(slot.key)}">
+          <div class="client-doc-slot-head">
+            <span class="client-doc-slot-label">${label}</span>
+            <span class="client-doc-slot-badge is-ok">Anexado</span>
+          </div>
+          <div class="client-doc-slot-body">
+            ${preview}
+            <div class="client-doc-slot-actions">
+              <label class="btn-secondary client-doc-upload-label client-doc-slot-replace">
+                Substituir
+                <input type="file" class="c-doc-slot-upload" data-doc-key="${escapeHtml(slot.key)}" data-doc-label="${label}" accept="${escapeHtml(slot.accept)}" hidden>
+              </label>
+              <button type="button" class="pay-icon-btn pay-icon-danger client-doc-del" data-doc-del-url="${urlAttr}" title="Remover ${label}" aria-label="Remover ${label}">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>`;
+      }
+      return `<div class="client-doc-slot is-empty" data-doc-key="${escapeHtml(slot.key)}">
+        <div class="client-doc-slot-head">
+          <span class="client-doc-slot-label">${label}</span>
+          <span class="client-doc-slot-badge">Em falta</span>
+        </div>
+        <div class="client-doc-slot-body">
+          <p class="client-doc-slot-hint muted">${escapeHtml(slot.hint || '')}</p>
+          <label class="btn-secondary client-doc-upload-label client-doc-slot-add">
+            + Adicionar
+            <input type="file" class="c-doc-slot-upload" data-doc-key="${escapeHtml(slot.key)}" data-doc-label="${label}" accept="${escapeHtml(slot.accept)}" hidden>
+          </label>
+        </div>
       </div>`;
     }).join('');
 
+    // Extra / legacy docs that don't match a standard slot
+    const extras = items.filter(a => a && a.url && !usedUrls.has(a.url));
+    const extrasHtml = extras.length
+      ? `<div class="client-docs-extras">
+          <div class="meta" style="margin:0.55rem 0 0.35rem"><strong>Outros ficheiros</strong></div>
+          <div class="client-docs-grid">${extras.map((a, idx) => {
+            const href = escapeHtml(fixAttachmentUrl(a.url));
+            const label = escapeHtml(shortDocLabel(a));
+            const full = escapeHtml(a.label || a.name || label);
+            const img = isImageUrl(a.url);
+            const urlAttr = escapeHtml(a.url);
+            const body = img
+              ? `<a class="client-doc-thumb" href="${href}" target="_blank" rel="noopener" title="${full}">
+                  <img src="${href}" alt="${label}" loading="lazy">
+                  <span>${label}</span>
+                </a>`
+              : `<a class="client-doc-file" href="${href}" target="_blank" rel="noopener" title="${full}">📄 ${label}</a>`;
+            return `<div class="client-doc-item" data-doc-url="${urlAttr}" data-doc-idx="${idx}">
+              ${body}
+              <button type="button" class="pay-icon-btn pay-icon-danger client-doc-del" data-doc-del-url="${urlAttr}" title="Remover documento" aria-label="Remover documento">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+              </button>
+            </div>`;
+          }).join('')}</div>
+        </div>`
+      : '';
+
+    const filled = CLIENT_DOC_SLOTS.filter(s => findDocByKey(items, s.key)).length;
     return `<div id="cDocsBlock" class="client-docs-block">
-      <div class="meta" style="margin-bottom:0.4rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap">
-        <strong>Documentos e imagens (${items.length})</strong>
-        <label class="btn-secondary client-doc-upload-label" style="margin:0;cursor:pointer;padding:0.35rem 0.7rem;font-size:0.8rem;border-radius:8px;border:1px solid #ddd;background:#fff">
-          + Adicionar
-          <input type="file" id="cDocUpload" accept="image/*,.pdf,application/pdf" multiple hidden>
-        </label>
+      <div class="meta" style="margin-bottom:0.5rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap">
+        <strong>Documentos oficiais (${filled}/${CLIENT_DOC_SLOTS.length})</strong>
+        <span class="muted" style="font-size:0.75rem">BI · atestado · 2 fotos</span>
       </div>
-      <div class="client-docs-grid">${chips || '<span class="muted" style="font-size:0.8rem">Ainda sem documentos. Use + Adicionar.</span>'}</div>
-      <p id="cDocUploadStatus" class="muted" style="font-size:0.75rem;margin:0.35rem 0 0;min-height:1.1em"></p>
+      <div class="client-doc-slots">${slotsHtml}</div>
+      ${extrasHtml}
+      <p id="cDocUploadStatus" class="muted" style="font-size:0.75rem;margin:0.45rem 0 0;min-height:1.1em"></p>
     </div>`;
   }
 
@@ -1938,8 +2039,7 @@
         await removeClientAttachment(url);
       });
     });
-    const input = $('#cDocUpload');
-    if (input) {
+    host.querySelectorAll('.c-doc-slot-upload').forEach(input => {
       input.addEventListener('change', async () => {
         const files = input.files;
         if (!files || !files.length) return;
@@ -1948,61 +2048,64 @@
           input.value = '';
           return;
         }
-        await uploadClientAttachments(files);
+        const key = input.getAttribute('data-doc-key') || 'doc';
+        const label = input.getAttribute('data-doc-label') || (DOC_KEY_LABELS[key] || 'Documento');
+        await uploadClientAttachmentForSlot(files[0], key, label);
         input.value = '';
       });
-    }
+    });
   }
 
-  async function uploadClientAttachments(fileList) {
+  async function uploadClientAttachmentForSlot(file, key, label) {
     const existing = (store.clients || []).find(x => x.id === editingClientId);
     if (!existing) return toast('Cliente não encontrado');
+    if (!file) return;
     const status = $('#cDocUploadStatus');
-    const files = Array.from(fileList || []);
-    if (!files.length) return;
+    if (status) status.textContent = 'A carregar ' + (label || 'documento') + '…';
 
-    let attachments = normalizeAttachments(existing).slice();
-    let ok = 0;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (status) status.textContent = 'A carregar ' + (i + 1) + '/' + files.length + '…';
-      try {
-        const url = await uploadToCloudinary(file);
-        const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
-        attachments.push({
-          url,
-          label: isPdf ? 'Documento' : 'Foto',
-          key: isPdf ? 'doc' : 'photo',
-          name: file.name || ''
-        });
-        ok++;
-      } catch (err) {
-        console.warn('client doc upload failed', err);
-        toast('Erro no upload: ' + (err.message || err));
-      }
+    let url;
+    try {
+      url = await uploadToCloudinary(file);
+    } catch (err) {
+      console.warn('client doc upload failed', err);
+      if (status) status.textContent = '';
+      toast('Erro no upload: ' + (err.message || err));
+      return;
     }
-    // Deduplicate by URL
-    const seen = new Set();
+
+    const entry = {
+      url,
+      label: label || DOC_KEY_LABELS[key] || 'Documento',
+      key: key || 'doc',
+      name: file.name || ''
+    };
+
+    // Replace any previous file for this slot key
+    let attachments = normalizeAttachments(existing).filter(a => a.key !== key);
+    // Also drop heuristic matches for the same slot so we don't keep duplicates
     attachments = attachments.filter(a => {
-      if (!a.url || seen.has(a.url)) return false;
-      seen.add(a.url);
-      return true;
+      if (a.url === url) return false;
+      const other = findDocByKey([a], key);
+      return !other;
     });
+    attachments.push(entry);
+
+    let documents = Object.assign({}, (existing.documents && typeof existing.documents === 'object') ? existing.documents : {});
+    documents[key] = entry;
 
     const data = enrichClient(Object.assign({}, existing, {
-      attachments: attachments,
-      documents: existing.documents || null,
+      attachments,
+      documents,
       paymentProof: existing.paymentProof || null
     }));
     const saved = await adminAction('update_client', data);
-    if (status) status.textContent = ok ? ok + ' ficheiro(s) adicionado(s)' : '';
+    if (status) status.textContent = saved ? (label + ' adicionado') : '';
     if (saved) {
-      toast(ok + ' documento(s) adicionado(s)');
+      toast(label + ' guardado');
       openClientModal(editingClientId);
-      // Keep docs section open so staff sees the new files
       const docsSec = document.querySelector('#clientModal [data-section="docs"]');
       if (docsSec) setClientSectionOpen(docsSec, true);
-    } else if (ok) {
+    } else {
       toast('Upload feito, mas falhou a gravar no servidor. Verifique a migração D1 (0003).');
     }
   }
@@ -3511,7 +3614,15 @@
 
   /** Parse legacy notes dump: "Nº 1344 · Horário 18:00 · Cartão: SIM · Idade 23 · …" */
   function parseClientNotesMeta(notes) {
-    const out = { memberNumber: null, schedule: '', hasCard: '', age: null, cleanedNotes: notes || '' };
+    const out = {
+      memberNumber: null,
+      schedule: '',
+      hasCard: '',
+      age: null,
+      goals: '',
+      medicalConditions: '',
+      cleanedNotes: notes || ''
+    };
     if (!notes) return out;
     let rest = String(notes);
 
@@ -3531,15 +3642,26 @@
     const aMatch = rest.match(/(?:^|[·|]\s*)Idade\s+(\d{1,3})/i);
     if (aMatch) out.age = Number(aMatch[1]);
 
+    // Extract structured goals / medical lines (from enrollment promote or legacy text)
+    const goalsMatch = rest.match(/(?:^|\n)\s*(?:Objectivos?(?:\s+de\s+treino)?|Objetivos?(?:\s+de\s+treino)?)\s*:\s*(.+?)(?=\n\s*(?:Condi[cç][oõ]es?\s+m[eé]dicas?|M[eé]dicas?|Notas)\s*:|\n\s*\n|$)/is);
+    if (goalsMatch) out.goals = goalsMatch[1].replace(/\s+/g, ' ').trim();
+
+    const medMatch = rest.match(/(?:^|\n)\s*(?:Condi[cç][oõ]es?\s+m[eé]dicas?|M[eé]dicas?)\s*:\s*(.+?)(?=\n\s*(?:Objectivos?|Objetivos?|Notas)\s*:|\n\s*\n|$)/is);
+    if (medMatch) out.medicalConditions = medMatch[1].replace(/\s+/g, ' ').trim();
+
     // Strip structured segments so notes stay free-text only
     rest = rest
       .replace(/(?:^|[·|]\s*)N[ºo°.]?\s*\d+/gi, '')
       .replace(/(?:^|[·|]\s*)Hor[aá]rio\s+[0-2]?\d:[0-5]\d/gi, '')
       .replace(/(?:^|[·|]\s*)Cart[aã]o:\s*[^\s·|]+/gi, '')
       .replace(/(?:^|[·|]\s*)Idade\s+\d{1,3}/gi, '')
+      .replace(/(?:^|\n)\s*(?:Objectivos?(?:\s+de\s+treino)?|Objetivos?(?:\s+de\s+treino)?)\s*:.*/gi, '')
+      .replace(/(?:^|\n)\s*(?:Condi[cç][oõ]es?\s+m[eé]dicas?|M[eé]dicas?)\s*:.*/gi, '')
+      .replace(/(?:^|\n)\s*Notas(?:\s+ou\s+quest[oõ]es)?\s*:\s*/gi, '\n')
       .replace(/^[·|\s]+|[·|\s]+$/g, '')
       .replace(/\s*[·|]\s*[·|]\s*/g, ' · ')
       .replace(/\s{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
     out.cleanedNotes = rest;
     return out;
@@ -3790,9 +3912,39 @@
       (c.memberNumber == null && meta.memberNumber != null) ||
       (c.age == null && meta.age != null) ||
       (!c.schedule && meta.schedule) ||
-      (!c.hasCard && meta.hasCard)
+      (!c.hasCard && meta.hasCard) ||
+      (!c.goals && meta.goals) ||
+      (!c.medicalConditions && meta.medicalConditions)
     );
+    // Prefer structured client fields; fall back to lines embedded in notes
+    if ($('#cGoals')) {
+      $('#cGoals').value = (c && c.goals) || meta.goals || '';
+    }
+    if ($('#cMedical')) {
+      $('#cMedical').value = (c && c.medicalConditions) || meta.medicalConditions || '';
+    }
     $('#cNotes').value = usedNotesFallback ? meta.cleanedNotes : (c?.notes || '');
+    // If structured fields exist but notes still contain the old labeled lines, clean the notes box
+    if ((c && (c.goals || c.medicalConditions)) || meta.goals || meta.medicalConditions) {
+      const cleaned = stripEnrollmentNoteLines($('#cNotes').value);
+      // Also strip short "Objectivos:" / "Médicas:" forms
+      const cleaned2 = String(cleaned || '')
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => {
+          if (!l) return false;
+          const lower = l.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          return !(
+            lower.startsWith('objectivos') ||
+            lower.startsWith('objetivos') ||
+            lower.startsWith('medicas') ||
+            lower.startsWith('condicoes medicas')
+          );
+        })
+        .join('\n')
+        .trim();
+      if (cleaned2 !== $('#cNotes').value.trim()) $('#cNotes').value = cleaned2;
+    }
 
     populatePlanSelect(c?.planId || '', c?.planName || '');
     $('#cPrice').value = c?.price != null ? c.price : '';
@@ -3960,6 +4112,8 @@
       billingStatus: $('#cBilling').value,
       emergencyName: ($('#cEmergencyName') && $('#cEmergencyName').value.trim()) || '',
       emergencyPhone: ($('#cEmergencyPhone') && $('#cEmergencyPhone').value.trim()) || '',
+      goals: ($('#cGoals') && $('#cGoals').value.trim()) || '',
+      medicalConditions: ($('#cMedical') && $('#cMedical').value.trim()) || '',
       notes: $('#cNotes').value.trim(),
       payments: existing?.payments || [],
       lastPaymentAt: existing?.lastPaymentAt || null,
@@ -4164,9 +4318,12 @@
       billingStatus: asPending ? (base.billingStatus || 'em_dia') : (base.billingStatus || 'em_dia'),
       emergencyName: s.emergencyName || base.emergencyName || '',
       emergencyPhone: s.emergencyPhone || base.emergencyPhone || '',
+      goals: String(s.goals || base.goals || '').trim(),
+      medicalConditions: String(s.medicalConditions || base.medicalConditions || '').trim(),
+      // Keep free-text notes only — goals / medical live in their own fields
       notes: [
         stripEnrollmentNoteLines(base.notes),
-        formatEnrollmentNotesForClient(s),
+        String(s.notes || '').trim(),
         pendingNote
       ].filter(Boolean).join('\n').trim(),
       payments: base.payments || [],
@@ -4755,7 +4912,9 @@
 
   async function loadTrainingsPanel() {
     const dateInput = $('#trainingDate');
+    // Always show a concrete day after reload (never leave the empty dd/mm/yyyy placeholder)
     if (dateInput && !dateInput.value) dateInput.value = todayISO();
+    updateTrainingDayHint();
     await refreshTrainingsSummary();
     renderTrainingsPanel();
   }
@@ -4805,6 +4964,10 @@
     const list = $('#trainingsList');
     const summaryEl = $('#trainingsSummary');
     if (!list) return;
+
+    // Keep the date input filled so reload never shows an empty dd/mm/yyyy field
+    const dateInput = $('#trainingDate');
+    if (dateInput && !dateInput.value) dateInput.value = todayISO();
 
     const date = trainingSelectedDate();
     const q = (($('#trainingSearch') && $('#trainingSearch').value) || '').trim();

@@ -1293,7 +1293,9 @@ function clientToRow(c) {
       annualFee: !!c.annualFee,
       swimFee: !!c.swimFee,
       extras: Array.isArray(c.extras) ? c.extras : [],
-      historyNotes: Array.isArray(c.historyNotes) ? c.historyNotes : []
+      historyNotes: Array.isArray(c.historyNotes) ? c.historyNotes : [],
+      goals: c.goals ? String(c.goals) : '',
+      medicalConditions: c.medicalConditions ? String(c.medicalConditions) : ''
     };
     if (
       (docsPayload.attachments && docsPayload.attachments.length) ||
@@ -1303,7 +1305,9 @@ function clientToRow(c) {
       docsPayload.annualFee ||
       docsPayload.swimFee ||
       (docsPayload.extras && docsPayload.extras.length) ||
-      (docsPayload.historyNotes && docsPayload.historyNotes.length)
+      (docsPayload.historyNotes && docsPayload.historyNotes.length) ||
+      docsPayload.goals ||
+      docsPayload.medicalConditions
     ) {
       documents_json = JSON.stringify(docsPayload);
     } else if (c.documents_json != null) {
@@ -1364,6 +1368,8 @@ function rowToClient(r) {
   let swimFee = false;
   let extras = [];
   let historyNotes = [];
+  let goals = '';
+  let medicalConditions = '';
   try {
     if (r.documents_json) {
       const parsed = typeof r.documents_json === 'string' ? JSON.parse(r.documents_json) : r.documents_json;
@@ -1377,6 +1383,8 @@ function rowToClient(r) {
         if (parsed.swimFee) swimFee = true;
         if (Array.isArray(parsed.extras)) extras = parsed.extras;
         if (Array.isArray(parsed.historyNotes)) historyNotes = parsed.historyNotes;
+        if (parsed.goals) goals = String(parsed.goals);
+        if (parsed.medicalConditions) medicalConditions = String(parsed.medicalConditions);
       }
     }
   } catch (_) {}
@@ -1393,6 +1401,8 @@ function rowToClient(r) {
     swimFee: swimFee,
     extras: extras,
     historyNotes: historyNotes,
+    goals: goals,
+    medicalConditions: medicalConditions,
     schedule: schedule,
     hasCard: r.has_card,
     planId: r.plan_id,

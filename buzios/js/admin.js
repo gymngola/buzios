@@ -778,9 +778,14 @@
     } catch (e) {}
   }
 
-  function applyStore(next, opts) {
-    const silent = opts && opts.silent;
-    const source = (opts && opts.source) || 'server';
+  function applyStore(next, ops) {
+    const opts = ops || {};
+    const silent = !!opts.silent;
+    const source = opts.source || 'server';
+    // D1 is source of truth for clients (WRITE_OPS_TO_STORE=false). Server/Cloudinary
+    // snapshots lag behind mutations — never paint their clients list into the UI.
+    // Tab broadcasts already carry post-overlay D1 data, so they may apply clients.
+    const deferClients = !!opts.deferClients || (source !== 'tab' && source !== 'local');
     const prevAt = lastKnownUpdatedAt;
     const nextAt = next && next.updatedAt ? next.updatedAt : null;
     const changed = !!(nextAt && nextAt !== prevAt);
@@ -801,13 +806,21 @@
     if (localScore > nextScore && storeTimestamp(store) >= storeTimestamp(next || {})) {
       return false;
     }
-    store = next || store;
+    if (deferClients && next) {
+      // Keep current clients (often [] on first load, or last D1 overlay) until overlay runs
+      const existingClients = store.clients || [];
+      store = Object.assign({}, next, { clients: existingClients });
+    } else {
+      store = next || store;
+    }
     if (nextAt) lastKnownUpdatedAt = nextAt;
     renderInbox();
     renderContacts();
     renderNewsletters();
-    renderClients();
-    if (isPanelActive('trainings')) renderTrainingsPanel();
+    if (!deferClients) {
+      renderClients();
+      if (isPanelActive('trainings')) renderTrainingsPanel();
+    }
     if (silent && changed && prevAt) {
       const label = source === 'tab'
         ? 'Actualizado noutro separador'
@@ -819,6 +832,23 @@
       setSyncStatus('ok', 'Sincronizado');
     }
     return changed;
+  }
+
+  /** Placeholder stats + list while the forced D1 clients overlay is in flight. */
+  function showClientsLoading() {
+    const summary = $('#clientsSummary');
+    if (summary) {
+      summary.innerHTML =
+        '<div class="stat ok"><strong>…</strong><span>Activos</span></div>' +
+        '<div class="stat warn"><strong>…</strong><span>A expirar (7d)</span></div>' +
+        '<div class="stat danger"><strong>…</strong><span>Expirados</span></div>' +
+        '<div class="stat danger"><strong>…</strong><span>Em dívida</span></div>' +
+        '<div class="stat neutral"><strong>…</strong><span>Pendentes</span></div>';
+    }
+    const list = $('#clientsList');
+    if (list && !(store.clients || []).length) {
+      list.innerHTML = '<div class="clients-empty">A carregar clientes…</div>';
+    }
   }
 
   /** Sort clients in the browser (avoids expensive SQL ORDER BY on every poll). */
@@ -1135,6 +1165,8 @@
       // After cutover, operational data lives in D1. Even if store snapshot is
       // missing/empty, still overlay from D1 so Clientes/Inscrições appear.
       // Clients full-list is throttled on silent polls (see CLIENTS_OVERLAY_MIN_MS).
+      // Server/Cloudinary store.clients is intentionally NOT painted (deferClients):
+      // it lags mutations and caused a flash of wrong stats on hard reload.
       const forceClients = !silent;
       if (chosen) {
         if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
@@ -1153,12 +1185,27 @@
           }
           return false;
         }
-        applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
+        applyStore(chosen, {
+          silent: silent && !!lastKnownUpdatedAt,
+          deferClients: true,
+          source: 'server'
+        });
+      }
+
+      // First paint / hard reload: show loading until D1 responds (no stale snapshot numbers)
+      if (forceClients && !(store.clients || []).length) {
+        showClientsLoading();
       }
 
       const gotClients = await overlayClientsFromD1({ force: forceClients });
       await overlaySubmissionsFromD1();
       await overlayNewslettersFromD1();
+
+      // overlayClientsFromD1 renders on success; always render on failure/empty so
+      // the loading placeholder is replaced by real stats or an error/empty state.
+      if (!gotClients) {
+        renderClients();
+      }
 
       if (!chosen && !gotClients && !(store.clients || []).length) {
         if (!silent) {
@@ -1170,7 +1217,6 @@
             setSyncStatus('error', 'Sem dados do servidor');
           }
         }
-        renderClients();
         return false;
       }
 

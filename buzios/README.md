@@ -122,6 +122,7 @@ curl -sS -X POST "https://buzios-publish.gymngola.workers.dev/admin/data" \
 ```
 
 **Clients / inbox / newsletter:** D1 is primary (cutover 2026-11-06). Admin reads via `d1_get_*`. Mutations write D1 only (`WRITE_OPS_TO_STORE = false`).  
+**Clientes UI:** server/Cloudinary `store.clients` is never painted into the list/stats (it lags the cron backup). `applyStore` keeps existing clients and `loadStore` waits for `d1_get_clients` (shows “A carregar clientes…” on hard reload) so stats do not flash stale counts.  
 **Backup:** `action: "d1_backup"` (manual) + **cron every ~6 days** export D1 → Cloudinary:
 - `buzios/backups/d1-YYYY-MM-DD.json` (dated history)
 - `buzios/d1-backup.json` (latest)
@@ -217,7 +218,7 @@ Each installs as its own standalone app (different icons and names). The service
 
 1. Public forms → `POST /submit` → **D1** only (`WRITE_OPS_TO_STORE = false`)
 2. Admin mutations (clients / inbox / newsletter) → **D1** only
-3. Admin `loadStore()` reads Worker store snapshot (legacy) + optional Cloudinary (**8s** timeout), then **always overlays** clients + submissions + newsletters from D1
+3. Admin `loadStore()` reads Worker store snapshot (legacy) + optional Cloudinary (**8s** timeout), then **always overlays** clients + submissions + newsletters from D1. Snapshot `clients` are not rendered (avoids stale stats flash); UI waits for `d1_get_clients`.
 4. All admin → Worker fetches (`/admin/data`, `/publish`, login, D1 overlays) use **`fetchWithTimeout` (12s)**. On timeout/network failure the sync pill shows **Sem ligação ao servidor** / **Servidor não respondeu** instead of hanging on “A sincronizar…”. Empty Clientes distinguishes load failure from a truly empty list.
 5. Prefer newer `updatedAt`, then richness; **never** prefer empty over real data
 6. `saveStore` **refuses** empty overwrite (still used if flag is re-enabled or by `d1_backup`)

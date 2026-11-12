@@ -290,6 +290,7 @@ Dense operational list for membership staff:
 **Client edit modal (sections):** Dados · Plano · Emergência · **Objectivos e notas** · Documentos · **Registar pagamento** · Histórico de treinos · Histórico do cliente · Histórico de pagamentos.  
 - Objectivos e notas: **Objectivo de treino**, **Condições médicas**, **Notas internas** (separate fields).  
 - Documentos: official slots BI / atestado / Foto 1 / Foto 2 / **Comprovativo de pagamento** (+ outros). Photo & document upload soft-refreshes media only (does not wipe unsaved form fields).  
+- **Dirty-close:** × / backdrop / Escape warns if fields were edited; ignores async UI noise (no false alarm when only scrolling).  
 - Register payment is the action block (above históricos); payment history is a separate list (newest first). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
 
 See `BLUEPRINT.md` for full workflow and data fields.
@@ -328,11 +329,12 @@ Several staff devices can keep admin open:
 
 ## Recent changes
 
-### 2026-11-12 — Client modal (docs, goals, soft media) + Treinos reload
+### 2026-11-12 — Client modal (docs, goals, soft media, dirty-close) + Treinos reload
 
 - **Objectivo de treino** / **Condições médicas** / **Notas internas** as separate fields (`goals`, `medicalConditions`, `notes`).
 - **Documentos oficiais:** BI · atestado · Foto 1 · Foto 2 · **Comprovativo de pagamento**.
 - Photo/document upload **does not reload** the whole client modal (preserves in-progress edits).
+- **Dirty-close warning** on client modal (real edits only; no false positive from scroll / async loads).
 - **Treinos:** after hard reload, date = today and the client list fills once D1 clients load.
 - Earlier same day: Registar pagamento vs Histórico de pagamentos split; **+ Nota** on Histórico do cliente; payment list newest-first.
 - Details: `BLUEPRINT.md` (edit client modal + §5.1 + changelog).

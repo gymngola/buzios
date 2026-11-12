@@ -235,6 +235,7 @@ Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `
 - **Objectivos e notas:** three fields — **Objectivo de treino** (`goals`), **Condições médicas** (`medicalConditions`), **Notas internas** (`notes`)
 - **Documentos:** typed official slots (count `filled/5`) — BI / Cédula / Passaporte · Atestado médico · Foto 1 · Foto 2 · **Comprovativo de pagamento**; extras under “Outros ficheiros”. Each slot is empty (**+ Adicionar**) or filled (preview · Substituir · remove)
 - **Photo / document upload does not re-open the modal** — only the photo + documents block soft-refresh (`refreshClientMediaUI`), so unsaved edits above are not wiped
+- **Dirty-close warning:** × / backdrop / Escape after a real field edit asks “Fechar sem guardar?”. Only trusted user `input`/`change` marks dirty (not async history/trainings/docs, file inputs, or section toggles). Cleared on Guardar / Arquivar / Lixeira
 - **Registar pagamento** is above all históricos (action only: valor, método, data, nota; **Pagar e renovar plano** / **Só registar (sem renovar)**). Preview after valor+data when relevant.
 - **Histórico de pagamentos** is its own section (list + edit/delete only; newest first).
 - Status chips at top (membership, billing, days-to-expiry)
@@ -356,6 +357,7 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Objectivo de treino / Condições médicas:** own modal fields (`goals`, `medicalConditions` in `documents_json`); notes stay free-text. Enrollment promote writes structured fields instead of embedding labeled lines in notes.
 - **Documentos oficiais:** typed slots BI · atestado · Foto 1 · Foto 2 · **Comprovativo de pagamento** (plus “Outros ficheiros”).
 - **Soft media refresh:** profile photo and document upload/remove update only the media block — form fields above are not cleared.
+- **Dirty-close on client modal:** warn before discard if staff edited fields; ignore programmatic/async UI updates so scrolling alone does not trigger the dialog.
 - **Treinos after reload:** date defaults to today; clients list reloads after D1 overlay (no empty table / empty date on hard refresh of the Treinos tab).
 
 ### 2026-11-11

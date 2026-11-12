@@ -3898,39 +3898,26 @@
   }
 
   // —— Client modal dirty-close guard ——
-  // Snapshot of field values after open; any edit marks dirty until save/close.
+  // Only real user edits count (isTrusted). No snapshot compare — async
+  // history/trainings/docs re-renders were causing false "Fechar sem guardar?".
   let clientFormDirty = false;
-  let clientFormSnapshot = '';
 
-  function getClientFormSnapshot() {
-    const modal = $('#clientModal');
-    if (!modal) return '';
-    const parts = [];
-    modal.querySelectorAll('input, select, textarea').forEach(el => {
-      if (!el || el.type === 'file') return;
-      const key = el.id || el.name || el.getAttribute('data-pay-mode') || el.className;
-      if (el.type === 'checkbox' || el.type === 'radio') {
-        parts.push(key + ':' + (el.checked ? '1' : '0'));
-      } else {
-        parts.push(key + ':' + String(el.value || ''));
-      }
-    });
-    return parts.join('\n');
-  }
-
-  function markClientFormDirty() {
-    if ($('#clientModal')?.classList.contains('open')) clientFormDirty = true;
+  function markClientFormDirty(e) {
+    if (!$('#clientModal')?.classList.contains('open')) return;
+    // Ignore programmatic updates and file inputs (photo/docs soft-refresh)
+    if (e && e.isTrusted === false) return;
+    if (e && e.target && e.target.type === 'file') return;
+    // Section heads / icon buttons are not form edits
+    if (e && e.target && e.target.closest && e.target.closest('.client-section-head, .client-doc-del, .pay-icon-btn, .modal-close')) return;
+    clientFormDirty = true;
   }
 
   function clearClientFormDirty() {
     clientFormDirty = false;
-    clientFormSnapshot = getClientFormSnapshot();
   }
 
   function isClientFormDirty() {
-    if (!$('#clientModal')?.classList.contains('open')) return false;
-    if (clientFormDirty) return true;
-    return getClientFormSnapshot() !== clientFormSnapshot;
+    return !!(clientFormDirty && $('#clientModal')?.classList.contains('open'));
   }
 
   /** Close client modal; if form was edited, ask before discarding. */
@@ -4525,9 +4512,9 @@
       requestCloseClientModal();
     }
   });
-  // Mark dirty when staff edits any field in the client modal
-  $('#clientModal')?.addEventListener('input', markClientFormDirty);
-  $('#clientModal')?.addEventListener('change', markClientFormDirty);
+  // Mark dirty only on real user edits (not programmatic / file / chrome noise)
+  $('#clientModal')?.addEventListener('input', markClientFormDirty, true);
+  $('#clientModal')?.addEventListener('change', markClientFormDirty, true);
   $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
 
   // Profile photo upload / remove / enlarge

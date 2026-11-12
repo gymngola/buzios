@@ -3,7 +3,7 @@
  * Caches the app shell for installable / offline-capable experience.
  * Network-first for HTML + JS + CSS; cache-first for icons and other static assets.
  */
-const CACHE = 'buzios-v8';
+const CACHE = 'buzios-v9';
 const SHELL = [
   '/',
   '/index.html',

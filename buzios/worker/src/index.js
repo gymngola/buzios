@@ -1282,7 +1282,7 @@ async function d1Status(env) {
 
 function clientToRow(c) {
   const now = new Date().toISOString();
-  // Persist attachments / documents / paymentProof in documents_json (migration 0003)
+  // Persist attachments / documents / paymentProof / historyNotes in documents_json (migration 0003)
   let documents_json = null;
   try {
     const docsPayload = {
@@ -1292,7 +1292,8 @@ function clientToRow(c) {
       birthDate: c.birthDate || null,
       annualFee: !!c.annualFee,
       swimFee: !!c.swimFee,
-      extras: Array.isArray(c.extras) ? c.extras : []
+      extras: Array.isArray(c.extras) ? c.extras : [],
+      historyNotes: Array.isArray(c.historyNotes) ? c.historyNotes : []
     };
     if (
       (docsPayload.attachments && docsPayload.attachments.length) ||
@@ -1301,7 +1302,8 @@ function clientToRow(c) {
       docsPayload.birthDate ||
       docsPayload.annualFee ||
       docsPayload.swimFee ||
-      (docsPayload.extras && docsPayload.extras.length)
+      (docsPayload.extras && docsPayload.extras.length) ||
+      (docsPayload.historyNotes && docsPayload.historyNotes.length)
     ) {
       documents_json = JSON.stringify(docsPayload);
     } else if (c.documents_json != null) {
@@ -1353,7 +1355,7 @@ function rowToClient(r) {
   try {
     if (schedule && schedule.charAt(0) === '[') schedule = JSON.parse(schedule);
   } catch (_) {}
-  // Restore attachments / documents / paymentProof / birthDate from documents_json
+  // Restore attachments / documents / paymentProof / birthDate / historyNotes from documents_json
   let attachments = null;
   let documents = null;
   let paymentProof = null;
@@ -1361,6 +1363,7 @@ function rowToClient(r) {
   let annualFee = false;
   let swimFee = false;
   let extras = [];
+  let historyNotes = [];
   try {
     if (r.documents_json) {
       const parsed = typeof r.documents_json === 'string' ? JSON.parse(r.documents_json) : r.documents_json;
@@ -1373,6 +1376,7 @@ function rowToClient(r) {
         if (parsed.annualFee) annualFee = true;
         if (parsed.swimFee) swimFee = true;
         if (Array.isArray(parsed.extras)) extras = parsed.extras;
+        if (Array.isArray(parsed.historyNotes)) historyNotes = parsed.historyNotes;
       }
     }
   } catch (_) {}
@@ -1388,6 +1392,7 @@ function rowToClient(r) {
     annualFee: annualFee,
     swimFee: swimFee,
     extras: extras,
+    historyNotes: historyNotes,
     schedule: schedule,
     hasCard: r.has_card,
     planId: r.plan_id,

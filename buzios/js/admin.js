@@ -1172,16 +1172,63 @@
     d1_import: 'Importação D1'
   };
 
+  /** Angola (WAT = UTC+1, no DST). Force this zone so gym devices with wrong system TZ still show correct local times. */
+  const AO_TZ = 'Africa/Luanda';
+  const AO_OFFSET = '+01:00';
+
+  /** Full date+time in Angola, e.g. "12/11/2026, 10:05". */
+  function formatDateTimeAO(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso).slice(0, 16);
+      return d.toLocaleString('pt-AO', {
+        timeZone: AO_TZ,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      return String(iso).slice(0, 16);
+    }
+  }
+
+  /** Time only in Angola, e.g. "10:05". */
+  function formatTimeAO(iso) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString('pt-AO', {
+        timeZone: AO_TZ,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /** Short audit style: "12/11 10:05" in Angola time. */
   function formatAuditWhen(iso) {
     if (!iso) return '—';
     try {
       const d = new Date(iso);
       if (isNaN(d.getTime())) return String(iso).slice(0, 16);
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mi = String(d.getMinutes()).padStart(2, '0');
-      return dd + '/' + mm + ' ' + hh + ':' + mi;
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: AO_TZ,
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).formatToParts(d);
+      const get = (t) => (parts.find((p) => p.type === t) || {}).value || '';
+      return get('day') + '/' + get('month') + ' ' + get('hour') + ':' + get('minute');
     } catch (e) {
       return String(iso).slice(0, 16);
     }
@@ -1404,7 +1451,7 @@
     list.innerHTML = items.map(s => {
       const status = s.status || 'novo';
       const statusLabel = SUB_STATUS_LABEL[status] || status;
-      const when = s.createdAt ? new Date(s.createdAt).toLocaleString('pt') : '';
+      const when = s.createdAt ? formatDateTimeAO(s.createdAt) : '';
       const schedule = Array.isArray(s.schedule) && s.schedule.length
         ? '<div class="meta">Horário: ' + s.schedule.join(', ') + '</div>'
         : '';
@@ -1625,7 +1672,7 @@
       const status = s.status || 'novo';
       const statusLabel = CONTACT_STATUS_LABEL[status] || status;
       const badgeClass = (status === 'respondido') ? 'contactado' : status;
-      const when = s.createdAt ? new Date(s.createdAt).toLocaleString('pt') : '';
+      const when = s.createdAt ? formatDateTimeAO(s.createdAt) : '';
       const msg = s.message || s.notes || '';
       return `
         <div class="prod-card">
@@ -2519,7 +2566,7 @@
       return;
     }
     list.innerHTML = items.map(n => {
-      const when = n.createdAt ? new Date(n.createdAt).toLocaleString('pt') : '';
+      const when = n.createdAt ? formatDateTimeAO(n.createdAt) : '';
       const phone = n.phone || '—';
       const wa = String(phone).replace(/\D/g, '');
       const waLink = wa ? `https://wa.me/${wa.startsWith('244') ? wa : '244' + wa}` : '#';
@@ -2697,23 +2744,36 @@
     };
   }
 
+  /** Calendar date (YYYY-MM-DD) in Angola — not browser TZ / UTC. */
   function todayISO() {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
+    return new Date().toLocaleDateString('en-CA', { timeZone: AO_TZ });
+  }
+
+  /** Instant for a civil date+time in Angola (permanent UTC+1). */
+  function angolaDateTimeISO(dateStr, timeStr) {
+    const t = (timeStr && /^\d{2}:\d{2}/.test(timeStr)) ? timeStr.slice(0, 5) : '12:00';
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return new Date().toISOString();
+    const d = new Date(dateStr + 'T' + t + ':00' + AO_OFFSET);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
   }
 
   function daysUntil(dateStr) {
     if (!dateStr) return null;
-    const end = new Date(dateStr + 'T23:59:59');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // End of day Angola, vs start of today Angola
+    const end = new Date(dateStr + 'T23:59:59' + AO_OFFSET);
+    const todayStr = todayISO();
+    const today = new Date(todayStr + 'T00:00:00' + AO_OFFSET);
     return Math.ceil((end - today) / 86400000);
   }
 
   function addMonthsISO(isoDate, months) {
-    const base = isoDate ? new Date(isoDate + 'T12:00:00') : new Date();
+    // Anchor at noon Angola so month arithmetic stays on the intended civil day
+    const base = isoDate
+      ? new Date(isoDate + 'T12:00:00' + AO_OFFSET)
+      : new Date();
     base.setMonth(base.getMonth() + months);
-    return base.toISOString().slice(0, 10);
+    // Return the calendar date in Angola for that instant
+    return base.toLocaleDateString('en-CA', { timeZone: AO_TZ });
   }
 
   function formatDatePT(iso) {
@@ -3191,7 +3251,7 @@
     }
     const methodLabel = { cash: 'Numerário', transfer: 'Transferência', multicaixa: 'Multicaixa', other: 'Outro' };
     el.innerHTML = list.slice(0, 20).map((p, idx) => {
-      const when = p.paidAt ? new Date(p.paidAt).toLocaleString('pt') : '';
+      const when = p.paidAt ? formatDateTimeAO(p.paidAt) : '';
       const amt = p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '';
       const method = methodLabel[p.method] || p.method || '';
       const note = p.note ? ' — ' + escapeHtml(p.note) : '';
@@ -3246,7 +3306,7 @@
     if (idx < 0) return toast('Pagamento não encontrado');
     const p = payments[idx];
     const label = (p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : 'pagamento') +
-      (p.paidAt ? ' · ' + new Date(p.paidAt).toLocaleString('pt') : '');
+      (p.paidAt ? ' · ' + formatDateTimeAO(p.paidAt) : '');
     if (!(await adminConfirm('Apagar este pagamento?\n' + label, {
       title: 'Apagar pagamento', confirmLabel: 'Apagar', danger: true
     }))) return;
@@ -3260,16 +3320,14 @@
     openClientModal(editingClientId);
   }
 
-  /** Build paidAt ISO from #cPayDate (YYYY-MM-DD). Empty → now. Keeps local calendar day. */
+  /** Build paidAt ISO from #cPayDate (YYYY-MM-DD). Empty → now. Uses Angola civil day. */
   function paidAtFromForm() {
     const raw = ($('#cPayDate') && $('#cPayDate').value) || '';
     if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return new Date().toISOString();
     const today = todayISO();
     if (raw === today) return new Date().toISOString();
-    // Past/future calendar day: noon local so the displayed date is stable across TZ
-    const d = new Date(raw + 'T12:00:00');
-    if (Number.isNaN(d.getTime())) return new Date().toISOString();
-    return d.toISOString();
+    // Past/future calendar day: noon in Angola so the displayed date is stable
+    return angolaDateTimeISO(raw, '12:00');
   }
 
   let _payEditCtx = null; // { payId, clientId }
@@ -3296,7 +3354,7 @@
       $('#payEditMethod').value = ['cash', 'transfer', 'multicaixa', 'other'].includes(m) ? m : 'other';
     }
     if ($('#payEditDate')) {
-      $('#payEditDate').value = p.paidAt ? String(p.paidAt).slice(0, 10) : todayISO();
+      $('#payEditDate').value = p.paidAt ? toLocalDateAndTime(p.paidAt).date : todayISO();
     }
     if ($('#payEditNote')) $('#payEditNote').value = p.note || '';
 
@@ -3324,7 +3382,7 @@
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
       paidAt = dateRaw === todayISO()
         ? new Date().toISOString()
-        : new Date(dateRaw + 'T12:00:00').toISOString();
+        : angolaDateTimeISO(dateRaw, '12:00');
     }
     const note = ($('#payEditNote') && $('#payEditNote').value.trim()) || '';
 
@@ -4514,10 +4572,10 @@
 
   function shiftISODate(iso, days) {
     const base = iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : todayISO();
-    const d = new Date(base + 'T12:00:00');
+    // Anchor at noon Angola so day arithmetic is stable
+    const d = new Date(base + 'T12:00:00' + AO_OFFSET);
     d.setDate(d.getDate() + days);
-    const pad = (n) => String(n).padStart(2, '0');
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    return d.toLocaleDateString('en-CA', { timeZone: AO_TZ });
   }
 
   function updateTrainingDayHint() {
@@ -4645,7 +4703,7 @@
       const mem = c.membershipStatus || 'pendente';
       const sessionsHtml = sessions.length
         ? '<ul class="training-session-list">' + sessions.map(s => {
-            const t = s.trainedAt ? new Date(s.trainedAt).toLocaleTimeString('pt', { hour: '2-digit', minute: '2-digit' }) : '';
+            const t = s.trainedAt ? formatTimeAO(s.trainedAt) : '';
             const by = s.recordedBy ? ' · ' + escapeHtml(s.recordedBy) : '';
             const note = s.note ? ' — ' + escapeHtml(s.note) : '';
             return '<li>' +
@@ -4766,12 +4824,11 @@
     const timeNorm = /^\d{2}:\d{2}/.test(timeVal) ? timeVal.slice(0, 5) : '12:00';
     let trainedAt;
     try {
-      const parsed = new Date(dateVal + 'T' + timeNorm + ':00');
-      if (isNaN(parsed.getTime())) {
+      trainedAt = angolaDateTimeISO(dateVal, timeNorm);
+      if (!trainedAt) {
         toast('Data/hora inválida');
         return;
       }
-      trainedAt = parsed.toISOString();
     } catch (_) {
       toast('Data/hora inválida');
       return;
@@ -4819,12 +4876,10 @@
       return;
     }
     const date = trainingSelectedDate();
-    const now = new Date();
-    let trainedAt = now.toISOString();
-    // Viewing another day → local noon on that day (not UTC)
+    let trainedAt = new Date().toISOString();
+    // Viewing another day → noon in Angola on that day
     if (date !== todayISO()) {
-      const localNoon = new Date(date + 'T12:00:00');
-      trainedAt = isNaN(localNoon.getTime()) ? (date + 'T12:00:00.000Z') : localNoon.toISOString();
+      trainedAt = angolaDateTimeISO(date, '12:00');
     }
     await persistNewTraining(clientId, trainedAt, '');
   }
@@ -4865,8 +4920,8 @@
     _trainingEditId = null;
   }
 
+  /** Extract civil date + time in Angola from an ISO instant (or Date). */
   function toLocalDateAndTime(isoOrDate) {
-    const pad = (n) => String(n).padStart(2, '0');
     let d;
     try {
       d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
@@ -4874,9 +4929,19 @@
       d = new Date();
     }
     if (isNaN(d.getTime())) d = new Date();
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: AO_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(d);
+    const get = (t) => (parts.find((p) => p.type === t) || {}).value || '';
     return {
-      date: d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()),
-      time: pad(d.getHours()) + ':' + pad(d.getMinutes())
+      date: get('year') + '-' + get('month') + '-' + get('day'),
+      time: get('hour') + ':' + get('minute')
     };
   }
 
@@ -4887,7 +4952,7 @@
     _trainingEditId = id;
     let parts = { date: todayISO(), time: '12:00' };
     try {
-      const src = cur.trainedAt || (cur.trainedDate ? cur.trainedDate + 'T12:00:00' : null);
+      const src = cur.trainedAt || (cur.trainedDate ? cur.trainedDate + 'T12:00:00' + AO_OFFSET : null);
       if (src) parts = toLocalDateAndTime(src);
     } catch (_) {}
     if ($('#trainingEditDate')) $('#trainingEditDate').value = parts.date;
@@ -4911,12 +4976,11 @@
     const timeNorm = /^\d{2}:\d{2}/.test(timeVal) ? timeVal.slice(0, 5) : '12:00';
     let trainedAt;
     try {
-      const parsed = new Date(dateVal + 'T' + timeNorm + ':00');
-      if (isNaN(parsed.getTime())) {
+      trainedAt = angolaDateTimeISO(dateVal, timeNorm);
+      if (!trainedAt) {
         toast('Data/hora inválida');
         return;
       }
-      trainedAt = parsed.toISOString();
     } catch (_) {
       toast('Data/hora inválida');
       return;
@@ -5194,7 +5258,7 @@
         ? '<ul class="client-history-timeline">' + timeline.map(ev => {
             const when = ev.at
               ? (ev.at.length > 12
-                  ? new Date(ev.at).toLocaleString('pt')
+                  ? formatDateTimeAO(ev.at)
                   : formatDatePT(ev.at.slice(0, 10)))
               : '—';
             const cls = typeClass[ev.type] || '';

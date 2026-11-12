@@ -287,6 +287,8 @@ Dense operational list for membership staff:
 - **Backup** — full JSON (store + catalog) for recovery
 - Export CSV / Copiar telefones respect current selection when present
 
+**Client edit modal (sections):** Dados · Plano · Emergência · Notas · Documentos · **Registar pagamento** · Histórico de treinos · Histórico do cliente · Histórico de pagamentos. Register payment is the action block (above históricos); payment history is a separate list (newest first). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
+
 See `BLUEPRINT.md` for full workflow and data fields.
 
 ## Admin — Inscrições (summary)
@@ -322,6 +324,14 @@ Several staff devices can keep admin open:
 - Bulk checkbox selection is kept in memory across poll re-renders
 
 ## Recent changes
+
+### 2026-11-12 — Client modal payments & history
+
+- **Registar pagamento** split from **Histórico de pagamentos** (register above históricos; history list separate, newest first).
+- Payment rows support legacy import `date` as well as `paidAt`; edit/delete icons clear of the scrollbar.
+- **Histórico do cliente:** **+ Nota** for manual notes (`historyNotes`, with staff `recordedBy`); edit/delete on notes and payment events in the timeline.
+- Removed visible “Sugestão de fim …” under plan dates.
+- Details: `BLUEPRINT.md` (edit client modal + §5.1).
 
 ### 2026-11-11 — D1 read budget (presence removed)
 

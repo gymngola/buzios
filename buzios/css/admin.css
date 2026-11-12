@@ -1091,7 +1091,6 @@ a { color: var(--admin-accent); }
   margin: 0.4rem 0 0;
 }
 
-.client-end-hint,
 .client-pay-preview {
   font-size: 0.78rem;
   color: #1a6b3a;
@@ -2398,6 +2397,7 @@ a { color: var(--admin-accent); }
 .hist-item.hist-train .hist-dot { background: #2f6b4f; }
 .hist-item.hist-audit .hist-dot { background: #1a5a9c; }
 .hist-item.hist-created .hist-dot { background: #6b3a7a; }
+.hist-item.hist-note .hist-dot { background: #b8860b; }
 .hist-top {
   display: flex;
   flex-wrap: wrap;

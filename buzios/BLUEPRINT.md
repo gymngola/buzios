@@ -227,26 +227,30 @@ Closes on **outside click** or **Escape**.
 
 ### Client data (store / D1)
 
-Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `notes`, `payments[]`, `attachments` / `documents`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.
+Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `notes`, `payments[]` (each: `id`, `amount`, `paidAt` or legacy `date`, `method`, `note`, …), `historyNotes[]` (manual timeline notes: `id`, `type`, `text`, `at`, `recordedBy`), `attachments` / `documents`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.
 
-**Edit client modal (2026-11-10 redesign):**
-- Collapsible sections: Dados · Plano & estado · Emergência · Notas · Documentos · Histórico de treinos · Pagamentos
+**Edit client modal (updated 2026-11-12):**
+- Collapsible sections (order): **Dados · Plano & estado · Emergência · Notas · Documentos · Registar pagamento · Histórico de treinos · Histórico do cliente · Histórico de pagamentos**
+- **Registar pagamento** is above all históricos (action only: valor, método, data, nota; **Pagar e renovar plano** / **Só registar (sem renovar)**). Preview after valor+data when relevant.
+- **Histórico de pagamentos** is its own section (list + edit/delete only; newest first).
 - Status chips at top (membership, billing, days-to-expiry)
-- Quick actions when editing: WhatsApp · Renovar (jumps to payment) · Copiar telefone
+- Quick actions when editing: WhatsApp · Renovar (jumps to **Registar pagamento**) · Copiar telefone
 - Plan as **select from catalog** (grouped ginásio/natação) + “Outro” custom name; selecting a plan fills price + cycle
-- Cycle / plan start suggests end date; pay-and-renew shows explicit preview and confirm (new end · Activo · Em dia)
+- Empty **Fim do plano** is filled quietly from início + ciclo (no on-screen “Sugestão de fim” text)
 - Two-column field pairs on wider screens; sticky footer with Guardar / Arquivar / Apagar
-- Docs, trainings history, and payments collapsed by default (auto-open when client has docs / debt / payment history)
+- Docs / trainings / history sections collapsed by default; **Registar pagamento** auto-opens when in debt/expired; **Histórico de pagamentos** auto-opens when the client has payments
 
 **Client list:** search is accent-insensitive; filters include status pills + **Filtrar por idade** (ranges / sem idade).
 
 Legacy notes dumps (`Nº · Horário · Cartão · Idade`) are parsed on open when structured keys are missing; cleaned remainder stays in Notas.
 
-### 5.1 Treinos + Histórico do cliente
+### 5.1 Treinos + históricos no modal
 
 - **Treinos panel:** date picker, search, filter (activos / todos / só quem treinou no dia). **+ Treino** registers a session (multiple per day allowed). Counts for day and month. `recorded_by` = admin name.
 - **D1 `trainings`:** `id`, `client_id`, `trained_at`, `trained_date`, `recorded_by`, `note`, `created_at`.
-- **Histórico do cliente** (edit modal): one timeline of payments + trainings + audit events + “cliente criado”; year filter; summary counts. Worker `get_client_history`.
+- **Histórico de treinos** (modal): training list only (+ Treino, edit/delete).
+- **Histórico do cliente** (modal): timeline of payments + **manual notes** + audit events + “cliente criado” (trainings stay in their own section). Year filter; summary counts. Worker `get_client_history` for trainings/audit. **+ Nota** adds a manual entry (`historyNotes` on the client: type Nota/Contacto/Aviso/Outro, text, date/time, `recordedBy` = staff login name). Edit/delete on notes and on payment rows in this timeline.
+- **Histórico de pagamentos** (modal): payment list only, **newest first** (`paidAt` or legacy import `date`); edit/delete icons; scrollbar does not cover action buttons.
 
 ---
 
@@ -338,6 +342,13 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Client documents in edit panel**: upload images/PDFs via Cloudinary from client modal (`+ Adicionar`); remove with trash icon; stored on client `attachments` (and clears matching `documents` / `paymentProof` URLs on delete).
 - **Force logout all devices**: Guia → “Terminar todas as sessões”. Bumps D1 `admin_settings.auth_epoch` (migration `0007_admin_settings.sql`); presence heartbeats detect the new epoch and log every open panel out within ~40s. Explains why hard reload alone does not clear the session (password lives in `sessionStorage`).
 - **Histórico do cliente**: unified timeline in client edit modal — payments + trainings + audit/status events + “cliente criado”, with year filter and summary counts. Worker action `get_client_history` (trainings + audit for client).
+
+### 2026-11-12
+
+- **Client modal payments split:** **Registar pagamento** (action, above históricos) separate from **Histórico de pagamentos** (list below other históricos). Button labels: *Pagar e renovar plano* / *Só registar (sem renovar)*.
+- **Payment dates:** sort/display use `paidAt` or legacy import `date`; lists **newest first**. Scrollbar gutter so edit/delete icons stay clickable.
+- **Histórico do cliente — manual notes:** **+ Nota** (type, text, date/time); stored on client `historyNotes[]` with `recordedBy` (staff name). Edit/delete for notes and for payment rows in the timeline.
+- **Removed** on-screen “Sugestão de fim (mensal): …” under plan dates (empty end still auto-fills silently from start + cycle).
 
 ### 2026-11-11
 

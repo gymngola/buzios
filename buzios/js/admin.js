@@ -3659,21 +3659,15 @@
     const endEl = $('#cPlanEnd');
     const cycleEl = $('#cCycle');
     const hint = $('#cEndHint');
+    if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
     if (!startEl || !endEl || !cycleEl) return;
     const start = startEl.value;
-    const cycle = cycleEl.value || 'mensal';
-    if (!start) {
-      if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
-      return;
-    }
-    const months = CYCLE_MONTHS[cycle] || 1;
-    const suggested = addMonthsISO(start, months);
+    if (!start) return;
+    // Silently fill empty end date from start + cycle (no suggestion text shown)
     if (!endEl.value) {
-      endEl.value = suggested;
-    }
-    if (hint) {
-      hint.style.display = '';
-      hint.textContent = 'Sugestão de fim (' + cycle + '): ' + formatDatePT(suggested);
+      const cycle = cycleEl.value || 'mensal';
+      const months = CYCLE_MONTHS[cycle] || 1;
+      endEl.value = addMonthsISO(start, months);
     }
   }
 
@@ -3962,6 +3956,7 @@
       notes: $('#cNotes').value.trim(),
       payments: existing?.payments || [],
       lastPaymentAt: existing?.lastPaymentAt || null,
+      historyNotes: Array.isArray(existing?.historyNotes) ? existing.historyNotes : [],
       createdAt: existing?.createdAt || new Date().toISOString(),
       fromSubmission: existing?.fromSubmission || null,
       fromImport: existing?.fromImport || null,
@@ -5141,6 +5136,7 @@
         trainings: (data && data.trainings) || [],
         audit: (data && data.audit) || [],
         payments: payments,
+        historyNotes: (existing && Array.isArray(existing.historyNotes)) ? existing.historyNotes : [],
         createdAt: existing && existing.createdAt
       };
       renderClientHistory(host, clientId);
@@ -5153,6 +5149,7 @@
         trainings: [],
         audit: [],
         payments: payments,
+        historyNotes: (existing && Array.isArray(existing.historyNotes)) ? existing.historyNotes : [],
         createdAt: existing && existing.createdAt
       };
       renderClientHistory(host, clientId);
@@ -5250,6 +5247,22 @@
       });
     });
 
+    // Manual notes created in Histórico do cliente
+    const noteTypeLabel = { nota: 'Nota', contacto: 'Contacto', aviso: 'Aviso', outro: 'Outro' };
+    (cache.historyNotes || []).forEach((n, idx) => {
+      const at = n.at || '';
+      events.push({
+        at,
+        sortKey: at || '1970-01-01',
+        type: 'note',
+        title: noteTypeLabel[n.type] || n.type || 'Nota',
+        body: n.text || '',
+        who: n.recordedBy || '',
+        id: n.id || ('note-' + idx),
+        noteId: n.id || ('note-idx-' + idx)
+      });
+    });
+
     // Trainings are shown only in "Histórico de treinos" — not here
 
     (cache.audit || []).forEach(a => {
@@ -5311,17 +5324,25 @@
         '<option value="' + y + '"' + (clientHistoryYear === y ? ' selected' : '') + '>' + y + '</option>'
       ).join('');
 
-    const typeClass = { payment: 'hist-pay', training: 'hist-train', audit: 'hist-audit', created: 'hist-created' };
+    const typeClass = {
+      payment: 'hist-pay',
+      training: 'hist-train',
+      audit: 'hist-audit',
+      created: 'hist-created',
+      note: 'hist-note'
+    };
 
     host.innerHTML =
       '<div class="client-history-head">' +
         '<h3>Histórico do cliente</h3>' +
         '<div class="client-history-tools">' +
           '<select id="cHistoryYear" aria-label="Filtrar por ano">' + yearOptions + '</select>' +
+          '<button type="button" class="btn-train" id="cAddHistNoteBtn" title="Adicionar nota ao histórico">+ Nota</button>' +
         '</div>' +
       '</div>' +
       '<p class="client-history-stats">' +
         '<strong>' + (cache.payments || []).length + '</strong> pagamentos · ' +
+        '<strong>' + (cache.historyNotes || []).length + '</strong> notas · ' +
         '<strong>' + timeline.length + '</strong> eventos' +
         (clientHistoryYear ? ' em ' + clientHistoryYear : '') +
       '</p>' +
@@ -5335,26 +5356,38 @@
               : '—';
             const cls = typeClass[ev.type] || '';
             const who = ev.who ? ' · ' + escapeHtml(ev.who) : '';
-            const payActions = ev.type === 'payment' && ev.payId
-              ? '<span class="hist-actions">' +
+            let actions = '';
+            if (ev.type === 'payment' && ev.payId) {
+              actions =
+                '<span class="hist-actions">' +
                   '<button type="button" class="pay-icon-btn" data-hist-pay-edit="' + escapeHtml(String(ev.payId)) + '" title="Editar" aria-label="Editar pagamento">' +
                   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
                   '</button>' +
                   '<button type="button" class="pay-icon-btn pay-icon-danger" data-hist-pay-del="' + escapeHtml(String(ev.payId)) + '" title="Apagar" aria-label="Apagar pagamento">' +
                   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>' +
                   '</button>' +
-                '</span>'
-              : '';
+                '</span>';
+            } else if (ev.type === 'note' && ev.noteId) {
+              actions =
+                '<span class="hist-actions">' +
+                  '<button type="button" class="pay-icon-btn" data-hist-note-edit="' + escapeHtml(String(ev.noteId)) + '" title="Editar" aria-label="Editar nota">' +
+                  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+                  '</button>' +
+                  '<button type="button" class="pay-icon-btn pay-icon-danger" data-hist-note-del="' + escapeHtml(String(ev.noteId)) + '" title="Apagar" aria-label="Apagar nota">' +
+                  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>' +
+                  '</button>' +
+                '</span>';
+            }
             return '<li class="hist-item ' + cls + '">' +
               '<span class="hist-dot" aria-hidden="true"></span>' +
               '<div class="hist-body">' +
                 '<div class="hist-top"><span class="hist-title">' + escapeHtml(ev.title) + '</span>' +
-                '<span class="hist-when">' + escapeHtml(when) + who + '</span>' + payActions + '</div>' +
+                '<span class="hist-when">' + escapeHtml(when) + who + '</span>' + actions + '</div>' +
                 (ev.body ? '<div class="hist-detail">' + escapeHtml(ev.body) + '</div>' : '') +
               '</div>' +
             '</li>';
           }).join('') + '</ul>'
-        : '<p class="muted" style="font-size:0.85rem">Ainda sem eventos neste filtro.</p>');
+        : '<p class="muted" style="font-size:0.85rem">Ainda sem eventos neste filtro. Use <strong>+ Nota</strong> para registar um contacto ou observação.</p>');
 
     host.querySelectorAll('[data-hist-pay-edit]').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -5370,6 +5403,27 @@
         deletePayment(btn.getAttribute('data-hist-pay-del'));
       });
     });
+    host.querySelectorAll('[data-hist-note-edit]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openHistNoteModal(btn.getAttribute('data-hist-note-edit'));
+      });
+    });
+    host.querySelectorAll('[data-hist-note-del]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteHistNote(btn.getAttribute('data-hist-note-del'));
+      });
+    });
+    const addNoteBtn = host.querySelector('#cAddHistNoteBtn');
+    if (addNoteBtn) {
+      addNoteBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openHistNoteModal(null);
+      });
+    }
 
     const yearSel = host.querySelector('#cHistoryYear');
     if (yearSel) {
@@ -5379,6 +5433,147 @@
       });
     }
   }
+
+  let _histNoteCtx = null; // { noteId|null }
+
+  function closeHistNoteModal() {
+    const modal = $('#histNoteModal');
+    if (modal) modal.classList.remove('open');
+    _histNoteCtx = null;
+  }
+
+  function openHistNoteModal(noteId) {
+    if (!editingClientId) return toast('Guarde o cliente primeiro');
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    _histNoteCtx = { noteId: noteId || null };
+
+    const notes = Array.isArray(existing.historyNotes) ? existing.historyNotes : [];
+    let note = null;
+    if (noteId) {
+      note = notes.find(n => String(n.id) === String(noteId));
+      if (!note && String(noteId).startsWith('note-idx-')) {
+        const n = Number(String(noteId).slice(9));
+        if (!Number.isNaN(n) && n >= 0 && n < notes.length) note = notes[n];
+      }
+    }
+
+    if ($('#histNoteTitle')) {
+      $('#histNoteTitle').textContent = note ? 'Editar nota' : 'Nota no histórico';
+    }
+    if ($('#histNoteType')) {
+      const t = (note && note.type) || 'nota';
+      $('#histNoteType').value = ['nota', 'contacto', 'aviso', 'outro'].includes(t) ? t : 'nota';
+    }
+    if ($('#histNoteText')) $('#histNoteText').value = (note && note.text) || '';
+
+    const nowParts = toLocalDateAndTime(new Date());
+    if (note && note.at) {
+      const parts = toLocalDateAndTime(note.at);
+      if ($('#histNoteDate')) $('#histNoteDate').value = parts.date || todayISO();
+      if ($('#histNoteTime')) $('#histNoteTime').value = parts.time || '';
+    } else {
+      if ($('#histNoteDate')) $('#histNoteDate').value = nowParts.date || todayISO();
+      if ($('#histNoteTime')) $('#histNoteTime').value = nowParts.time || '';
+    }
+
+    const modal = $('#histNoteModal');
+    if (modal) modal.classList.add('open');
+    setTimeout(() => { try { $('#histNoteText') && $('#histNoteText').focus(); } catch (_) {} }, 40);
+  }
+
+  async function saveHistNoteModal() {
+    if (!_histNoteCtx || !editingClientId) return closeHistNoteModal();
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return closeHistNoteModal();
+
+    const text = (($('#histNoteText') && $('#histNoteText').value) || '').trim();
+    if (!text) return toast('Escreva o texto da nota');
+
+    const type = ($('#histNoteType') && $('#histNoteType').value) || 'nota';
+    const dateRaw = ($('#histNoteDate') && $('#histNoteDate').value) || todayISO();
+    let timeRaw = ($('#histNoteTime') && $('#histNoteTime').value) || '';
+    if (!timeRaw) {
+      const nowParts = toLocalDateAndTime(new Date());
+      timeRaw = nowParts.time || '12:00';
+    }
+    const timeNorm = timeRaw.length === 5 ? timeRaw : String(timeRaw).slice(0, 5);
+    const at = angolaDateTimeISO(dateRaw, timeNorm);
+    const recordedBy = getAdminName() || '';
+
+    const notes = (Array.isArray(existing.historyNotes) ? existing.historyNotes : []).slice();
+    const noteId = _histNoteCtx.noteId;
+
+    if (noteId) {
+      let idx = notes.findIndex(n => String(n.id) === String(noteId));
+      if (idx < 0 && String(noteId).startsWith('note-idx-')) {
+        const n = Number(String(noteId).slice(9));
+        if (!Number.isNaN(n) && n >= 0 && n < notes.length) idx = n;
+      }
+      if (idx < 0) {
+        toast('Nota não encontrada');
+        return closeHistNoteModal();
+      }
+      const prev = notes[idx];
+      notes[idx] = Object.assign({}, prev, {
+        id: prev.id || ('note-' + Date.now()),
+        type: type,
+        text: text,
+        at: at,
+        recordedBy: recordedBy || prev.recordedBy || '',
+        updatedAt: new Date().toISOString(),
+        updatedBy: recordedBy || ''
+      });
+    } else {
+      notes.unshift({
+        id: 'note-' + Date.now(),
+        type: type,
+        text: text,
+        at: at,
+        recordedBy: recordedBy,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    notes.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')));
+    const data = enrichClient(Object.assign({}, existing, {
+      historyNotes: notes.slice(0, 100)
+    }));
+    closeHistNoteModal();
+    await adminAction('update_client', data);
+    toast(noteId ? 'Nota actualizada' : 'Nota adicionada ao histórico');
+    openClientModal(editingClientId);
+  }
+
+  async function deleteHistNote(noteId) {
+    if (!editingClientId || !noteId) return;
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) return;
+    const notes = (Array.isArray(existing.historyNotes) ? existing.historyNotes : []).slice();
+    let idx = notes.findIndex(n => String(n.id) === String(noteId));
+    if (idx < 0 && String(noteId).startsWith('note-idx-')) {
+      const n = Number(String(noteId).slice(9));
+      if (!Number.isNaN(n) && n >= 0 && n < notes.length) idx = n;
+    }
+    if (idx < 0) return toast('Nota não encontrada');
+    const n = notes[idx];
+    const preview = (n.text || '').slice(0, 80);
+    if (!(await adminConfirm('Apagar esta nota?\n' + preview, {
+      title: 'Apagar nota', confirmLabel: 'Apagar', danger: true
+    }))) return;
+    notes.splice(idx, 1);
+    const data = enrichClient(Object.assign({}, existing, { historyNotes: notes }));
+    await adminAction('update_client', data);
+    toast('Nota apagada');
+    openClientModal(editingClientId);
+  }
+
+  $('#closeHistNoteModal')?.addEventListener('click', closeHistNoteModal);
+  $('#histNoteCancel')?.addEventListener('click', closeHistNoteModal);
+  $('#histNoteSave')?.addEventListener('click', () => { saveHistNoteModal(); });
+  $('#histNoteModal')?.addEventListener('click', (e) => {
+    if (e.target === $('#histNoteModal')) closeHistNoteModal();
+  });
 
   function ensureClientHistoryHost() {
     let host = $('#cHistoryHost');

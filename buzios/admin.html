@@ -612,7 +612,6 @@
               <div class="form-row"><label>Início do plano</label><input type="date" id="cPlanStart"></div>
               <div class="form-row"><label>Fim do plano (vence)</label><input type="date" id="cPlanEnd"></div>
             </div>
-            <p id="cEndHint" class="client-end-hint" style="display:none"></p>
             <div class="form-grid-2">
               <div class="form-row"><label>Membership</label>
                 <select id="cMembership">
@@ -779,6 +778,32 @@
       <div class="form-actions admin-dialog-actions">
         <button type="button" id="adminPromptCancel" class="btn-dialog-cancel">Cancelar</button>
         <button type="button" id="adminPromptOk" class="btn-dialog-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual note on client history timeline -->
+  <div class="modal-backdrop admin-dialog-backdrop" id="histNoteModal" role="dialog" aria-modal="true" aria-labelledby="histNoteTitle">
+    <div class="modal admin-dialog-modal" style="max-width:420px">
+      <button type="button" class="modal-close" id="closeHistNoteModal" aria-label="Fechar">×</button>
+      <h2 id="histNoteTitle">Nota no histórico</h2>
+      <div class="form-row"><label>Tipo</label>
+        <select id="histNoteType">
+          <option value="nota">Nota</option>
+          <option value="contacto">Contacto</option>
+          <option value="aviso">Aviso</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>Data</label><input type="date" id="histNoteDate"></div>
+        <div class="form-row"><label>Hora</label><input type="time" id="histNoteTime"></div>
+      </div>
+      <div class="form-row"><label>Texto</label><textarea id="histNoteText" rows="3" placeholder="Ex.: Falou com a mãe sobre a mensalidade…"></textarea></div>
+      <p class="muted" style="font-size:0.78rem;margin:0.35rem 0 0">Fica registado quem criou/editou (nome do staff no login).</p>
+      <div class="form-actions admin-dialog-actions" style="margin-top:1rem">
+        <button type="button" id="histNoteCancel" class="btn-dialog-cancel">Cancelar</button>
+        <button type="button" id="histNoteSave" class="btn-dialog-ok">Guardar</button>
       </div>
     </div>
   </div>

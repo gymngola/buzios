@@ -513,13 +513,15 @@
       if (e.target === modal) modal.classList.remove('open');
     });
   }
-  bindModalBackdropClose('clientModal');
+  // clientModal uses requestCloseClientModal (dirty-form guard) — see below
   bindModalBackdropClose('prodModal');
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      $$('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
-      $$('.client-row .row-more[open]').forEach(d => { d.open = false; });
-    }
+    if (e.key !== 'Escape') return;
+    // Client modal: handled by dedicated listener (may confirm dirty close)
+    if ($('#clientModal')?.classList.contains('open')) return;
+    if ($('#photoLightbox')?.classList.contains('open')) return;
+    $$('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+    $$('.client-row .row-more[open]').forEach(d => { d.open = false; });
   });
 
   // Close "Mais" menus when clicking anywhere outside them
@@ -3895,6 +3897,58 @@
     }
   }
 
+  // —— Client modal dirty-close guard ——
+  // Snapshot of field values after open; any edit marks dirty until save/close.
+  let clientFormDirty = false;
+  let clientFormSnapshot = '';
+
+  function getClientFormSnapshot() {
+    const modal = $('#clientModal');
+    if (!modal) return '';
+    const parts = [];
+    modal.querySelectorAll('input, select, textarea').forEach(el => {
+      if (!el || el.type === 'file') return;
+      const key = el.id || el.name || el.getAttribute('data-pay-mode') || el.className;
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        parts.push(key + ':' + (el.checked ? '1' : '0'));
+      } else {
+        parts.push(key + ':' + String(el.value || ''));
+      }
+    });
+    return parts.join('\n');
+  }
+
+  function markClientFormDirty() {
+    if ($('#clientModal')?.classList.contains('open')) clientFormDirty = true;
+  }
+
+  function clearClientFormDirty() {
+    clientFormDirty = false;
+    clientFormSnapshot = getClientFormSnapshot();
+  }
+
+  function isClientFormDirty() {
+    if (!$('#clientModal')?.classList.contains('open')) return false;
+    if (clientFormDirty) return true;
+    return getClientFormSnapshot() !== clientFormSnapshot;
+  }
+
+  /** Close client modal; if form was edited, ask before discarding. */
+  async function requestCloseClientModal() {
+    const modal = $('#clientModal');
+    if (!modal || !modal.classList.contains('open')) return true;
+    if (isClientFormDirty()) {
+      const ok = await adminConfirm(
+        'Tem alterações por guardar neste cliente.\n\nFechar sem guardar?',
+        { title: 'Alterações por guardar', confirmLabel: 'Fechar sem guardar', danger: true }
+      );
+      if (!ok) return false;
+    }
+    modal.classList.remove('open');
+    clientFormDirty = false;
+    return true;
+  }
+
   function openClientModal(id) {
     editingClientId = id || null;
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
@@ -4088,6 +4142,8 @@
     const scroll = modal.querySelector('.client-modal-scroll') || modal;
     if (scroll) scroll.scrollTop = 0;
     modal.scrollTop = 0;
+    // Baseline after all fields are filled — edits after this count as dirty
+    clearClientFormDirty();
   }
 
   function readClientForm(existing) {
@@ -4457,7 +4513,21 @@
     }
   }
 
-  $('#closeClientModal')?.addEventListener('click', () => $('#clientModal').classList.remove('open'));
+  $('#closeClientModal')?.addEventListener('click', () => { requestCloseClientModal(); });
+  $('#clientModal')?.addEventListener('click', (e) => {
+    if (e.target === $('#clientModal')) requestCloseClientModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if ($('#photoLightbox')?.classList.contains('open')) return;
+    if ($('#clientModal')?.classList.contains('open')) {
+      e.preventDefault();
+      requestCloseClientModal();
+    }
+  });
+  // Mark dirty when staff edits any field in the client modal
+  $('#clientModal')?.addEventListener('input', markClientFormDirty);
+  $('#clientModal')?.addEventListener('change', markClientFormDirty);
   $('#addClientBtn')?.addEventListener('click', () => openClientModal(null));
 
   // Profile photo upload / remove / enlarge
@@ -4840,6 +4910,7 @@
       clearAddonCheckboxes();
       resetPayModeToNone();
       updatePayPreview();
+      clearClientFormDirty();
       $('#clientModal').classList.remove('open');
       toast(toastMsg);
     }
@@ -4854,6 +4925,7 @@
     }))) return;
     const ok = await adminAction('delete_client', { id: editingClientId, hard: false });
     if (ok) {
+      clearClientFormDirty();
       $('#clientModal').classList.remove('open');
       toast('Cliente arquivado');
     }
@@ -4869,6 +4941,7 @@
     ))) return;
     const ok = await adminAction('delete_client', { id: editingClientId, hard: true });
     if (ok) {
+      clearClientFormDirty();
       $('#clientModal').classList.remove('open');
       toast('Cliente na lixeira (30 dias)');
     }

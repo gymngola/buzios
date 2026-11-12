@@ -1826,15 +1826,17 @@
    * Does NOT re-fill form fields — preserves in-progress edits above.
    */
   function refreshClientMediaUI(opts) {
-    if (!editingClientId) return;
-    const c = (store.clients || []).find(x => x.id === editingClientId);
-    if (!c) return;
+    // Existing client from store, or staged media for a new (unsaved) client
+    const c = editingClientId
+      ? (store.clients || []).find(x => x.id === editingClientId)
+      : pendingClientAsPseudo();
+    if (!c && editingClientId) return;
     const docsHost = $('#cDocsHost');
     if (docsHost) {
-      docsHost.innerHTML = renderClientDocsBlock(c);
+      docsHost.innerHTML = renderClientDocsBlock(c || {});
       bindClientDocsActions();
     }
-    renderClientPhoto(c);
+    renderClientPhoto(c || {});
     if (opts && opts.keepDocsOpen) {
       const docsSec = document.querySelector('#clientModal [data-section="docs"]');
       if (docsSec) setClientSectionOpen(docsSec, true);
@@ -2049,6 +2051,22 @@
     </div>`;
   }
 
+  // Docs staged while creating a new client (before first save)
+  let pendingClientDocs = { attachments: [], documents: {}, paymentProof: null };
+
+  function clearPendingClientDocs() {
+    pendingClientDocs = { attachments: [], documents: {}, paymentProof: null };
+  }
+
+  function pendingClientAsPseudo() {
+    return {
+      attachments: pendingClientDocs.attachments || [],
+      documents: pendingClientDocs.documents || {},
+      paymentProof: pendingClientDocs.paymentProof || null,
+      photoUrl: typeof pendingClientPhotoUrl !== 'undefined' ? pendingClientPhotoUrl : null
+    };
+  }
+
   function bindClientDocsActions() {
     const host = $('#cDocsHost');
     if (!host) return;
@@ -2057,7 +2075,7 @@
         e.preventDefault();
         e.stopPropagation();
         const url = btn.getAttribute('data-doc-del-url');
-        if (!url || !editingClientId) return;
+        if (!url) return;
         if (!(await adminConfirm('Remover este documento do cliente?', {
           title: 'Remover documento', confirmLabel: 'Remover', danger: true
         }))) return;
@@ -2068,11 +2086,6 @@
       input.addEventListener('change', async () => {
         const files = input.files;
         if (!files || !files.length) return;
-        if (!editingClientId) {
-          toast('Guarde o cliente primeiro, depois adicione documentos');
-          input.value = '';
-          return;
-        }
         const key = input.getAttribute('data-doc-key') || 'doc';
         const label = input.getAttribute('data-doc-label') || (DOC_KEY_LABELS[key] || 'Documento');
         await uploadClientAttachmentForSlot(files[0], key, label);
@@ -2082,8 +2095,6 @@
   }
 
   async function uploadClientAttachmentForSlot(file, key, label) {
-    const existing = (store.clients || []).find(x => x.id === editingClientId);
-    if (!existing) return toast('Cliente não encontrado');
     if (!file) return;
     const status = $('#cDocUploadStatus');
     if (status) status.textContent = 'A carregar ' + (label || 'documento') + '…';
@@ -2104,6 +2115,30 @@
       key: key || 'doc',
       name: file.name || ''
     };
+
+    // New client (not saved yet): stage in memory until Guardar
+    if (!editingClientId) {
+      let attachments = (pendingClientDocs.attachments || []).filter(a => a && a.key !== key && a.url !== url);
+      attachments = attachments.filter(a => !findDocByKey([a], key));
+      attachments.push(entry);
+      const documents = Object.assign({}, pendingClientDocs.documents || {});
+      documents[key] = entry;
+      pendingClientDocs = {
+        attachments,
+        documents,
+        paymentProof: key === 'paymentProof' ? url : (pendingClientDocs.paymentProof || null)
+      };
+      if (status) status.textContent = '';
+      toast(label + ' pronto — será guardado com o cliente');
+      refreshClientMediaUI({ keepDocsOpen: true });
+      return;
+    }
+
+    const existing = (store.clients || []).find(x => x.id === editingClientId);
+    if (!existing) {
+      if (status) status.textContent = '';
+      return toast('Cliente não encontrado');
+    }
 
     // Replace any previous file for this slot key
     let attachments = normalizeAttachments(existing).filter(a => a.key !== key);
@@ -2136,6 +2171,23 @@
   }
 
   async function removeClientAttachment(url) {
+    // New client: remove from pending only
+    if (!editingClientId) {
+      let attachments = (pendingClientDocs.attachments || []).filter(a => a && a.url !== url);
+      let documents = Object.assign({}, pendingClientDocs.documents || {});
+      Object.keys(documents).forEach(k => {
+        const d = documents[k];
+        const u = typeof d === 'string' ? d : (d && d.url);
+        if (u === url) delete documents[k];
+      });
+      let paymentProof = pendingClientDocs.paymentProof;
+      if (paymentProof === url) paymentProof = null;
+      pendingClientDocs = { attachments, documents, paymentProof };
+      toast('Documento removido');
+      refreshClientMediaUI({ keepDocsOpen: true });
+      return;
+    }
+
     const existing = (store.clients || []).find(x => x.id === editingClientId);
     if (!existing) return;
     let attachments = normalizeAttachments(existing).filter(a => a.url !== url);
@@ -3961,8 +4013,14 @@
 
   function openClientModal(id) {
     editingClientId = id || null;
-    // Fresh modal: drop any photo staged for a previous "novo cliente"
-    if (!id) pendingClientPhotoUrl = null;
+    // Fresh modal: drop any media staged for a previous "novo cliente"
+    if (!id) {
+      pendingClientPhotoUrl = null;
+      clearPendingClientDocs();
+    } else {
+      pendingClientPhotoUrl = null;
+      clearPendingClientDocs();
+    }
     const c = id ? (store.clients || []).find(x => x.id === id) : null;
     const inTrash = !!(c && isInTrash(c));
     const title = $('#clientModalTitle');
@@ -4217,9 +4275,17 @@
       annualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ),
       swimFee: !!( $('#cSwimFee') && $('#cSwimFee').checked ),
       extras: clientExtrasFromForm(),
-      attachments: existing?.attachments || null,
-      documents: existing?.documents || null,
-      paymentProof: existing?.paymentProof || null,
+      attachments: existing?.attachments || (
+        (pendingClientDocs.attachments && pendingClientDocs.attachments.length)
+          ? pendingClientDocs.attachments
+          : null
+      ),
+      documents: existing?.documents || (
+        (pendingClientDocs.documents && Object.keys(pendingClientDocs.documents).length)
+          ? pendingClientDocs.documents
+          : null
+      ),
+      paymentProof: existing?.paymentProof || pendingClientDocs.paymentProof || null,
       photoUrl: existing?.photoUrl || pendingClientPhotoUrl || null
     };
     return enrichClient(data);
@@ -4924,6 +4990,7 @@
       updatePayPreview();
       clearClientFormDirty();
       pendingClientPhotoUrl = null;
+      clearPendingClientDocs();
       $('#clientModal').classList.remove('open');
       toast(toastMsg);
     }

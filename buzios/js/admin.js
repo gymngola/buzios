@@ -4506,6 +4506,48 @@
   $('#restoreClientBtn')?.addEventListener('click', () => restoreEditingClient());
   $('#cTrashRestoreBtn')?.addEventListener('click', () => restoreEditingClient());
 
+  /**
+   * After payment (or similar mutation): refresh pay history + status chips in place.
+   * Does NOT reopen the modal — preserves open sections, scroll, and other form edits.
+   */
+  function refreshClientModalAfterPayment(opts) {
+    const id = editingClientId;
+    if (!id) return;
+    const c = (store.clients || []).find(x => String(x.id) === String(id));
+    if (!c) return;
+
+    // Sync fields the payment flow intentionally changed (form may already match)
+    if (opts && opts.renew) {
+      if (c.planStart && $('#cPlanStart')) $('#cPlanStart').value = c.planStart;
+      if (c.planEnd && $('#cPlanEnd')) $('#cPlanEnd').value = c.planEnd;
+      if ($('#cMembership')) $('#cMembership').value = c.membershipStatus || 'activo';
+      if ($('#cBilling')) $('#cBilling').value = c.billingStatus || 'em_dia';
+    } else {
+      if ($('#cBilling')) $('#cBilling').value = c.billingStatus || 'em_dia';
+    }
+    if (c.price != null && $('#cPrice')) $('#cPrice').value = c.price;
+
+    // Payment form: clear one-shot fields, keep amount synced to plan
+    if ($('#cPayMethod')) $('#cPayMethod').value = 'cash';
+    if ($('#cPayNote')) $('#cPayNote').value = '';
+    if ($('#cPayDate')) $('#cPayDate').value = todayISO();
+    clearAddonCheckboxes();
+    syncPayAmountWithAnnual();
+    updatePayPreview();
+    updateClientStatusChips(c);
+    renderPayHistory(c.payments);
+
+    // Keep histórico de pagamentos section open so staff sees the new row
+    const payHistSec = document.querySelector('#clientModal .client-section[data-section="historico-pagamentos"]');
+    if (payHistSec) setClientSectionOpen(payHistSec, true);
+
+    // Refresh client timeline if that host is already mounted
+    const histHost = $('#cHistoryHost');
+    if (histHost && typeof renderClientHistory === 'function') {
+      try { renderClientHistory(histHost, id); } catch (_) {}
+    }
+  }
+
   $('#payRenewBtn')?.addEventListener('click', async () => {
     if (!editingClientId) return toast('Guarde o cliente primeiro');
     const existing = (store.clients || []).find(x => x.id === editingClientId);
@@ -4527,7 +4569,8 @@
       'Data do pagamento: ' + formatDatePT(payDateLabel) + '\n' +
       (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
       'Novo fim do plano: ' + formatDatePT(end) + '\n' +
-      'Estado → Activo · Faturação → Em dia',
+      'Estado → Activo · Faturação → Em dia\n\n' +
+      'Os campos de Plano & estado abertos no formulário também são guardados.',
       { title: 'Pagar e renovar', confirmLabel: 'Confirmar' }
     ))) return;
     let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
@@ -4567,9 +4610,11 @@
     data.annualFee = false;
     data.swimFee = false;
     data.extras = [];
-    await adminAction('update_client', data);
+    const ok = await adminAction('update_client', data);
+    if (!ok) return;
     toast('Pagamento registado · válido até ' + formatDatePT(end));
-    openClientModal(editingClientId);
+    // In-place refresh: keep Plano & estado edits, open sections, scroll
+    refreshClientModalAfterPayment({ renew: true });
   });
 
   // Payment only: history + em dia, no plan date / membership change
@@ -4589,7 +4634,8 @@
       'Data: ' + formatDatePT(payDateLabel) + '\n' +
       (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
       'Faturação → Em dia\n' +
-      'Datas do plano e estado de membro não são alterados.',
+      'Datas do plano e estado de membro não são alterados.\n\n' +
+      'Os campos de Plano & estado abertos no formulário também são guardados.',
       { title: 'Registar pagamento', confirmLabel: 'Registar' }
     ))) return;
     let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
@@ -4620,9 +4666,10 @@
     data.annualFee = false;
     data.swimFee = false;
     data.extras = [];
-    await adminAction('update_client', data);
+    const ok = await adminAction('update_client', data);
+    if (!ok) return;
     toast('Pagamento registado · ' + formatDatePT(payDateLabel) + ' · faturação em dia');
-    openClientModal(editingClientId);
+    refreshClientModalAfterPayment({ renew: false });
   });
 
   // —— Trainings / attendance ——

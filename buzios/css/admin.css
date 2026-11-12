@@ -833,41 +833,46 @@ a { color: var(--admin-accent); }
   color: #b33;
 }
 
-.form-actions-pay {
+.pay-mode-fieldset {
+  margin: 0.75rem 0 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  background: #fafafa;
+}
+.pay-mode-legend {
+  padding: 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #666;
+}
+.pay-mode-option {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.btn-pay-renew {
-  flex: 1;
-  min-width: 10rem;
-  height: 42px;
-  background: #c45c26;
-  color: #fff;
-  border: none;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0.4rem 0;
+  padding: 0.45rem 0.5rem;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-
-.btn-pay-only {
-  flex: 1;
-  min-width: 10rem;
-  height: 42px;
-  background: #fff;
+  font-size: 0.88rem;
+  line-height: 1.35;
   color: #333;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
 }
-
-.btn-pay-only:hover {
-  background: #f5f5f5;
-  border-color: #999;
+.pay-mode-option:hover {
+  background: #f0f0f0;
+}
+.pay-mode-option:has(input:checked) {
+  background: #fff5ef;
+  outline: 1px solid #e8c4b0;
+}
+.pay-mode-option input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+.pay-mode-option strong {
+  font-weight: 600;
 }
 
 /* —— Styled admin dialogs (confirm / prompt / pay edit) —— */

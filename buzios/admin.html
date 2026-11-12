@@ -27,7 +27,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=20261110f">
+  <link rel="stylesheet" href="css/admin.css?v=20261112d">
   <style>
     html.admin-authed #loginScreen { display: none !important; }
     html.admin-authed #adminApp.hidden { display: block !important; }
@@ -695,12 +695,23 @@
                 <div class="form-row"><label>Data do pagamento</label><input type="date" id="cPayDate"></div>
                 <div class="form-row"><label>Nota do pagamento</label><input type="text" id="cPayNote" placeholder="Opcional"></div>
               </div>
-              <div class="form-actions form-actions-pay" style="margin-top:0.5rem">
-                <button type="button" id="payRenewBtn" class="btn-pay-renew">Pagar e renovar plano</button>
-                <button type="button" id="payOnlyBtn" class="btn-pay-only">Só registar (sem renovar)</button>
-              </div>
               <p id="cPayPreview" class="client-pay-preview" style="display:none"></p>
-              <p class="client-help-text"><strong>Pagar e renovar plano</strong> — actualiza o fim do plano conforme o ciclo, marca activo e em dia.<br><strong>Só registar</strong> — grava o pagamento no histórico e marca faturação em dia, sem alterar datas do plano.</p>
+              <fieldset class="pay-mode-fieldset">
+                <legend class="pay-mode-legend">Ao guardar este cliente</legend>
+                <label class="pay-mode-option">
+                  <input type="radio" name="cPayMode" id="cPayModeNone" value="none" checked>
+                  <span><strong>Só guardar dados</strong> — sem registar pagamento</span>
+                </label>
+                <label class="pay-mode-option">
+                  <input type="radio" name="cPayMode" id="cPayModeOnly" value="only">
+                  <span><strong>Só registar pagamento</strong> — histórico + faturação em dia (sem alterar datas do plano)</span>
+                </label>
+                <label class="pay-mode-option">
+                  <input type="radio" name="cPayMode" id="cPayModeRenew" value="renew">
+                  <span><strong>Pagar e renovar plano</strong> — novo fim do plano, activo e em dia</span>
+                </label>
+              </fieldset>
+              <p class="client-help-text">Escolha a opção e use <strong>Guardar cliente</strong> em baixo. Tudo (plano, dados e pagamento) grava de uma vez — nada se perde.</p>
             </div>
           </div>
         </section>
@@ -888,7 +899,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261112c"></script>
+  <script src="js/admin.js?v=20261112d"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

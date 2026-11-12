@@ -3819,6 +3819,12 @@
     $('#cPayMethod').value = 'cash';
     $('#cPayNote').value = '';
     if ($('#cPayDate')) $('#cPayDate').value = todayISO();
+    // Default: save data only (no payment) until staff chooses a mode
+    if (typeof resetPayModeToNone === 'function') resetPayModeToNone();
+    else {
+      const none = $('#cPayModeNone');
+      if (none) none.checked = true;
+    }
     // Pay amount = plan ± one-off addons (not baked into cPrice)
     syncPayAmountWithAnnual();
     renderPayHistory(c?.payments);
@@ -4434,26 +4440,196 @@
     });
   });
 
+  function getSelectedPayMode() {
+    const checked = document.querySelector('input[name="cPayMode"]:checked');
+    return (checked && checked.value) || 'none';
+  }
+
+  function resetPayModeToNone() {
+    const none = $('#cPayModeNone');
+    if (none) none.checked = true;
+  }
+
+  /**
+   * Merge a payment into client data from the open form.
+   * mode: 'only' | 'renew'
+   * Mutates form fields for renew (dates/status) so read values stay consistent.
+   * Returns { ok:false, error } or { ok:true, data, summary }
+   */
+  function buildClientDataWithPayment(existing, mode) {
+    const amountStr = ($('#cPayAmount') && $('#cPayAmount').value) || '';
+    const amount = amountStr === ''
+      ? (existing && existing.price != null ? Number(existing.price) : 0)
+      : Number(amountStr);
+    if (amountStr !== '' && Number.isNaN(amount)) {
+      return { ok: false, error: 'Valor de pagamento inválido' };
+    }
+    const paidAt = paidAtFromForm();
+    const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
+    const addonLabels = addonLabelsFromForm();
+    let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
+    if (addonLabels.length) {
+      const feeLabel = addonLabels.join(' · ');
+      payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
+    }
+
+    if (mode === 'renew') {
+      const cycle = ($('#cCycle') && $('#cCycle').value) || (existing && existing.billingCycle) || 'mensal';
+      const months = CYCLE_MONTHS[cycle] || 1;
+      const currentEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || (existing && existing.planEnd);
+      const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
+      const end = addMonthsISO(start, months);
+      if ($('#cPlanStart')) $('#cPlanStart').value = ($('#cPlanStart').value) || start;
+      if ($('#cPlanEnd')) $('#cPlanEnd').value = end;
+      if ($('#cMembership')) $('#cMembership').value = 'activo';
+      if ($('#cBilling')) $('#cBilling').value = 'em_dia';
+      clearAddonCheckboxes();
+      const payment = {
+        id: 'pay-' + Date.now(),
+        amount: amount,
+        paidAt: paidAt,
+        method: ($('#cPayMethod') && $('#cPayMethod').value) || 'cash',
+        note: payNote,
+        periodStart: start,
+        periodEnd: end,
+        includesAnnualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ) || undefined
+      };
+      const payments = ((existing && existing.payments) || []).slice();
+      payments.unshift(payment);
+      const sortedPay = sortPaymentsNewestFirst(payments);
+      const data = readClientForm(Object.assign({}, existing || {}, {
+        payments: sortedPay.slice(0, 50),
+        lastPaymentAt: payment.paidAt
+      }));
+      data.planStart = data.planStart || start;
+      data.planEnd = end;
+      data.membershipStatus = 'activo';
+      data.billingStatus = 'em_dia';
+      data.lastPaymentAt = paymentAt(sortedPay[0]) || paidAt;
+      data.payments = sortedPay.slice(0, 50);
+      data.billingCycle = cycle;
+      data.price = planPriceFromForm() || (existing && existing.price) || null;
+      data.annualFee = false;
+      data.swimFee = false;
+      data.extras = [];
+      const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
+      return {
+        ok: true,
+        data: data,
+        summary: 'Pagamento + renovação · ' + amtLabel + ' · válido até ' + formatDatePT(end)
+      };
+    }
+
+    // mode === 'only'
+    if ($('#cBilling')) $('#cBilling').value = 'em_dia';
+    clearAddonCheckboxes();
+    const payment = {
+      id: 'pay-' + Date.now(),
+      amount: amount,
+      paidAt: paidAt,
+      method: ($('#cPayMethod') && $('#cPayMethod').value) || 'cash',
+      note: payNote,
+      includesAnnualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ) || undefined
+    };
+    const payments = ((existing && existing.payments) || []).slice();
+    payments.unshift(payment);
+    const sortedOnly = sortPaymentsNewestFirst(payments);
+    const data = readClientForm(Object.assign({}, existing || {}, {
+      payments: sortedOnly.slice(0, 50),
+      lastPaymentAt: paymentAt(sortedOnly[0]) || paidAt
+    }));
+    data.billingStatus = 'em_dia';
+    data.lastPaymentAt = paymentAt(sortedOnly[0]) || paidAt;
+    data.payments = sortedOnly.slice(0, 50);
+    data.annualFee = false;
+    data.swimFee = false;
+    data.extras = [];
+    const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
+    return {
+      ok: true,
+      data: data,
+      summary: 'Pagamento registado · ' + amtLabel + ' · ' + formatDatePT(payDateLabel) + ' · em dia'
+    };
+  }
+
+  async function confirmPayMode(mode, existing) {
+    if (mode === 'none') return true;
+    const amountStr = ($('#cPayAmount') && $('#cPayAmount').value) || '';
+    const amount = amountStr === ''
+      ? (existing && existing.price != null ? Number(existing.price) : 0)
+      : Number(amountStr);
+    const paidAt = paidAtFromForm();
+    const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
+    const addonLabels = addonLabelsFromForm();
+    const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
+    if (mode === 'renew') {
+      const cycle = ($('#cCycle') && $('#cCycle').value) || (existing && existing.billingCycle) || 'mensal';
+      const months = CYCLE_MONTHS[cycle] || 1;
+      const currentEnd = ($('#cPlanEnd') && $('#cPlanEnd').value) || (existing && existing.planEnd);
+      const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
+      const end = addMonthsISO(start, months);
+      return adminConfirm(
+        'Guardar cliente com pagamento e renovação?\n\n' +
+        'Valor: ' + amtLabel + '\n' +
+        'Data do pagamento: ' + formatDatePT(payDateLabel) + '\n' +
+        (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
+        'Novo fim do plano: ' + formatDatePT(end) + '\n' +
+        'Estado → Activo · Faturação → Em dia\n\n' +
+        'Todos os outros campos do formulário também são guardados.',
+        { title: 'Pagar e renovar', confirmLabel: 'Guardar' }
+      );
+    }
+    return adminConfirm(
+      'Guardar cliente e registar pagamento?\n\n' +
+      'Valor: ' + amtLabel + '\n' +
+      'Data: ' + formatDatePT(payDateLabel) + '\n' +
+      (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
+      'Faturação → Em dia\n' +
+      'Datas do plano e membership não são alterados.\n\n' +
+      'Todos os outros campos do formulário também são guardados.',
+      { title: 'Registar pagamento', confirmLabel: 'Guardar' }
+    );
+  }
+
   $('#saveClientBtn')?.addEventListener('click', async () => {
     const existing = editingClientId
       ? (store.clients || []).find(x => x.id === editingClientId)
       : null;
-    const data = readClientForm(existing);
+    const payMode = getSelectedPayMode();
+
+    if (payMode !== 'none' && !editingClientId) {
+      return toast('Guarde o cliente primeiro (sem pagamento), depois registe o pagamento');
+    }
+
+    if (!(await confirmPayMode(payMode, existing))) return;
+
+    let data;
+    let toastMsg = 'Cliente guardado';
+    if (payMode === 'none') {
+      data = readClientForm(existing);
+    } else {
+      const built = buildClientDataWithPayment(existing, payMode);
+      if (!built.ok) return toast(built.error || 'Erro no pagamento');
+      data = built.data;
+      toastMsg = built.summary || toastMsg;
+    }
+
     if (!data.name) return toast('Nome obrigatório');
     const dup = findDuplicatePhone(data.phone, data.id);
     if (dup && !(await adminConfirm(
       'Já existe cliente com este telefone (' + (dup.name || dup.phone) + '). Guardar na mesma?',
       { title: 'Telefone duplicado', confirmLabel: 'Guardar mesmo assim', danger: true }
     ))) return;
+
     const btn = $('#saveClientBtn');
     if (btn) btn.disabled = true;
     const ok = await adminAction('update_client', data);
     if (btn) btn.disabled = false;
     if (ok) {
+      resetPayModeToNone();
       $('#clientModal').classList.remove('open');
-      toast('Cliente guardado');
+      toast(toastMsg);
     }
-    // On failure adminAction already toasts "Erro ao actualizar"
   });
 
   $('#archiveClientBtn')?.addEventListener('click', async () => {
@@ -4506,171 +4682,8 @@
   $('#restoreClientBtn')?.addEventListener('click', () => restoreEditingClient());
   $('#cTrashRestoreBtn')?.addEventListener('click', () => restoreEditingClient());
 
-  /**
-   * After payment (or similar mutation): refresh pay history + status chips in place.
-   * Does NOT reopen the modal — preserves open sections, scroll, and other form edits.
-   */
-  function refreshClientModalAfterPayment(opts) {
-    const id = editingClientId;
-    if (!id) return;
-    const c = (store.clients || []).find(x => String(x.id) === String(id));
-    if (!c) return;
-
-    // Sync fields the payment flow intentionally changed (form may already match)
-    if (opts && opts.renew) {
-      if (c.planStart && $('#cPlanStart')) $('#cPlanStart').value = c.planStart;
-      if (c.planEnd && $('#cPlanEnd')) $('#cPlanEnd').value = c.planEnd;
-      if ($('#cMembership')) $('#cMembership').value = c.membershipStatus || 'activo';
-      if ($('#cBilling')) $('#cBilling').value = c.billingStatus || 'em_dia';
-    } else {
-      if ($('#cBilling')) $('#cBilling').value = c.billingStatus || 'em_dia';
-    }
-    if (c.price != null && $('#cPrice')) $('#cPrice').value = c.price;
-
-    // Payment form: clear one-shot fields, keep amount synced to plan
-    if ($('#cPayMethod')) $('#cPayMethod').value = 'cash';
-    if ($('#cPayNote')) $('#cPayNote').value = '';
-    if ($('#cPayDate')) $('#cPayDate').value = todayISO();
-    clearAddonCheckboxes();
-    syncPayAmountWithAnnual();
-    updatePayPreview();
-    updateClientStatusChips(c);
-    renderPayHistory(c.payments);
-
-    // Keep histórico de pagamentos section open so staff sees the new row
-    const payHistSec = document.querySelector('#clientModal .client-section[data-section="historico-pagamentos"]');
-    if (payHistSec) setClientSectionOpen(payHistSec, true);
-
-    // Refresh client timeline if that host is already mounted
-    const histHost = $('#cHistoryHost');
-    if (histHost && typeof renderClientHistory === 'function') {
-      try { renderClientHistory(histHost, id); } catch (_) {}
-    }
-  }
-
-  $('#payRenewBtn')?.addEventListener('click', async () => {
-    if (!editingClientId) return toast('Guarde o cliente primeiro');
-    const existing = (store.clients || []).find(x => x.id === editingClientId);
-    if (!existing) return;
-    const amountStr = $('#cPayAmount').value;
-    const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
-    const cycle = $('#cCycle').value || existing.billingCycle || 'mensal';
-    const months = CYCLE_MONTHS[cycle] || 1;
-    const currentEnd = $('#cPlanEnd').value || existing.planEnd;
-    const start = currentEnd && daysUntil(currentEnd) >= 0 ? currentEnd : todayISO();
-    const end = addMonthsISO(start, months);
-    const paidAt = paidAtFromForm();
-    const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
-    const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
-    const addonLabels = addonLabelsFromForm();
-    if (!(await adminConfirm(
-      'Registar pagamento e renovar?\n\n' +
-      'Valor: ' + amtLabel + '\n' +
-      'Data do pagamento: ' + formatDatePT(payDateLabel) + '\n' +
-      (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
-      'Novo fim do plano: ' + formatDatePT(end) + '\n' +
-      'Estado → Activo · Faturação → Em dia\n\n' +
-      'Os campos de Plano & estado abertos no formulário também são guardados.',
-      { title: 'Pagar e renovar', confirmLabel: 'Confirmar' }
-    ))) return;
-    let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
-    if (addonLabels.length) {
-      const feeLabel = addonLabels.join(' · ');
-      payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
-    }
-    const payment = {
-      id: 'pay-' + Date.now(),
-      amount: amount,
-      paidAt: paidAt,
-      method: $('#cPayMethod').value,
-      note: payNote,
-      periodStart: start,
-      periodEnd: end,
-      includesAnnualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ) || undefined
-    };
-    const payments = (existing.payments || []).slice();
-    payments.unshift(payment);
-    const sortedPay = sortPaymentsNewestFirst(payments);
-    $('#cPlanStart').value = $('#cPlanStart').value || start;
-    $('#cPlanEnd').value = end;
-    $('#cMembership').value = 'activo';
-    $('#cBilling').value = 'em_dia';
-    // After charging one-offs once, clear so the next renew is plan-only
-    clearAddonCheckboxes();
-    const data = readClientForm(Object.assign({}, existing, { payments: sortedPay.slice(0, 50), lastPaymentAt: payment.paidAt }));
-    data.planStart = data.planStart || start;
-    data.planEnd = end;
-    data.membershipStatus = 'activo';
-    data.billingStatus = 'em_dia';
-    data.lastPaymentAt = paymentAt(sortedPay[0]) || paidAt;
-    data.payments = sortedPay.slice(0, 50);
-    data.billingCycle = cycle;
-    // Keep recurring plan price (cPrice) — never overwrite with total that includes addons
-    data.price = planPriceFromForm() || existing.price || null;
-    data.annualFee = false;
-    data.swimFee = false;
-    data.extras = [];
-    const ok = await adminAction('update_client', data);
-    if (!ok) return;
-    toast('Pagamento registado · válido até ' + formatDatePT(end));
-    // In-place refresh: keep Plano & estado edits, open sections, scroll
-    refreshClientModalAfterPayment({ renew: true });
-  });
-
-  // Payment only: history + em dia, no plan date / membership change
-  $('#payOnlyBtn')?.addEventListener('click', async () => {
-    if (!editingClientId) return toast('Guarde o cliente primeiro');
-    const existing = (store.clients || []).find(x => x.id === editingClientId);
-    if (!existing) return;
-    const amountStr = $('#cPayAmount').value;
-    const amount = amountStr === '' ? (existing.price != null ? Number(existing.price) : 0) : Number(amountStr);
-    const paidAt = paidAtFromForm();
-    const payDateLabel = (paidAt || '').slice(0, 10) || todayISO();
-    const addonLabels = addonLabelsFromForm();
-    const amtLabel = amount ? amount.toLocaleString('pt') + ' Kz' : 'sem valor';
-    if (!(await adminConfirm(
-      'Apenas registar pagamento?\n\n' +
-      'Valor: ' + amtLabel + '\n' +
-      'Data: ' + formatDatePT(payDateLabel) + '\n' +
-      (addonLabels.length ? 'Extras: ' + addonLabels.join(' · ') + '\n' : '') +
-      'Faturação → Em dia\n' +
-      'Datas do plano e estado de membro não são alterados.\n\n' +
-      'Os campos de Plano & estado abertos no formulário também são guardados.',
-      { title: 'Registar pagamento', confirmLabel: 'Registar' }
-    ))) return;
-    let payNote = ($('#cPayNote') && $('#cPayNote').value.trim()) || '';
-    if (addonLabels.length) {
-      const feeLabel = addonLabels.join(' · ');
-      payNote = payNote ? (payNote + ' · ' + feeLabel) : feeLabel;
-    }
-    const payment = {
-      id: 'pay-' + Date.now(),
-      amount: amount,
-      paidAt: paidAt,
-      method: $('#cPayMethod').value,
-      note: payNote,
-      includesAnnualFee: !!( $('#cAnnualFee') && $('#cAnnualFee').checked ) || undefined
-    };
-    const payments = (existing.payments || []).slice();
-    payments.unshift(payment);
-    const sortedOnly = sortPaymentsNewestFirst(payments);
-    $('#cBilling').value = 'em_dia';
-    clearAddonCheckboxes();
-    const data = readClientForm(Object.assign({}, existing, {
-      payments: sortedOnly.slice(0, 50),
-      lastPaymentAt: paymentAt(sortedOnly[0]) || paidAt
-    }));
-    data.billingStatus = 'em_dia';
-    data.lastPaymentAt = paymentAt(sortedOnly[0]) || paidAt;
-    data.payments = sortedOnly.slice(0, 50);
-    data.annualFee = false;
-    data.swimFee = false;
-    data.extras = [];
-    const ok = await adminAction('update_client', data);
-    if (!ok) return;
-    toast('Pagamento registado · ' + formatDatePT(payDateLabel) + ' · faturação em dia');
-    refreshClientModalAfterPayment({ renew: false });
-  });
+  // Payment modes are handled by Guardar cliente (cPayMode radios).
+  // Legacy payRenewBtn / payOnlyBtn removed from UI.
 
   // —— Trainings / attendance ——
   let trainingsSummaryCache = { date: '', todayByClient: {}, monthByClient: {}, daySessions: [], todayTotal: 0, monthTotal: 0 };

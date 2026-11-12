@@ -3816,17 +3816,18 @@
     }
     $('#cEmergencyName').value = c?.emergencyName || '';
     $('#cEmergencyPhone').value = c?.emergencyPhone || '';
-    $('#cPayMethod').value = 'cash';
-    $('#cPayNote').value = '';
-    if ($('#cPayDate')) $('#cPayDate').value = todayISO();
-    // Default: save data only (no payment) until staff chooses a mode
+    // Payment area defaults empty — staff fills only when registering a payment
+    if ($('#cPayAmount')) $('#cPayAmount').value = '';
+    if ($('#cPayMethod')) $('#cPayMethod').value = 'cash';
+    if ($('#cPayNote')) $('#cPayNote').value = '';
+    if ($('#cPayDate')) $('#cPayDate').value = '';
+    clearAddonCheckboxes();
     if (typeof resetPayModeToNone === 'function') resetPayModeToNone();
     else {
       const none = $('#cPayModeNone');
       if (none) none.checked = true;
     }
-    // Pay amount = plan ± one-off addons (not baked into cPrice)
-    syncPayAmountWithAnnual();
+    updatePayPreview();
     renderPayHistory(c?.payments);
 
     const archBtn = $('#archiveClientBtn');
@@ -4339,15 +4340,24 @@
     });
   });
   $('#cPayAmount')?.addEventListener('input', () => updatePayPreview());
-  $('#cPrice')?.addEventListener('input', () => {
+  // Only push plan/addon totals into pay amount when staff is actually registering a payment
+  function syncPayAmountIfPaying() {
+    const mode = typeof getSelectedPayMode === 'function' ? getSelectedPayMode() : 'none';
+    if (mode === 'none') {
+      updatePayPreview();
+      return;
+    }
     syncPayAmountWithAnnual();
+  }
+  $('#cPrice')?.addEventListener('input', () => {
+    syncPayAmountIfPaying();
   });
   ['cAnnualFee', 'cSwimFee', 'cExtraAvaliacao', 'cExtraAvulsas'].forEach(id => {
-    $('#' + id)?.addEventListener('change', () => syncPayAmountWithAnnual());
+    $('#' + id)?.addEventListener('change', () => syncPayAmountIfPaying());
   });
   $('#cArea')?.addEventListener('change', () => {
     updateClientAddonVisibility();
-    syncPayAmountWithAnnual();
+    syncPayAmountIfPaying();
   });
   $('#cBirthDate')?.addEventListener('change', () => {
     const bd = $('#cBirthDate') && $('#cBirthDate').value;
@@ -4444,6 +4454,25 @@
     const checked = document.querySelector('input[name="cPayMode"]:checked');
     return (checked && checked.value) || 'none';
   }
+
+  /** When staff chooses to register a payment, prefill amount/date if still empty. */
+  function ensurePayFieldsForMode(mode) {
+    if (!mode || mode === 'none') {
+      updatePayPreview();
+      return;
+    }
+    const payEl = $('#cPayAmount');
+    if (payEl && (payEl.value === '' || payEl.value == null)) {
+      const total = planPriceFromForm() + addonsTotalFromForm();
+      if (total > 0) payEl.value = total;
+    }
+    if ($('#cPayDate') && !$('#cPayDate').value) $('#cPayDate').value = todayISO();
+    updatePayPreview();
+  }
+
+  document.querySelectorAll('input[name="cPayMode"]').forEach(radio => {
+    radio.addEventListener('change', () => ensurePayFieldsForMode(getSelectedPayMode()));
+  });
 
   function resetPayModeToNone() {
     const none = $('#cPayModeNone');
@@ -4597,10 +4626,7 @@
       : null;
     const payMode = getSelectedPayMode();
 
-    if (payMode !== 'none' && !editingClientId) {
-      return toast('Guarde o cliente primeiro (sem pagamento), depois registe o pagamento');
-    }
-
+    // New client + payment in one go is allowed (readClientForm assigns id).
     if (!(await confirmPayMode(payMode, existing))) return;
 
     let data;
@@ -4626,7 +4652,13 @@
     const ok = await adminAction('update_client', data);
     if (btn) btn.disabled = false;
     if (ok) {
+      if ($('#cPayAmount')) $('#cPayAmount').value = '';
+      if ($('#cPayNote')) $('#cPayNote').value = '';
+      if ($('#cPayDate')) $('#cPayDate').value = '';
+      if ($('#cPayMethod')) $('#cPayMethod').value = 'cash';
+      clearAddonCheckboxes();
       resetPayModeToNone();
+      updatePayPreview();
       $('#clientModal').classList.remove('open');
       toast(toastMsg);
     }

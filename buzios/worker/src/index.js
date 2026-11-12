@@ -1417,7 +1417,17 @@ function rowToClient(r) {
 }
 
 async function d1ListClients(env) {
-  const res = await env.DB.prepare('SELECT * FROM clients ORDER BY member_number IS NULL, member_number, name').all();
+  // Explicit columns (no SELECT *). No SQL ORDER BY — admin sorts in the browser.
+  // Skipping a server-side sort avoids extra work on every poll (~thousands/day).
+  const res = await env.DB.prepare(
+    `SELECT id, member_number, name, phone, email, area, age, schedule, has_card,
+            plan_id, plan_name, price, billing_cycle, plan_start, plan_end,
+            membership_status, billing_status, last_payment_at, payments_json,
+            notes, emergency_name, emergency_phone, from_import, from_submission,
+            created_at, updated_at, deleted_at, photo_url, account_status,
+            last_login_at, documents_json
+     FROM clients`
+  ).all();
   return (res.results || []).map(rowToClient);
 }
 

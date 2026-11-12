@@ -562,8 +562,11 @@
     try {
       sessionStorage.setItem('buzios_admin_panel', name);
     } catch (e) {}
-    // Live data panels: refresh when opened
-    if (name === 'inbox' || name === 'contacts' || name === 'clients' || name === 'newsletters') {
+    // Live data panels: refresh when opened (clients force full D1 overlay)
+    if (name === 'clients') {
+      overlayClientsFromD1({ force: true });
+      refreshStoreIfChanged();
+    } else if (name === 'inbox' || name === 'contacts' || name === 'newsletters') {
       refreshStoreIfChanged();
     }
     // Opening Newsletter clears the "unseen" badge (no status field on rows)
@@ -694,9 +697,12 @@
   let localWriteInFlight = 0;
   let localWriteUntil = 0; // pause remote poll briefly after local write
   let storeSyncTimer = null;
-  // D1 free-tier: sparse polls. Focused tab ~60s; background ~10 min (tab return refreshes immediately).
-  const STORE_SYNC_FOCUS_MS = 60000;
+  // D1 free-tier: keep polls sparse. Clients full-table read is expensive (~400 rows each).
+  // Focused tab: 3 min; background: 10 min. Panel open / local write still force refresh.
+  const STORE_SYNC_FOCUS_MS = 180000;
   const STORE_SYNC_HIDDEN_MS = 600000;
+  const CLIENTS_OVERLAY_MIN_MS = 180000; // min gap between silent full clients overlays
+  let lastClientsOverlayAt = 0;
   const LOCAL_WRITE_COOLDOWN_MS = 1800;
   let syncChannel = null;
   try {
@@ -799,9 +805,33 @@
     return changed;
   }
 
-  /** Overlay store.clients with D1 list when available (source of truth for clients). */
-  async function overlayClientsFromD1() {
+  /** Sort clients in the browser (avoids expensive SQL ORDER BY on every poll). */
+  function sortClientsList(list) {
+    if (!Array.isArray(list)) return [];
+    return list.slice().sort((a, b) => {
+      const ma = a && a.memberNumber != null ? Number(a.memberNumber) : null;
+      const mb = b && b.memberNumber != null ? Number(b.memberNumber) : null;
+      const aNull = ma == null || Number.isNaN(ma);
+      const bNull = mb == null || Number.isNaN(mb);
+      if (aNull !== bNull) return aNull ? 1 : -1;
+      if (!aNull && !bNull && ma !== mb) return ma - mb;
+      return String((a && a.name) || '').localeCompare(String((b && b.name) || ''), 'pt', {
+        sensitivity: 'base'
+      });
+    });
+  }
+
+  /**
+   * Overlay store.clients with D1 list (source of truth for clients).
+   * @param {{ force?: boolean }} [opts] force=true bypasses the silent throttle
+   *   (use after local writes and when opening the Clientes panel).
+   */
+  async function overlayClientsFromD1(opts) {
     if (!getAdminPassword()) return false;
+    const force = !!(opts && opts.force);
+    if (!force && lastClientsOverlayAt && Date.now() - lastClientsOverlayAt < CLIENTS_OVERLAY_MIN_MS) {
+      return false;
+    }
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
@@ -817,7 +847,8 @@
       if (!data.ok || !Array.isArray(data.clients)) return false;
       // Prefer D1 when it has data (or equal count). Never replace non-empty local with empty D1.
       if (data.clients.length === 0 && (store.clients || []).length > 0) return false;
-      store.clients = data.clients;
+      store.clients = sortClientsList(data.clients);
+      lastClientsOverlayAt = Date.now();
       lastOpsLoadError = null;
       renderClients();
       return true;
@@ -1085,9 +1116,11 @@
 
       // After cutover, operational data lives in D1. Even if store snapshot is
       // missing/empty, still overlay from D1 so Clientes/Inscrições appear.
+      // Clients full-list is throttled on silent polls (see CLIENTS_OVERLAY_MIN_MS).
+      const forceClients = !silent;
       if (chosen) {
         if (silent && chosen.updatedAt && chosen.updatedAt === lastKnownUpdatedAt) {
-          await overlayClientsFromD1();
+          await overlayClientsFromD1({ force: forceClients });
           await overlaySubmissionsFromD1();
           await overlayNewslettersFromD1();
           if (lastOpsLoadError && !(store.clients || []).length) {
@@ -1105,7 +1138,7 @@
         applyStore(chosen, { silent: silent && !!lastKnownUpdatedAt });
       }
 
-      const gotClients = await overlayClientsFromD1();
+      const gotClients = await overlayClientsFromD1({ force: forceClients });
       await overlaySubmissionsFromD1();
       await overlayNewslettersFromD1();
 
@@ -2190,7 +2223,7 @@
         }
         // After cutover, mutations return without store — always re-read ops from D1
         if (action === 'update_client' || action === 'delete_client' || action === 'restore_client') {
-          await overlayClientsFromD1();
+          await overlayClientsFromD1({ force: true });
         }
         if (
           action === 'update_submission' ||

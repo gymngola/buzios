@@ -374,13 +374,23 @@
           <div class="form-section" id="paymentSection">
             <h3>5. Pagamento</h3>
             <div class="iban-box" style="border:1px solid var(--color-border);border-radius:var(--radius-input);padding:1rem 1.15rem;margin-bottom:1rem;background:var(--color-surface)">
-              <p style="font-size:0.8rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 0.5rem">Transferência bancária</p>
-              <p style="margin:0 0 0.35rem;font-size:0.9rem"><strong>Titular:</strong> La Casa de Ferro</p>
-              <p style="margin:0;font-size:0.95rem;font-weight:500;letter-spacing:0.02em">
-                <strong>IBAN:</strong>
-                <span id="ibanValue" style="font-family:ui-monospace,monospace">A006 0040 0000 6810 2585 1017 3</span>
-                <button type="button" id="copyIban" class="btn" style="margin-left:0.5rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--color-border);background:transparent;cursor:pointer">Copiar</button>
-              </p>
+              <p style="font-size:0.8rem;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-text-muted);margin:0 0 0.75rem">Transferência bancária — pode usar qualquer uma das contas</p>
+              <div style="margin-bottom:0.85rem;padding-bottom:0.85rem;border-bottom:1px solid var(--color-border)">
+                <p style="margin:0 0 0.35rem;font-size:0.9rem"><strong>Titular:</strong> La Casa de Ferro</p>
+                <p style="margin:0;font-size:0.95rem;font-weight:500;letter-spacing:0.02em">
+                  <strong>IBAN:</strong>
+                  <span id="ibanValue" style="font-family:ui-monospace,monospace">A006 0040 0000 6810 2585 1017 3</span>
+                  <button type="button" id="copyIban" class="btn" data-iban="A006 0040 0000 6810 2585 1017 3" style="margin-left:0.5rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--color-border);background:transparent;cursor:pointer">Copiar</button>
+                </p>
+              </div>
+              <div>
+                <p style="margin:0 0 0.35rem;font-size:0.9rem"><strong>Titular:</strong> Júlio Augusto Salvador de Figueiredo</p>
+                <p style="margin:0;font-size:0.95rem;font-weight:500;letter-spacing:0.02em">
+                  <strong>IBAN:</strong>
+                  <span id="ibanValue2" style="font-family:ui-monospace,monospace">A006 0040 0000 0089 7159 1016 3</span>
+                  <button type="button" id="copyIban2" class="btn" data-iban="A006 0040 0000 0089 7159 1016 3" style="margin-left:0.5rem;padding:0.25rem 0.6rem;font-size:0.75rem;border:1px solid var(--color-border);background:transparent;cursor:pointer">Copiar</button>
+                </p>
+              </div>
               <p class="muted" style="font-size:0.75rem;margin:0.65rem 0 0">Se já pagou, pode anexar o comprovativo abaixo (opcional).</p>
             </div>
             <div class="form-group">
@@ -723,22 +733,27 @@
       syncDocsRequired();
     }
 
-    document.getElementById('copyIban')?.addEventListener('click', function () {
-      const iban = 'A006 0040 0000 6810 2585 1017 3';
-      const done = () => {
-        this.textContent = 'Copiado';
-        setTimeout(() => { this.textContent = 'Copiar'; }, 1600);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(iban.replace(/\s/g, '')).then(done).catch(() => {
+    function bindCopyIban(btn) {
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        const iban = this.getAttribute('data-iban') || this.previousElementSibling?.textContent || '';
+        const done = () => {
+          this.textContent = 'Copiado';
+          setTimeout(() => { this.textContent = 'Copiar'; }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(String(iban).replace(/\s/g, '')).then(done).catch(() => {
+            prompt('Copie o IBAN:', iban);
+            done();
+          });
+        } else {
           prompt('Copie o IBAN:', iban);
           done();
-        });
-      } else {
-        prompt('Copie o IBAN:', iban);
-        done();
-      }
-    });
+        }
+      });
+    }
+    bindCopyIban(document.getElementById('copyIban'));
+    bindCopyIban(document.getElementById('copyIban2'));
 
     function applyPrePlan(prePlan) {
       const p = productById(prePlan);

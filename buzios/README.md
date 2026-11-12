@@ -287,7 +287,10 @@ Dense operational list for membership staff:
 - **Backup** — full JSON (store + catalog) for recovery
 - Export CSV / Copiar telefones respect current selection when present
 
-**Client edit modal (sections):** Dados · Plano · Emergência · Notas · Documentos · **Registar pagamento** · Histórico de treinos · Histórico do cliente · Histórico de pagamentos. Register payment is the action block (above históricos); payment history is a separate list (newest first). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
+**Client edit modal (sections):** Dados · Plano · Emergência · **Objectivos e notas** · Documentos · **Registar pagamento** · Histórico de treinos · Histórico do cliente · Histórico de pagamentos.  
+- Objectivos e notas: **Objectivo de treino**, **Condições médicas**, **Notas internas** (separate fields).  
+- Documentos: official slots BI / atestado / Foto 1 / Foto 2 / **Comprovativo de pagamento** (+ outros). Photo & document upload soft-refreshes media only (does not wipe unsaved form fields).  
+- Register payment is the action block (above históricos); payment history is a separate list (newest first). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
 
 See `BLUEPRINT.md` for full workflow and data fields.
 
@@ -301,7 +304,7 @@ Enrollment pipeline (reversible statuses):
 - **Criar pendente (docs)** — membership **pendente** until documents are complete
 - **Arquivar** closes the ticket (does not delete the client in Clientes)
 - **Restaurar cliente** when the linked client is in Lixeira (same record; inscrição status unchanged)
-- Notes copied to the client use form labels once: Objectivos de treino / Condições médicas / Notas ou questões
+- Promote copies **goals** / **medicalConditions** / free-text **notes** as structured client fields (not one combined notes blob)
 - Filters + bulk status actions; bulk selection survives list refresh — see `BLUEPRINT.md` §4.1
 
 ## Admin — live badges & alerts
@@ -325,13 +328,14 @@ Several staff devices can keep admin open:
 
 ## Recent changes
 
-### 2026-11-12 — Client modal payments & history
+### 2026-11-12 — Client modal (docs, goals, soft media) + Treinos reload
 
-- **Registar pagamento** split from **Histórico de pagamentos** (register above históricos; history list separate, newest first).
-- Payment rows support legacy import `date` as well as `paidAt`; edit/delete icons clear of the scrollbar.
-- **Histórico do cliente:** **+ Nota** for manual notes (`historyNotes`, with staff `recordedBy`); edit/delete on notes and payment events in the timeline.
-- Removed visible “Sugestão de fim …” under plan dates.
-- Details: `BLUEPRINT.md` (edit client modal + §5.1).
+- **Objectivo de treino** / **Condições médicas** / **Notas internas** as separate fields (`goals`, `medicalConditions`, `notes`).
+- **Documentos oficiais:** BI · atestado · Foto 1 · Foto 2 · **Comprovativo de pagamento**.
+- Photo/document upload **does not reload** the whole client modal (preserves in-progress edits).
+- **Treinos:** after hard reload, date = today and the client list fills once D1 clients load.
+- Earlier same day: Registar pagamento vs Histórico de pagamentos split; **+ Nota** on Histórico do cliente; payment list newest-first.
+- Details: `BLUEPRINT.md` (edit client modal + §5.1 + changelog).
 
 ### 2026-11-11 — D1 read budget (presence removed)
 

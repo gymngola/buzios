@@ -1770,16 +1770,17 @@
     medicalCert: 'Atestado médico',
     photo1: 'Foto 1',
     photo2: 'Foto 2',
-    paymentProof: 'Pagamento',
+    paymentProof: 'Comprovativo de pagamento',
     doc: 'Documento'
   };
 
-  /** Standard slots in the client modal — same types as inscrição. */
+  /** Standard slots in the client modal — same types as inscrição + comprovativo. */
   const CLIENT_DOC_SLOTS = [
     { key: 'id', label: 'BI / Cédula / Passaporte', short: 'BI / Cédula', accept: 'image/*,.pdf,application/pdf', hint: 'Imagem ou PDF' },
     { key: 'medicalCert', label: 'Atestado médico', short: 'Atestado', accept: 'image/*,.pdf,application/pdf', hint: 'Imagem ou PDF' },
     { key: 'photo1', label: 'Foto 1 (tipo passe)', short: 'Foto 1', accept: 'image/*', hint: 'Só imagem' },
-    { key: 'photo2', label: 'Foto 2 (tipo passe)', short: 'Foto 2', accept: 'image/*', hint: 'Só imagem' }
+    { key: 'photo2', label: 'Foto 2 (tipo passe)', short: 'Foto 2', accept: 'image/*', hint: 'Só imagem' },
+    { key: 'paymentProof', label: 'Comprovativo de pagamento', short: 'Pagamento', accept: 'image/*,.pdf,application/pdf', hint: 'Imagem ou PDF' }
   ];
 
   function shortDocLabel(a) {
@@ -1788,6 +1789,7 @@
       // Compact chip labels for the list view
       if (a.key === 'id') return 'BI / Cédula';
       if (a.key === 'medicalCert') return 'Atestado';
+      if (a.key === 'paymentProof') return 'Pagamento';
       return DOC_KEY_LABELS[a.key];
     }
     const lab = String(a.label || '').trim();
@@ -1812,8 +1814,29 @@
       if (key === 'medicalCert') return /atestado|m[eé]dic/i.test(lab);
       if (key === 'photo1') return /foto.*1|passe\s*1/i.test(lab);
       if (key === 'photo2') return /foto.*2|passe\s*2/i.test(lab);
+      if (key === 'paymentProof') return /comprova|pagament|recibo/i.test(lab);
       return false;
     }) || null;
+  }
+
+  /**
+   * Refresh only photo + documents in the open client modal.
+   * Does NOT re-fill form fields — preserves in-progress edits above.
+   */
+  function refreshClientMediaUI(opts) {
+    if (!editingClientId) return;
+    const c = (store.clients || []).find(x => x.id === editingClientId);
+    if (!c) return;
+    const docsHost = $('#cDocsHost');
+    if (docsHost) {
+      docsHost.innerHTML = renderClientDocsBlock(c);
+      bindClientDocsActions();
+    }
+    renderClientPhoto(c);
+    if (opts && opts.keepDocsOpen) {
+      const docsSec = document.querySelector('#clientModal [data-section="docs"]');
+      if (docsSec) setClientSectionOpen(docsSec, true);
+    }
   }
 
   /**
@@ -2016,7 +2039,7 @@
     return `<div id="cDocsBlock" class="client-docs-block">
       <div class="meta" style="margin-bottom:0.5rem;display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap">
         <strong>Documentos oficiais (${filled}/${CLIENT_DOC_SLOTS.length})</strong>
-        <span class="muted" style="font-size:0.75rem">BI · atestado · 2 fotos</span>
+        <span class="muted" style="font-size:0.75rem">BI · atestado · 2 fotos · pagamento</span>
       </div>
       <div class="client-doc-slots">${slotsHtml}</div>
       ${extrasHtml}
@@ -2096,15 +2119,15 @@
     const data = enrichClient(Object.assign({}, existing, {
       attachments,
       documents,
-      paymentProof: existing.paymentProof || null
+      // Dedicated payment proof field mirrors the slot when used
+      paymentProof: key === 'paymentProof' ? url : (existing.paymentProof || null)
     }));
     const saved = await adminAction('update_client', data);
     if (status) status.textContent = saved ? (label + ' adicionado') : '';
     if (saved) {
       toast(label + ' guardado');
-      openClientModal(editingClientId);
-      const docsSec = document.querySelector('#clientModal [data-section="docs"]');
-      if (docsSec) setClientSectionOpen(docsSec, true);
+      // Soft refresh: keep form fields the staff may still be editing
+      refreshClientMediaUI({ keepDocsOpen: true });
     } else {
       toast('Upload feito, mas falhou a gravar no servidor. Verifique a migração D1 (0003).');
     }
@@ -2134,7 +2157,7 @@
     const saved = await adminAction('update_client', data);
     if (saved) {
       toast('Documento removido');
-      openClientModal(editingClientId);
+      refreshClientMediaUI({ keepDocsOpen: true });
     }
   }
 
@@ -2217,7 +2240,8 @@
       if (status) status.textContent = '';
       if (saved) {
         toast('Foto de perfil actualizada');
-        openClientModal(editingClientId);
+        // Soft refresh: do not wipe unsaved form fields
+        refreshClientMediaUI();
       }
     } catch (err) {
       console.warn('client photo upload failed', err);
@@ -2237,7 +2261,7 @@
     const saved = await adminAction('update_client', data);
     if (saved) {
       toast('Foto removida');
-      openClientModal(editingClientId);
+      refreshClientMediaUI();
     }
   }
 

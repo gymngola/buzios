@@ -174,11 +174,11 @@ Suggested path: **Novo → Contactado → Aguarda docs → Inscrito**, then **Ar
 - If the linked client was **permanently purged**, the card falls back to **Criar cliente** / **Criar pendente** (new client id).
 - **Arquivar** removes from the daily queue; does **not** delete the client in Clientes.
 - **Apagar** deletes only the enrollment submission. Deleting a client in Clientes does **not** remove the inscrição (intentional).
-- **Notes copied onto the client** use the public form labels, once only (no duplicate lines):
-  - `Objectivos de treino: …`
-  - `Condições médicas: …`
-  - `Notas ou questões: …`
-  Promote strips any prior enrollment-prefixed lines from existing client notes before rewriting. Worker auto-create (if still used) writes the same format.
+- **Enrollment → client fields:** promote copies structured data (not a single notes blob):
+  - `goals` ← objectivos de treino
+  - `medicalConditions` ← condições médicas
+  - `notes` ← free-text notes only (enrollment “notas ou questões” + any pending-docs banner)
+  Legacy clients that still have labeled lines inside `notes` are parsed into `goals` / `medicalConditions` when the modal opens.
 
 ---
 
@@ -227,10 +227,14 @@ Closes on **outside click** or **Escape**.
 
 ### Client data (store / D1)
 
-Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `notes`, `payments[]` (each: `id`, `amount`, `paidAt` or legacy `date`, `method`, `note`, …), `historyNotes[]` (manual timeline notes: `id`, `type`, `text`, `at`, `recordedBy`), `attachments` / `documents`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.
+Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `birthDate`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `goals`, `medicalConditions`, `notes`, `payments[]` (each: `id`, `amount`, `paidAt` or legacy `date`, `method`, `note`, …), `historyNotes[]` (manual timeline notes: `id`, `type`, `text`, `at`, `recordedBy`), `attachments` / `documents` / `paymentProof`, `photoUrl`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.  
+`goals`, `medicalConditions`, `attachments`, `documents`, `paymentProof`, `birthDate`, `historyNotes`, extras live in D1 `documents_json` (with the usual client columns for indexed fields).
 
-**Edit client modal (updated 2026-11-12):**
-- Collapsible sections (order): **Dados · Plano & estado · Emergência · Notas · Documentos · Registar pagamento · Histórico de treinos · Histórico do cliente · Histórico de pagamentos**
+**Edit client modal (updated 2026-11-12 evening):**
+- Collapsible sections (order): **Dados · Plano & estado · Emergência · Objectivos e notas · Documentos · Registar pagamento · Histórico de treinos · Histórico do cliente · Histórico de pagamentos**
+- **Objectivos e notas:** three fields — **Objectivo de treino** (`goals`), **Condições médicas** (`medicalConditions`), **Notas internas** (`notes`)
+- **Documentos:** typed official slots (count `filled/5`) — BI / Cédula / Passaporte · Atestado médico · Foto 1 · Foto 2 · **Comprovativo de pagamento**; extras under “Outros ficheiros”. Each slot is empty (**+ Adicionar**) or filled (preview · Substituir · remove)
+- **Photo / document upload does not re-open the modal** — only the photo + documents block soft-refresh (`refreshClientMediaUI`), so unsaved edits above are not wiped
 - **Registar pagamento** is above all históricos (action only: valor, método, data, nota; **Pagar e renovar plano** / **Só registar (sem renovar)**). Preview after valor+data when relevant.
 - **Histórico de pagamentos** is its own section (list + edit/delete only; newest first).
 - Status chips at top (membership, billing, days-to-expiry)
@@ -242,11 +246,11 @@ Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `
 
 **Client list:** search is accent-insensitive; filters include status pills + **Filtrar por idade** (ranges / sem idade).
 
-Legacy notes dumps (`Nº · Horário · Cartão · Idade`) are parsed on open when structured keys are missing; cleaned remainder stays in Notas.
+Legacy notes dumps (`Nº · Horário · Cartão · Idade` and labeled Objectivos / Médicas lines) are parsed on open when structured keys are missing; cleaned remainder stays in Notas internas.
 
 ### 5.1 Treinos + históricos no modal
 
-- **Treinos panel:** date picker, search, filter (activos / todos / só quem treinou no dia). **+ Treino** registers a session (multiple per day allowed). Counts for day and month. `recorded_by` = admin name.
+- **Treinos panel:** date picker defaults to **today (Luanda)** after reload; search; filter (activos / todos / só quem treinou no dia). **+ Treino** registers a session (multiple per day allowed). Counts for day and month. `recorded_by` = admin name. Panel restore from `sessionStorage` is UI-only until store/clients load, then data is refreshed so the list is not empty after hard reload.
 - **D1 `trainings`:** `id`, `client_id`, `trained_at`, `trained_date`, `recorded_by`, `note`, `created_at`.
 - **Histórico de treinos** (modal): training list only (+ Treino, edit/delete).
 - **Histórico do cliente** (modal): timeline of payments + **manual notes** + audit events + “cliente criado” (trainings stay in their own section). Year filter; summary counts. Worker `get_client_history` for trainings/audit. **+ Nota** adds a manual entry (`historyNotes` on the client: type Nota/Contacto/Aviso/Outro, text, date/time, `recordedBy` = staff login name). Edit/delete on notes and on payment rows in this timeline.
@@ -349,6 +353,10 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Payment dates:** sort/display use `paidAt` or legacy import `date`; lists **newest first**. Scrollbar gutter so edit/delete icons stay clickable.
 - **Histórico do cliente — manual notes:** **+ Nota** (type, text, date/time); stored on client `historyNotes[]` with `recordedBy` (staff name). Edit/delete for notes and for payment rows in the timeline.
 - **Removed** on-screen “Sugestão de fim (mensal): …” under plan dates (empty end still auto-fills silently from start + cycle).
+- **Objectivo de treino / Condições médicas:** own modal fields (`goals`, `medicalConditions` in `documents_json`); notes stay free-text. Enrollment promote writes structured fields instead of embedding labeled lines in notes.
+- **Documentos oficiais:** typed slots BI · atestado · Foto 1 · Foto 2 · **Comprovativo de pagamento** (plus “Outros ficheiros”).
+- **Soft media refresh:** profile photo and document upload/remove update only the media block — form fields above are not cleared.
+- **Treinos after reload:** date defaults to today; clients list reloads after D1 overlay (no empty table / empty date on hard refresh of the Treinos tab).
 
 ### 2026-11-11
 

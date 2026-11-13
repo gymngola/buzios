@@ -581,6 +581,11 @@
     if (name === 'clients') {
       overlayClientsFromD1({ force: true });
       refreshStoreIfChanged();
+      // Month training badges on the Clientes list need trainings_summary
+      // (same payload as Treinos — not loaded on every poll to save D1 reads).
+      refreshTrainingsSummary({ silent: true }).then(() => {
+        if (isPanelActive('clients')) renderClients();
+      });
     } else if (name === 'inbox' || name === 'contacts' || name === 'newsletters') {
       refreshStoreIfChanged();
     }
@@ -588,7 +593,6 @@
     if (name === 'newsletters') {
       markNewslettersSeen();
     }
-    // Trainings summary is loaded only on the Treinos panel (avoids heavy D1 reads on Clientes).
     if (name === 'trainings') {
       refreshStoreIfChanged();
       loadTrainingsPanel();
@@ -3406,7 +3410,7 @@
                   ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
                   ${c.hasCard === 'sim' ? '<span class="status-badge status-card">cartão</span>' : ''}
                   ${(() => {
-                    const mn = (trainingsSummaryCache && trainingsSummaryCache.monthByClient && trainingsSummaryCache.monthByClient[c.id]) || 0;
+                    const mn = monthTrainingsForClient(c.id);
                     return '<span class="status-badge status-train" title="Treinos neste mês">' + mn + '× mês</span>';
                   })()}
                 </span>
@@ -5261,6 +5265,22 @@
     renderTrainingsPanel();
   }
 
+  /** Normalize D1 client_id keys to string so list badges match store.clients ids. */
+  function normalizeClientCountMap(obj) {
+    const out = {};
+    if (!obj || typeof obj !== 'object') return out;
+    Object.keys(obj).forEach(k => {
+      out[String(k)] = Number(obj[k]) || 0;
+    });
+    return out;
+  }
+
+  function monthTrainingsForClient(clientId) {
+    const map = trainingsSummaryCache && trainingsSummaryCache.monthByClient;
+    if (!map || clientId == null) return 0;
+    return Number(map[String(clientId)]) || 0;
+  }
+
   async function refreshTrainingsSummary(opts) {
     const silent = !!(opts && opts.silent);
     const date = trainingSelectedDate();
@@ -5283,8 +5303,8 @@
         trainingsSummaryCache = {
           date: data.date || date,
           month: data.month || date.slice(0, 7),
-          todayByClient: data.todayByClient || {},
-          monthByClient: data.monthByClient || {},
+          todayByClient: normalizeClientCountMap(data.todayByClient),
+          monthByClient: normalizeClientCountMap(data.monthByClient),
           daySessions: data.daySessions || [],
           todayTotal: data.todayTotal || 0,
           monthTotal: data.monthTotal || 0
@@ -5523,6 +5543,7 @@
         : 'Treino registado');
       await refreshTrainingsSummary();
       renderTrainingsPanel();
+      if (isPanelActive('clients')) renderClients();
       if (editingClientId) await loadClientTrainings(editingClientId);
     } catch (e) {
       console.warn('add_training failed', e);
@@ -5567,6 +5588,7 @@
       toast('Sessão apagada');
       await refreshTrainingsSummary();
       renderTrainingsPanel();
+      if (isPanelActive('clients')) renderClients();
       if (editingClientId) await loadClientTrainings(editingClientId);
     } catch (e) {
       console.warn('delete_training failed', e);
@@ -5668,6 +5690,7 @@
       toast('Treino actualizado');
       await refreshTrainingsSummary();
       renderTrainingsPanel();
+      if (isPanelActive('clients')) renderClients();
       if (editingClientId) await loadClientTrainings(editingClientId);
     } catch (e) {
       console.warn('update_training failed', e);

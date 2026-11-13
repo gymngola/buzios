@@ -143,7 +143,7 @@ Password gate → sections:
 - Active panel remembered in `sessionStorage`.
 - **Session:** login requires **staff name** (dropdown) + shared Worker secret password (`action: "auth"`). Names: Julio Figueiredo, Nataniel Figueiredo, Keuria, Garcia Kissanga, Amarildo Salvador. Auth flag `buzios_admin_auth`; password in `sessionStorage` (`buzios_admin_pw`); name in session/local (`buzios_admin_name`). Hard reload does **not** clear the session. **Sair** clears password + flags. **Guia → Terminar todas as sessões** bumps D1 `auth_epoch` so every open panel logs out within one store poll (~60s).
 - **Presence:** removed (saved D1 reads). Admin bar no longer shows who is online.
-- **Multi-device sync:** while admin is open, store is polled ~60s focused / ~10 min hidden (and immediately on tab focus). D1 overlays refresh clients / inbox / newsletter. Writes pause polling briefly.
+- **Multi-device sync:** while admin is open, store is polled ~60s focused / ~10 min hidden (and immediately on tab focus). D1 overlays refresh clients / inbox / newsletter. Writes pause polling briefly. Server snapshot `clients` are not painted into the UI (`deferClients`) — only the D1 overlay / tab broadcast is.
 
 **Admin chrome**
 
@@ -236,14 +236,19 @@ Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `
 - **Documentos:** typed official slots (count `filled/5`) — BI / Cédula / Passaporte · Atestado médico · Foto 1 · Foto 2 · **Comprovativo de pagamento**; extras under “Outros ficheiros”. Each slot is empty (**+ Adicionar**) or filled (preview · Substituir · remove)
 - **Photo / document upload does not re-open the modal** — only the photo + documents block soft-refresh (`refreshClientMediaUI`), so unsaved edits above are not wiped
 - **Dirty-close warning:** × / backdrop / Escape after a real field edit asks “Fechar sem guardar?”. Only trusted user `input`/`change` marks dirty (not async history/trainings/docs, file inputs, or section toggles). Cleared on Guardar / Arquivar / Lixeira
-- **Registar pagamento** is above all históricos (action only: valor, método, data, nota; **Pagar e renovar plano** / **Só registar (sem renovar)**). Preview after valor+data when relevant.
+- **Registar pagamento** is above all históricos (action: valor, método, data, nota + mode radios). Modes on **Guardar cliente**:
+  - **Só guardar dados** — no payment row
+  - **Só registar pagamento** — payment history + `billingStatus = em_dia`; plan dates and membership unchanged
+  - **Pagar e activar plano** — first payment / new membership: payment + `activo` + `em_dia`; plan dates kept if already filled, otherwise today → today+cycle. Does **not** extend from an existing end. Default when opening **Novo cliente**; payment section auto-opens
+  - **Pagar e renovar plano** — payment + extend plan end from current end (or today if expired/missing) + `activo` + `em_dia`
+- Preview line under the payment fields follows the selected mode.
 - **Histórico de pagamentos** is its own section (list + edit/delete only; newest first).
 - Status chips at top (membership, billing, days-to-expiry)
 - Quick actions when editing: WhatsApp · Renovar (jumps to **Registar pagamento**) · Copiar telefone
 - Plan as **select from catalog** (grouped ginásio/natação) + “Outro” custom name; selecting a plan fills price + cycle
 - Empty **Fim do plano** is filled quietly from início + ciclo (no on-screen “Sugestão de fim” text)
 - Two-column field pairs on wider screens; sticky footer with Guardar / Arquivar / Apagar
-- Docs / trainings / history sections collapsed by default; **Registar pagamento** auto-opens when in debt/expired; **Histórico de pagamentos** auto-opens when the client has payments
+- Docs / trainings / history sections collapsed by default; **Registar pagamento** auto-opens when in debt/expired (and for **Novo cliente**); **Histórico de pagamentos** auto-opens when the client has payments
 
 **Client list:** search is accent-insensitive; filters include status pills + **Filtrar por idade** (ranges / sem idade).
 
@@ -348,9 +353,11 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Force logout all devices**: Guia → “Terminar todas as sessões”. Bumps D1 `admin_settings.auth_epoch` (migration `0007_admin_settings.sql`); presence heartbeats detect the new epoch and log every open panel out within ~40s. Explains why hard reload alone does not clear the session (password lives in `sessionStorage`).
 - **Histórico do cliente**: unified timeline in client edit modal — payments + trainings + audit/status events + “cliente criado”, with year filter and summary counts. Worker action `get_client_history` (trainings + audit for client).
 
-### 2026-11-12
+### 2026-11-12 / 13
 
-- **Client modal payments split:** **Registar pagamento** (action, above históricos) separate from **Histórico de pagamentos** (list below other históricos). Button labels: *Pagar e renovar plano* / *Só registar (sem renovar)*.
+- **Clientes stats flash fixed:** `applyStore` does not paint server/Cloudinary `store.clients` into the UI (`deferClients` — D1 is source of truth; snapshot lags because `WRITE_OPS_TO_STORE = false`). Hard reload shows “A carregar clientes…” until `d1_get_clients` finishes.
+- **Pagar e activar plano:** fourth payment mode for new client / first payment (payment + plan dates + activo + em dia). Default on **Novo cliente**. Distinct from **Pagar e renovar** (extends end) and **Só registar** (dates/membership untouched).
+- **Client modal payments split:** **Registar pagamento** (action, above históricos) separate from **Histórico de pagamentos** (list below other históricos).
 - **Payment dates:** sort/display use `paidAt` or legacy import `date`; lists **newest first**. Scrollbar gutter so edit/delete icons stay clickable.
 - **Histórico do cliente — manual notes:** **+ Nota** (type, text, date/time); stored on client `historyNotes[]` with `recordedBy` (staff name). Edit/delete for notes and for payment rows in the timeline.
 - **Removed** on-screen “Sugestão de fim (mensal): …” under plan dates (empty end still auto-fills silently from start + cycle).

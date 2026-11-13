@@ -292,7 +292,12 @@ Dense operational list for membership staff:
 - Objectivos e notas: **Objectivo de treino**, **Condições médicas**, **Notas internas** (separate fields).  
 - Documentos: official slots BI / atestado / Foto 1 / Foto 2 / **Comprovativo de pagamento** (+ outros). Photo & document upload soft-refreshes media only (does not wipe unsaved form fields).  
 - **Dirty-close:** × / backdrop / Escape warns if fields were edited; ignores async UI noise (no false alarm when only scrolling).  
-- Register payment is the action block (above históricos); payment history is a separate list (newest first). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
+- **Registar pagamento** (action block above históricos) — one of four modes on **Guardar cliente**:
+  - **Só guardar dados** — no payment
+  - **Só registar pagamento** — history + billing em dia; plan dates / membership unchanged
+  - **Pagar e activar plano** — first payment / new membership: payment + plan dates (keep form dates if set, else today → today+cycle) + activo + em dia. Default when opening **Novo cliente**.
+  - **Pagar e renovar plano** — extends plan end from current end (or today if expired/missing) + activo + em dia
+- Payment history is a separate list (newest first). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
 
 See `BLUEPRINT.md` for full workflow and data fields.
 
@@ -329,6 +334,12 @@ Several staff devices can keep admin open:
 - Bulk checkbox selection is kept in memory across poll re-renders
 
 ## Recent changes
+
+### 2026-11-12 / 13 — Clientes load + “Pagar e activar”
+
+- **Stale stats flash fixed:** server/Cloudinary `store.clients` is no longer painted into the Clientes list/stats (`deferClients` in `applyStore`). Hard reload shows “A carregar clientes…” until `d1_get_clients` returns.
+- **Pagar e activar plano:** new payment mode for new clients / first payment (payment + plan dates + activo + em dia). Default when opening **Novo cliente**. Renew still extends from current end; “só registar” still leaves dates/membership alone.
+- Details: `BLUEPRINT.md` (edit client modal + changelog).
 
 ### 2026-11-12 — Client modal (docs, goals, soft media, dirty-close) + Treinos reload
 

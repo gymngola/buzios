@@ -985,6 +985,23 @@ a { color: var(--admin-accent); }
 
 .client-trash-banner strong { color: #b45309; }
 
+.client-reenroll-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 10px;
+  background: #fdecea;
+  border: 1px solid #f5c2c0;
+  color: #7a1f1a;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.client-reenroll-banner strong { color: #b42318; }
+
 .c-chip {
   display: inline-flex;
   align-items: center;
@@ -2245,6 +2262,7 @@ a { color: var(--admin-accent); }
 .status-suspenso { background: #eef2f4; color: #5a6f78; }
 .status-card { background: #e8f5e9; color: #2e7d32; }
 .status-train { background: #eef4ff; color: #2f4f8a; font-variant-numeric: tabular-nums; }
+.status-precisa_inscricao { background: #fdecea; color: #b42318; }
 
 .client-trainings-head {
   display: flex;
@@ -2776,4 +2794,36 @@ a { color: var(--admin-accent); }
   color: #1f5c42;
   background: rgba(47, 107, 79, 0.1);
   border-color: rgba(47, 107, 79, 0.18);
+}
+
+/* Textos panel — grouped fields */
+.text-group {
+  border: 1px solid #e6eaed;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  background: #fff;
+  overflow: hidden;
+}
+.text-group-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  list-style: none;
+  background: #f6f8f9;
+  border-bottom: 1px solid #e6eaed;
+}
+.text-group-summary::-webkit-details-marker { display: none; }
+.text-group:not([open]) .text-group-summary { border-bottom: none; }
+.text-group-body {
+  padding: 0.75rem 0.9rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.text-group .form-row { margin-bottom: 0.55rem; }
+.text-group textarea {
+  width: 100%;
+  min-height: 2.4rem;
+  resize: vertical;
 }

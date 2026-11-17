@@ -213,6 +213,7 @@
             <button type="button" data-filter="a_expirar">A expirar</button>
             <button type="button" data-filter="expirado">Expirados</button>
             <button type="button" data-filter="em_divida">Em dívida</button>
+            <button type="button" data-filter="precisa_inscricao">Precisa inscrição</button>
             <button type="button" data-filter="pendente">Pendentes</button>
             <button type="button" data-filter="suspenso">Suspensos</button>
             <button type="button" data-filter="arquivado">Arquivados</button>
@@ -318,7 +319,10 @@
 
       <!-- Texts -->
       <div id="panel-texts" class="panel">
-        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">Textos principais (português).</p>
+        <p style="font-size:0.85rem;color:#666;margin-bottom:1rem">
+          Textos do website (português), agrupados por página/secção.
+          Altere e clique em <strong>Publicar</strong> para os visitantes verem as mudanças.
+        </p>
         <div id="textsForm"></div>
       </div>
 
@@ -476,6 +480,9 @@
           Este cliente está na <strong>lixeira</strong> (recuperável 30 dias).
           <button type="button" id="cTrashRestoreBtn" class="btn-secondary" style="margin-left:0.5rem">Restaurar cliente</button>
         </div>
+        <div id="cReenrollBanner" class="client-reenroll-banner" style="display:none" role="status">
+          <strong>Precisa inscrição</strong> — sem pagamento há 90+ dias (ou nunca pagou). A inscrição anual foi pré-seleccionada.
+        </div>
         <div id="cStatusChips" class="client-status-chips" aria-live="polite"></div>
         <div id="cQuickActions" class="client-quick-actions" style="display:none">
           <button type="button" class="cq-btn" id="cQaWhatsApp" title="Abrir WhatsApp">WhatsApp</button>
@@ -589,10 +596,11 @@
                   <span class="muted" style="font-size:0.78rem;font-weight:400">Obrigatória na 1ª vez / após 90 dias de ausência.</span>
                 </span>
               </label>
-              <label class="client-check-label" id="cSwimFeeRow" style="display:none;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
+              <label class="client-check-label" id="cSwimFeeRow" style="display:flex;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">
                 <input type="checkbox" id="cSwimFee" style="margin-top:0.2rem;width:auto">
                 <span>
-                  <strong>Inscrição escola de natação</strong> — <span style="color:#c45c26" id="cSwimFeePrice">10.500 Kz</span>
+                  <strong>Inscrição escola de natação</strong> — <span style="color:#c45c26" id="cSwimFeePrice">10.500 Kz</span><br>
+                  <span class="muted" style="font-size:0.78rem;font-weight:400">Obrigatória na 1ª vez.</span>
                 </span>
               </label>
               <label class="client-check-label" id="cExtraAvaliacaoRow" style="display:flex;align-items:flex-start;gap:0.55rem;cursor:pointer;font-weight:500">

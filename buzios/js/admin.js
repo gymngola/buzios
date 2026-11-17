@@ -2964,7 +2964,8 @@
     setDisp('#cAnnualFeeRow', isGym);
     setDisp('#cExtraAvaliacaoRow', isGym);
     setDisp('#cExtraAvulsasRow', isGym);
-    setDisp('#cSwimFeeRow', isSwim);
+    // Swim enrollment fee is always visible (not gated by Área)
+    setDisp('#cSwimFeeRow', true);
     if ($('#cAnnualFeePrice')) $('#cAnnualFeePrice').textContent = formatKzLabel(annualFeeAmount());
     if ($('#cSwimFeePrice')) $('#cSwimFeePrice').textContent = formatKzLabel(swimFeeAmount());
     if ($('#cExtraAvaliacaoPrice')) $('#cExtraAvaliacaoPrice').textContent = formatKzLabel(avaliacaoAmount());
@@ -2975,9 +2976,9 @@
     let t = 0;
     const area = ($('#cArea') && $('#cArea').value) || 'ginasio';
     const isGym = area === 'ginasio' || area === 'ambos';
-    const isSwim = area === 'natacao' || area === 'ambos';
     if (isGym && $('#cAnnualFee') && $('#cAnnualFee').checked) t += annualFeeAmount();
-    if (isSwim && $('#cSwimFee') && $('#cSwimFee').checked) t += swimFeeAmount();
+    // Swim fee always available (visible regardless of Área)
+    if ($('#cSwimFee') && $('#cSwimFee').checked) t += swimFeeAmount();
     if (isGym && $('#cExtraAvaliacao') && $('#cExtraAvaliacao').checked) t += avaliacaoAmount();
     if (isGym && $('#cExtraAvulsas') && $('#cExtraAvulsas').checked) t += avulsasAmount();
     return t;
@@ -2987,9 +2988,8 @@
     const labels = [];
     const area = ($('#cArea') && $('#cArea').value) || 'ginasio';
     const isGym = area === 'ginasio' || area === 'ambos';
-    const isSwim = area === 'natacao' || area === 'ambos';
     if (isGym && $('#cAnnualFee') && $('#cAnnualFee').checked) labels.push('Inscrição anual ' + formatKzLabel(annualFeeAmount()));
-    if (isSwim && $('#cSwimFee') && $('#cSwimFee').checked) labels.push('Inscrição natação ' + formatKzLabel(swimFeeAmount()));
+    if ($('#cSwimFee') && $('#cSwimFee').checked) labels.push('Inscrição natação ' + formatKzLabel(swimFeeAmount()));
     if (isGym && $('#cExtraAvaliacao') && $('#cExtraAvaliacao').checked) labels.push('Avaliação física ' + formatKzLabel(avaliacaoAmount()));
     if (isGym && $('#cExtraAvulsas') && $('#cExtraAvulsas').checked) labels.push('Aulas avulsas ' + formatKzLabel(avulsasAmount()));
     return labels;
@@ -3051,6 +3051,22 @@
     const todayStr = todayISO();
     const today = new Date(todayStr + 'T00:00:00' + AO_OFFSET);
     return Math.ceil((end - today) / 86400000);
+  }
+
+  /** True when client needs annual re-enrollment (≥90 days since last payment / plan end, or never paid). */
+  function needsReenrollment(c) {
+    if (!c) return true; // new client
+    let ref = c.lastPaymentAt || null;
+    if (ref) ref = String(ref).slice(0, 10);
+    if (!ref) ref = c.planEnd || null;
+    if (!ref) return true;
+    const refDay = String(ref).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(refDay)) return true;
+    const a = new Date(refDay + 'T00:00:00' + AO_OFFSET);
+    const b = new Date(todayISO() + 'T00:00:00' + AO_OFFSET);
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return true;
+    const days = Math.floor((b - a) / 86400000);
+    return days >= 90;
   }
 
   function addMonthsISO(isoDate, months) {
@@ -3142,6 +3158,7 @@
     if (filter === 'a_expirar') return c._expiringSoon && c.membershipStatus === 'activo';
     if (filter === 'expirado') return c.membershipStatus === 'expirado' || c._expired;
     if (filter === 'em_divida') return c.billingStatus === 'em_divida' || c.billingStatus === 'atrasado';
+    if (filter === 'precisa_inscricao') return needsReenrollment(c) && c.membershipStatus !== 'arquivado';
     if (filter === 'pendente') return c.membershipStatus === 'pendente';
     if (filter === 'suspenso') return c.membershipStatus === 'suspenso' || c.membershipStatus === 'cancelado';
     if (filter === 'arquivado') return c.membershipStatus === 'arquivado';
@@ -3408,6 +3425,7 @@
                   <span class="status-badge status-${mem}">${mem}</span>
                   <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
                   ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
+                  ${needsReenrollment(c) ? '<span class="status-badge status-precisa_inscricao" title="Sem pagamento há 90+ dias">precisa inscrição</span>' : ''}
                   ${c.hasCard === 'sim' ? '<span class="status-badge status-card">cartão</span>' : ''}
                   ${(() => {
                     const mn = monthTrainingsForClient(c.id);
@@ -4123,6 +4141,21 @@
     $('#cPhone').value = c?.phone || '';
     $('#cEmail').value = c?.email || '';
     $('#cArea').value = c?.area || 'ginasio';
+    // Banner after Área is set so copy matches what we actually pre-check
+    const reenrollBanner = $('#cReenrollBanner');
+    const needsRe = needsReenrollment(c);
+    const areaForRe = ($('#cArea') && $('#cArea').value) || 'ginasio';
+    const isGymForRe = areaForRe === 'ginasio' || areaForRe === 'ambos';
+    if (reenrollBanner) {
+      reenrollBanner.style.display = !inTrash && needsRe ? '' : 'none';
+      if (needsRe && isGymForRe) {
+        reenrollBanner.innerHTML =
+          '<strong>Precisa inscrição</strong> — sem pagamento há 90+ dias (ou nunca pagou). A inscrição anual foi pré-seleccionada.';
+      } else if (needsRe) {
+        reenrollBanner.innerHTML =
+          '<strong>Precisa inscrição</strong> — sem pagamento há 90+ dias (ou nunca pagou).';
+      }
+    }
 
     // Structured fields — prefer real keys; fallback-parse legacy notes once
     const meta = parseClientNotesMeta(c?.notes);
@@ -4210,6 +4243,14 @@
     if ($('#cPayNote')) $('#cPayNote').value = '';
     if ($('#cPayDate')) $('#cPayDate').value = '';
     clearAddonCheckboxes();
+    // Auto-check annual enrollment fee when client needs re-enrollment and Área includes ginásio
+    // (row is hidden for natação-only; checking a hidden box would still flag includesAnnualFee on save)
+    if (needsReenrollment(c) && $('#cAnnualFee')) {
+      const areaNow = ($('#cArea') && $('#cArea').value) || 'ginasio';
+      if (areaNow === 'ginasio' || areaNow === 'ambos') {
+        $('#cAnnualFee').checked = true;
+      }
+    }
     // New client: default to "Pagar e activar" (first payment). Existing: "Só guardar dados".
     if (!id) {
       const activate = $('#cPayModeActivate');
@@ -4787,6 +4828,30 @@
   });
   $('#cArea')?.addEventListener('change', () => {
     updateClientAddonVisibility();
+    // Keep annual-fee auto-check + banner in sync when Área changes on an open modal
+    const reenrollBanner = $('#cReenrollBanner');
+    const c = editingClientId
+      ? (store.clients || []).find(x => x.id === editingClientId)
+      : null;
+    const needsRe = needsReenrollment(c);
+    const areaNow = ($('#cArea') && $('#cArea').value) || 'ginasio';
+    const isGymNow = areaNow === 'ginasio' || areaNow === 'ambos';
+    if (needsRe && isGymNow && $('#cAnnualFee')) {
+      $('#cAnnualFee').checked = true;
+    } else if (!isGymNow && $('#cAnnualFee')) {
+      // Don't leave a hidden checked box that would still flag includesAnnualFee
+      $('#cAnnualFee').checked = false;
+    }
+    if (reenrollBanner) {
+      reenrollBanner.style.display = needsRe ? '' : 'none';
+      if (needsRe && isGymNow) {
+        reenrollBanner.innerHTML =
+          '<strong>Precisa inscrição</strong> — sem pagamento há 90+ dias (ou nunca pagou). A inscrição anual foi pré-seleccionada.';
+      } else if (needsRe) {
+        reenrollBanner.innerHTML =
+          '<strong>Precisa inscrição</strong> — sem pagamento há 90+ dias (ou nunca pagou).';
+      }
+    }
     syncPayAmountIfPaying();
   });
   $('#cBirthDate')?.addEventListener('change', () => {
@@ -6803,31 +6868,185 @@
     return data.secure_url;
   }
 
-  // —— Texts ——
-  const TEXT_KEYS = [
-    { key: 'hero.title', label: 'Hero — título' },
-    { key: 'hero.sub', label: 'Hero — subtítulo' },
-    { key: 'intro.title', label: 'Sobre — título' },
-    { key: 'intro.desc', label: 'Sobre — descrição' },
-    { key: 'cta.title', label: 'CTA — título' },
-    { key: 'cta.desc', label: 'CTA — texto' }
+  // —— Texts (grouped; published via catalog) ——
+  const TEXT_GROUPS = [
+    {
+      title: 'Início — Hero',
+      keys: [
+        { key: 'hero.eyebrow', label: 'Eyebrow', rows: 1 },
+        { key: 'hero.title', label: 'Título (use Enter para quebra de linha)', rows: 2 },
+        { key: 'hero.sub', label: 'Subtítulo', rows: 2 },
+        { key: 'hero.cta1', label: 'Botão 1', rows: 1 },
+        { key: 'hero.cta2', label: 'Botão 2', rows: 1 }
+      ]
+    },
+    {
+      title: 'Início — Sobre nós',
+      keys: [
+        { key: 'intro.eyebrow', label: 'Eyebrow', rows: 1 },
+        { key: 'intro.title', label: 'Título', rows: 1 },
+        { key: 'intro.desc', label: 'Descrição', rows: 3 },
+        { key: 'intro.f1', label: 'Ponto 1', rows: 1 },
+        { key: 'intro.f2', label: 'Ponto 2', rows: 1 },
+        { key: 'intro.f3', label: 'Ponto 3', rows: 1 },
+        { key: 'intro.f4', label: 'Ponto 4', rows: 1 },
+        { key: 'intro.f5', label: 'Ponto 5', rows: 1 },
+        { key: 'intro.cta', label: 'Botão', rows: 1 }
+      ]
+    },
+    {
+      title: 'Início — Serviços',
+      keys: [
+        { key: 'services.eyebrow', label: 'Eyebrow', rows: 1 },
+        { key: 'services.title', label: 'Título', rows: 1 },
+        { key: 'services.desc', label: 'Descrição', rows: 2 },
+        { key: 'services.gymTitle', label: 'Ginásio — título', rows: 1 },
+        { key: 'services.gymText', label: 'Ginásio — texto', rows: 3 },
+        { key: 'services.gymCta', label: 'Ginásio — botão', rows: 1 },
+        { key: 'services.swimTitle', label: 'Natação — título', rows: 1 },
+        { key: 'services.swimText', label: 'Natação — texto', rows: 3 },
+        { key: 'services.swimCta', label: 'Natação — botão', rows: 1 }
+      ]
+    },
+    {
+      title: 'Início — Planos (teaser)',
+      keys: [
+        { key: 'plans.eyebrow', label: 'Eyebrow', rows: 1 },
+        { key: 'plans.title', label: 'Título', rows: 1 },
+        { key: 'plans.desc', label: 'Descrição', rows: 2 },
+        { key: 'plans.cta', label: 'Botão', rows: 1 }
+      ]
+    },
+    {
+      title: 'Início — CTA final',
+      keys: [
+        { key: 'cta.title', label: 'Título', rows: 1 },
+        { key: 'cta.desc', label: 'Texto', rows: 2 },
+        { key: 'cta.btn', label: 'Botão', rows: 1 }
+      ]
+    },
+    {
+      title: 'Início — Localização & rodapé',
+      keys: [
+        { key: 'loc.eyebrow', label: 'Local — eyebrow', rows: 1 },
+        { key: 'loc.title', label: 'Local — título', rows: 1 },
+        { key: 'loc.addressTitle', label: 'Bloco morada', rows: 1 },
+        { key: 'loc.hoursTitle', label: 'Bloco horário', rows: 1 },
+        { key: 'loc.contactTitle', label: 'Bloco contacto', rows: 1 },
+        { key: 'footer.newsletter', label: 'Newsletter — etiqueta', rows: 1 },
+        { key: 'footer.subscribe', label: 'Newsletter — botão', rows: 1 },
+        { key: 'footer.note', label: 'Newsletter — nota', rows: 2 }
+      ]
+    },
+    {
+      title: 'Página Ginásio',
+      keys: [
+        { key: 'ginasio.hero.eyebrow', label: 'Hero — eyebrow', rows: 1 },
+        { key: 'ginasio.hero.title', label: 'Hero — título', rows: 1 },
+        { key: 'ginasio.hero.sub', label: 'Hero — subtítulo', rows: 2 },
+        { key: 'ginasio.equip.eyebrow', label: 'Equipamento — eyebrow', rows: 1 },
+        { key: 'ginasio.equip.title', label: 'Equipamento — título', rows: 1 },
+        { key: 'ginasio.equip.desc', label: 'Equipamento — descrição', rows: 2 },
+        { key: 'ginasio.plans.eyebrow', label: 'Planos — eyebrow', rows: 1 },
+        { key: 'ginasio.plans.title', label: 'Planos — título', rows: 1 },
+        { key: 'ginasio.plans.desc', label: 'Planos — descrição', rows: 2 },
+        { key: 'ginasio.hours.eyebrow', label: 'Horário — eyebrow', rows: 1 },
+        { key: 'ginasio.hours.title', label: 'Horário — título', rows: 1 },
+        { key: 'ginasio.cta.title', label: 'CTA — título', rows: 1 },
+        { key: 'ginasio.cta.desc', label: 'CTA — texto', rows: 2 },
+        { key: 'ginasio.cta.btn', label: 'CTA — botão', rows: 1 }
+      ]
+    },
+    {
+      title: 'Página Natação',
+      keys: [
+        { key: 'natacao.hero.eyebrow', label: 'Hero — eyebrow', rows: 1 },
+        { key: 'natacao.hero.title', label: 'Hero — título', rows: 1 },
+        { key: 'natacao.hero.sub', label: 'Hero — subtítulo', rows: 3 },
+        { key: 'natacao.inst.eyebrow', label: 'Instalações — eyebrow', rows: 1 },
+        { key: 'natacao.inst.title', label: 'Instalações — título', rows: 1 },
+        { key: 'natacao.inst.desc', label: 'Instalações — descrição', rows: 2 },
+        { key: 'natacao.team.eyebrow', label: 'Equipa — eyebrow', rows: 1 },
+        { key: 'natacao.team.title', label: 'Equipa — título', rows: 1 },
+        { key: 'natacao.plans.eyebrow', label: 'Mensalidades — eyebrow', rows: 1 },
+        { key: 'natacao.plans.title', label: 'Mensalidades — título', rows: 1 },
+        { key: 'natacao.ferias.eyebrow', label: 'Férias — eyebrow', rows: 1 },
+        { key: 'natacao.ferias.title', label: 'Férias — título', rows: 1 },
+        { key: 'natacao.cta.title', label: 'CTA — título', rows: 1 },
+        { key: 'natacao.cta.desc', label: 'CTA — texto (documentos / inscrição)', rows: 3 },
+        { key: 'natacao.cta.btn', label: 'CTA — botão', rows: 1 }
+      ]
+    },
+    {
+      title: 'Página Planos',
+      keys: [
+        { key: 'planos.hero.eyebrow', label: 'Hero — eyebrow', rows: 1 },
+        { key: 'planos.hero.title', label: 'Hero — título', rows: 1 },
+        { key: 'planos.hero.desc', label: 'Hero — descrição', rows: 2 },
+        { key: 'planos.gym.eyebrow', label: 'Ginásio — eyebrow', rows: 1 },
+        { key: 'planos.gym.title', label: 'Ginásio — título', rows: 1 },
+        { key: 'planos.swim.eyebrow', label: 'Natação — eyebrow', rows: 1 },
+        { key: 'planos.swim.title', label: 'Natação — título', rows: 1 },
+        { key: 'planos.monthly.eyebrow', label: 'Mensalidades — eyebrow', rows: 1 },
+        { key: 'planos.monthly.title', label: 'Mensalidades — título', rows: 1 },
+        { key: 'planos.ferias.eyebrow', label: 'Férias — eyebrow', rows: 1 },
+        { key: 'planos.ferias.title', label: 'Férias — título', rows: 1 },
+        { key: 'planos.info.eyebrow', label: 'Info — eyebrow', rows: 1 },
+        { key: 'planos.info.title', label: 'Info — título', rows: 1 },
+        { key: 'planos.cta.title', label: 'CTA — título', rows: 1 },
+        { key: 'planos.cta.desc', label: 'CTA — texto', rows: 2 },
+        { key: 'planos.cta.btn', label: 'CTA — botão', rows: 1 }
+      ]
+    },
+    {
+      title: 'Página Contacto',
+      keys: [
+        { key: 'contacto.hero.eyebrow', label: 'Hero — eyebrow', rows: 1 },
+        { key: 'contacto.hero.title', label: 'Hero — título', rows: 1 },
+        { key: 'contacto.hero.desc', label: 'Hero — descrição', rows: 2 },
+        { key: 'contacto.form.title', label: 'Formulário — título', rows: 1 },
+        { key: 'contacto.form.desc', label: 'Formulário — descrição', rows: 2 }
+      ]
+    },
+    {
+      title: 'Página Inscrição',
+      keys: [
+        { key: 'inscricao.hero.eyebrow', label: 'Hero — eyebrow', rows: 1 },
+        { key: 'inscricao.hero.title', label: 'Hero — título', rows: 1 },
+        { key: 'inscricao.hero.desc', label: 'Hero — descrição', rows: 2 }
+      ]
+    }
   ];
 
   function renderTexts() {
     const el = $('#textsForm');
     if (!el) return;
     const pt = texts.pt || {};
-    el.innerHTML = TEXT_KEYS.map(t => `
-      <div class="form-row">
-        <label>${t.label}</label>
-        <textarea data-text-key="${t.key}" rows="2">${pt[t.key] || ''}</textarea>
-      </div>
-    `).join('');
+    const defaults = (window.DEFAULT_TEXTS && window.DEFAULT_TEXTS.pt) || {};
+    el.innerHTML = TEXT_GROUPS.map(group => {
+      const fields = group.keys.map(t => {
+        const val = pt[t.key] != null && pt[t.key] !== '' ? pt[t.key] : (defaults[t.key] || '');
+        const rows = t.rows || 2;
+        return `
+          <div class="form-row text-field" data-text-group-key="${t.key}">
+            <label>${t.label} <span class="muted" style="font-weight:400;font-size:0.72rem">(${t.key})</span></label>
+            <textarea data-text-key="${t.key}" rows="${rows}">${String(val).replace(/</g, '&lt;')}</textarea>
+          </div>`;
+      }).join('');
+      return `
+        <details class="text-group" open>
+          <summary class="text-group-summary">${group.title}</summary>
+          <div class="text-group-body">${fields}</div>
+        </details>`;
+    }).join('');
     el.querySelectorAll('[data-text-key]').forEach(ta => {
-      ta.addEventListener('change', () => {
+      const save = () => {
         if (!texts.pt) texts.pt = {};
         texts.pt[ta.dataset.textKey] = ta.value;
-      });
+        markDirty();
+      };
+      ta.addEventListener('change', save);
+      ta.addEventListener('input', save);
     });
   }
 

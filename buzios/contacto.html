@@ -248,8 +248,8 @@
 
           <div class="contact-form-wrap">
             <div class="success-box" id="contactSuccess">
-              <h2>Mensagem enviada</h2>
-              <p class="section-desc">Recebemos a sua mensagem. A equipa Búzios responde em breve, normalmente no próprio dia (horário de expediente).</p>
+              <h2 data-i18n="contacto.success.title">Mensagem enviada</h2>
+              <p class="section-desc" data-i18n="contacto.success.desc">Recebemos a sua mensagem. A equipa Búzios responde em breve, normalmente no próprio dia (horário de expediente).</p>
               <a href="index.html" class="btn btn-outline mt-2">Voltar ao início</a>
             </div>
 
@@ -260,19 +260,19 @@
               </div>
               <form class="contact-form" id="contactForm">
                 <div class="form-group">
-                  <label for="cName">Nome <span class="req">*</span></label>
+                  <label for="cName"><span data-i18n="contacto.label.name">Nome</span> <span class="req">*</span></label>
                   <input type="text" id="cName" name="name" required autocomplete="name">
                 </div>
                 <div class="form-group">
-                  <label for="cPhone">Telefone / WhatsApp <span class="req">*</span></label>
+                  <label for="cPhone"><span data-i18n="contacto.label.phone">Telefone / WhatsApp</span> <span class="req">*</span></label>
                   <input type="tel" id="cPhone" name="phone" required inputmode="tel" autocomplete="tel" placeholder="9XX XXX XXX">
                 </div>
                 <div class="form-group">
-                  <label for="cEmail">Email</label>
+                  <label for="cEmail" data-i18n="contacto.label.email">Email</label>
                   <input type="email" id="cEmail" name="email" autocomplete="email" placeholder="email@exemplo.com">
                 </div>
                 <div class="form-group">
-                  <label for="cSubject">Assunto</label>
+                  <label for="cSubject" data-i18n="contacto.label.subject">Assunto</label>
                   <select id="cSubject" name="subject">
                     <option value="Ginásio">Ginásio / Planos</option>
                     <option value="Natação">Escola de Natação</option>
@@ -281,7 +281,7 @@
                   </select>
                 </div>
                 <div class="form-group">
-                  <label>Prefiro ser contactado por</label>
+                  <label data-i18n="contacto.label.prefer">Prefiro ser contactado por</label>
                   <div class="prefer-row">
                     <label><input type="radio" name="prefer" value="WhatsApp" checked> WhatsApp</label>
                     <label><input type="radio" name="prefer" value="Chamada"> Chamada</label>
@@ -289,10 +289,10 @@
                   </div>
                 </div>
                 <div class="form-group">
-                  <label for="cMsg">Mensagem <span class="req">*</span></label>
+                  <label for="cMsg"><span data-i18n="contacto.label.message">Mensagem</span> <span class="req">*</span></label>
                   <textarea id="cMsg" name="message" required rows="4" placeholder="Ex.: horários de natação para crianças, visita ao ginásio, planos…"></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block" id="contactSubmit">Enviar mensagem</button>
+                <button type="submit" class="btn btn-primary btn-block" id="contactSubmit" data-i18n="contacto.submit">Enviar mensagem</button>
                 <p id="contactFeedback" class="form-feedback" role="status" aria-live="polite" hidden></p>
                 <p class="enroll-hint">Para se inscrever no ginásio ou na natação, use o <a href="inscricao.html">formulário de inscrição</a>.</p>
               </form>

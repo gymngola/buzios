@@ -183,13 +183,22 @@
     const dict = (texts[lang] || texts.pt || {});
     $$('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
-      if (dict[key] != null) {
-        // Support line breaks in titles
-        if (el.tagName === 'H1' || el.tagName === 'H2' || el.classList.contains('hero-title')) {
-          el.innerHTML = dict[key].replace(/\n/g, '<br>');
-        } else {
-          el.textContent = dict[key];
-        }
+      if (dict[key] == null) return;
+      const raw = String(dict[key]);
+      const wantHtml =
+        el.hasAttribute('data-i18n-html') ||
+        el.tagName === 'H1' ||
+        el.tagName === 'H2' ||
+        el.classList.contains('hero-title');
+      if (wantHtml || raw.includes('\n')) {
+        const safe = raw
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br>');
+        el.innerHTML = safe;
+      } else {
+        el.textContent = raw;
       }
     });
     document.documentElement.lang = lang;

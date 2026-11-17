@@ -202,10 +202,12 @@ Each installs as its own standalone app (different icons and names). The service
 
 ### Catalog (plans, texts, site images)
 
-1. Admin edits in memory / optional **Guardar rascunho** (this browser only, dirty flag)
-2. **Publicar na loja** → Worker signs upload → `buzios/catalog.json` (+ CDN invalidate)
+1. Admin edits in memory; catalog panels auto-save a **dirty draft** to this browser (`localStorage`)
+2. **Publicar** → Worker signs upload → `buzios/catalog.json` (+ CDN invalidate)
 3. Public site + admin load via `GET https://buzios-publish.gymngola.workers.dev/catalog`
 4. On admin load: remote catalog is source of truth; local draft only if dirty
+
+**Textos panel:** grouped editors for home + Ginásio / Natação / Planos / Contacto / Inscrição, swim monthly price grids, and inscrição form labels/options (`data-i18n` on public pages; defaults in `js/products.js`). Changing texts or image slots does nothing for visitors until **Publicar**. Product plan names/prices are edited under **Planos**, not Textos. Static gallery files under `images/` are not catalog slots.
 
 ### Store (inscriptions, contact, newsletter, clients)
 
@@ -280,6 +282,9 @@ Signed upload signature params (alphabetical): `invalidate`, `overwrite`, `publi
 Dense operational list for membership staff:
 
 - Sticky status strip (Activos / A expirar / Expirados / Em dívida / Pendentes)
+- Filters include **Precisa inscrição** (90+ days since `lastPaymentAt` / `planEnd`, or never paid)
+- List badge + modal banner for re-enrollment; annual gym fee auto-checked when Área includes ginásio
+- Swim school enrollment fee always visible in payment extras (“Obrigatória na 1ª vez”)
 - Default sort: priority (dívida → a expirar → rest)
 - Row layout with days-left pills and left border for debt / expiring
 - Primary actions: Renovar, WhatsApp; secondary under **Mais** (closes on outside click / Escape)
@@ -334,6 +339,12 @@ Several staff devices can keep admin open:
 - Bulk checkbox selection is kept in memory across poll re-renders
 
 ## Recent changes
+
+### 2026-11-17 — Textos expansion + 90-day re-enrollment
+
+- **Textos:** full grouped site copy (all public pages, swim price grids, inscrição dropdown labels). Subpages use `data-i18n`; publish required for live site.
+- **Clientes:** filter/badge **Precisa inscrição**; modal banner; auto-check annual gym fee (ginasio/ambos only); swim inscrição always visible in extras.
+- Details: `BLUEPRINT.md` §4 Textos, §5 90-day rule, changelog.
 
 ### 2026-11-12 / 13 — Clientes load + “Pagar e activar”
 

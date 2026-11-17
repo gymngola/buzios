@@ -168,68 +168,68 @@
     <section class="section">
       <div class="container">
         <div class="success-box" id="successBox">
-          <h2>Inscrição enviada</h2>
-          <p class="section-desc">Recebemos os seus dados. Vamos contactá-lo em breve para confirmar.</p>
+          <h2 data-i18n="inscricao.success.title">Inscrição enviada</h2>
+          <p class="section-desc" data-i18n="inscricao.success.desc">Recebemos os seus dados. Vamos contactá-lo em breve para confirmar.</p>
           <a href="index.html" class="btn btn-outline mt-2">Voltar ao início</a>
         </div>
 
         <form class="enroll-form" id="enrollForm">
           <div class="form-section">
-            <h3>1. O que pretende</h3>
+            <h3 data-i18n="inscricao.section.what">1. O que pretende</h3>
             <div class="form-group">
-              <label>Área <span class="req">*</span></label>
+              <label><span data-i18n="inscricao.label.area">Área</span> <span class="req">*</span></label>
               <select id="eArea" required>
-                <option value="">Seleccione…</option>
-                <option value="ginasio">Ginásio</option>
-                <option value="natacao">Natação</option>
-                <option value="ambos">Ginásio e Natação</option>
+                <option value="" data-i18n="inscricao.opt.select">Seleccione…</option>
+                <option value="ginasio" data-i18n="inscricao.opt.area.ginasio">Ginásio</option>
+                <option value="natacao" data-i18n="inscricao.opt.area.natacao">Natação</option>
+                <option value="ambos" data-i18n="inscricao.opt.area.ambos">Ginásio e Natação</option>
               </select>
             </div>
 
             <!-- Ginásio plan (single or dual) -->
             <div class="form-group" id="planGroupGym" style="display:none">
-              <label>Plano de ginásio</label>
+              <label data-i18n="inscricao.label.planGym">Plano de ginásio</label>
               <select id="ePlanGym">
-                <option value="">Ainda não sei / a definir</option>
+                <option value="" data-i18n="inscricao.opt.unknown">Ainda não sei / a definir</option>
               </select>
             </div>
 
             <!-- Natação: tipo + módulo/frequência ou férias -->
             <div id="planGroupSwim" style="display:none">
               <div class="form-group">
-                <label>Tipo de plano de natação</label>
+                <label data-i18n="inscricao.label.swimType">Tipo de plano de natação</label>
                 <select id="eSwimType">
-                  <option value="">Ainda não sei / a definir</option>
-                  <option value="mensal">Mensalidade (aulas por semana)</option>
-                  <option value="ferias">Plano de férias (aulas seguidas)</option>
+                  <option value="" data-i18n="inscricao.opt.unknown">Ainda não sei / a definir</option>
+                  <option value="mensal" data-i18n="inscricao.opt.swim.mensal">Mensalidade (aulas por semana)</option>
+                  <option value="ferias" data-i18n="inscricao.opt.swim.ferias">Plano de férias (aulas seguidas)</option>
                 </select>
               </div>
               <div class="form-group" id="swimMensalFields" style="display:none">
-                <label>Módulo</label>
+                <label data-i18n="inscricao.label.module">Módulo</label>
                 <select id="eSwimModule">
-                  <option value="">Seleccione o módulo…</option>
-                  <option value="bebes">Bebés (6 meses–5 anos · 45 min)</option>
-                  <option value="especial">Especial — Crianças (2–14 anos · 60 min)</option>
-                  <option value="hidro">Hidroginástica (adultos/adolescentes · 60 min)</option>
-                  <option value="mensal">Natação 6–99 anos (60 min)</option>
+                  <option value="" data-i18n="inscricao.opt.moduleSelect">Seleccione o módulo…</option>
+                  <option value="bebes" data-i18n="inscricao.opt.mod.bebes">Bebés (6 meses–5 anos · 45 min)</option>
+                  <option value="especial" data-i18n="inscricao.opt.mod.especial">Especial — Crianças (2–14 anos · 60 min)</option>
+                  <option value="hidro" data-i18n="inscricao.opt.mod.hidro">Hidroginástica (adultos/adolescentes · 60 min)</option>
+                  <option value="mensal" data-i18n="inscricao.opt.mod.natacao699">Natação 6–99 anos (60 min)</option>
                 </select>
-                <label style="margin-top:0.75rem">Frequência semanal</label>
+                <label style="margin-top:0.75rem" data-i18n="inscricao.label.freq">Frequência semanal</label>
                 <select id="eSwimFreq">
-                  <option value="">Seleccione…</option>
-                  <option value="1x">1× por semana</option>
-                  <option value="2x">2× por semana</option>
-                  <option value="3x">3× por semana</option>
-                  <option value="5x">5× por semana</option>
-                  <option value="6x">6× por semana</option>
+                  <option value="" data-i18n="inscricao.opt.select">Seleccione…</option>
+                  <option value="1x" data-i18n="inscricao.opt.freq.1x">1× por semana</option>
+                  <option value="2x" data-i18n="inscricao.opt.freq.2x">2× por semana</option>
+                  <option value="3x" data-i18n="inscricao.opt.freq.3x">3× por semana</option>
+                  <option value="5x" data-i18n="inscricao.opt.freq.5x">5× por semana</option>
+                  <option value="6x" data-i18n="inscricao.opt.freq.6x">6× por semana</option>
                 </select>
               </div>
               <div class="form-group" id="swimFeriasFields" style="display:none">
-                <label>Pacote de férias</label>
+                <label data-i18n="inscricao.label.package">Pacote de férias</label>
                 <select id="eSwimPackage">
-                  <option value="">Seleccione…</option>
-                  <option value="natacao-10">10 aulas seguidas — 20.000 Kz</option>
-                  <option value="natacao-15">15 aulas seguidas — 30.000 Kz</option>
-                  <option value="natacao-25">25 aulas seguidas — 50.000 Kz</option>
+                  <option value="" data-i18n="inscricao.opt.select">Seleccione…</option>
+                  <option value="natacao-10" data-i18n="inscricao.opt.pkg.10">10 aulas seguidas — 20.000 Kz</option>
+                  <option value="natacao-15" data-i18n="inscricao.opt.pkg.15">15 aulas seguidas — 30.000 Kz</option>
+                  <option value="natacao-25" data-i18n="inscricao.opt.pkg.25">25 aulas seguidas — 50.000 Kz</option>
                 </select>
               </div>
               <p class="muted" style="font-size:0.8rem;margin-top:0.35rem;margin-bottom:0.85rem">
@@ -253,8 +253,8 @@
               <label class="check-card">
                 <input type="checkbox" id="eAnnual" checked>
                 <span>
-                  <strong>Inscrição anual (ginásio)</strong> — <span class="accent">6.500 Kz</span><br>
-                  <span class="muted" style="font-size:0.8rem;font-weight:400">Obrigatória na 1ª visita ao ginásio. Desmarque se já for sócio activo.</span>
+                  <strong data-i18n="inscricao.annual.title">Inscrição anual (ginásio)</strong> — <span class="accent">6.500 Kz</span><br>
+                  <span class="muted" style="font-size:0.8rem;font-weight:400" data-i18n="inscricao.annual.help">Obrigatória na 1ª visita ao ginásio. Desmarque se já for sócio activo.</span>
                 </span>
               </label>
             </div>
@@ -264,15 +264,15 @@
               <label class="check-card">
                 <input type="checkbox" id="eSwimInscr" checked>
                 <span>
-                  <strong>Inscrição Escola de Natação</strong> — <span class="accent">10.500 Kz</span><br>
-                  <span class="muted" style="font-size:0.8rem;font-weight:400">Taxa única na 1ª inscrição. Desmarque se já estiver inscrito na escola.</span>
+                  <strong data-i18n="inscricao.swimFee.title">Inscrição Escola de Natação</strong> — <span class="accent">10.500 Kz</span><br>
+                  <span class="muted" style="font-size:0.8rem;font-weight:400" data-i18n="inscricao.swimFee.help">Taxa única na 1ª inscrição. Desmarque se já estiver inscrito na escola.</span>
                 </span>
               </label>
             </div>
 
             <!-- Gym extras -->
             <div class="form-group" id="extrasGroup" style="display:none">
-              <label>Extras ginásio (opcional)</label>
+              <label data-i18n="inscricao.label.extras">Extras ginásio (opcional)</label>
               <div class="check-stack">
                 <label class="check-card">
                   <input type="checkbox" id="eExtraAvaliacao" data-product="avaliacao-fisica">

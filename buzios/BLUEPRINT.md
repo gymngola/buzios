@@ -127,10 +127,11 @@ Password gate → sections:
 | **Treinos** | Attendance: mark sessions, day/month counts (see §5.1) |
 | Planos | Catalog products/prices → publish |
 | Imagens | Slots + media library → publish |
-| Textos | Site copy → publish |
+| Textos | Grouped site copy (home + all public pages) → publish |
 | Histórico | Global audit log |
 | Guia | In-app staff help + force logout all devices |
 
+- **Textos** covers ~190 `data-i18n` keys grouped by page/section: home (hero, about, services, plans teaser, CTA, location/footer), Ginásio, Natação, Planos, Contacto, Inscrição, swim monthly price grids (module titles/descriptions/prices + frequency labels), and inscrição form labels/dropdown options. Public pages use `data-i18n` / `data-i18n-html`; `applyTexts()` in `js/app.js` applies catalog texts after load (multiline → `<br>`). Defaults live in `js/products.js` (`DEFAULT_TEXTS`). **Not** in Textos: product names/prices (Planos panel), static gallery files under `images/`, OS meta tags.
 - Only Planos / Imagens / Textos need **Publicar no website**.
 - Clientes / inscrições / contactos / newsletter / treinos persist via `/admin/data` → **D1** automatically.
 - **Nav badges:**
@@ -192,17 +193,24 @@ Designed for daily membership ops: who is active, who expires soon, who owes.
 2. **Sticky strip**
    - Status counts: Activos · A expirar (7d) · Expirados · Em dívida · Pendentes (coloured underline)
    - Search + sort
-   - Filter pills: Todos / Activos / A expirar / Expirados / Em dívida / Pendentes / Suspensos / Arquivados
+   - Filter pills: Todos / Activos / A expirar / Expirados / Em dívida / **Precisa inscrição** / Pendentes / Suspensos / Arquivados / Lixeira (30d)
 3. Top bulk bar (select all + actions when list non-empty)
 4. **Dense rows** (not large cards)
 5. Floating bulk bar when ≥1 row selected
+
+### 90-day re-enrollment (`needsReenrollment`)
+
+- Rule: ≥90 calendar days (Africa/Luanda) since `lastPaymentAt`, else since `planEnd`; if neither exists → needs inscrição (includes new clients).
+- **List:** badge **precisa inscrição** on matching rows; filter **Precisa inscrição**.
+- **Modal:** banner when opening a client that needs re-enrollment; auto-checks **Inscrição anual (ginásio)** only when Área is ginásio/ambos (never leaves a hidden checked box for natação-only). Área change keeps banner/checkbox in sync.
+- Swim school fee row is **always visible** in the payment extras block (not gated by Área), with helper “Obrigatória na 1ª vez.”
 
 ### Row content
 
 | Column | Content |
 |--------|---------|
 | Checkbox | Bulk select |
-| Main | Name (click → edit), membership + billing badges, phone · email · área |
+| Main | Name (click → edit), membership + billing badges, **precisa inscrição** when applicable, phone · email · área |
 | Plan | Plan name, price, cycle |
 | Period | Start → end + **days-left pill** (green / amber / red) |
 | Actions | Renovar, WhatsApp emphasised when debt/expiring; Editar; **Mais** menu |
@@ -268,7 +276,7 @@ Legacy notes dumps (`Nº · Horário · Cartão · Idade` and labeled Objectivos
 
 ### Catalog (`buzios/catalog.json`)
 
-Plans, site texts, image slot URLs — edited in admin, published explicitly.
+Plans, site texts (`texts.pt` / `texts.en` key→string maps), image slot URLs — edited in admin, published explicitly via `POST /publish`. Text keys are flat dotted ids (e.g. `hero.title`, `swim.mod.bebes.1x`, `inscricao.opt.freq.2x`).
 
 ### Operational data (D1 primary)
 
@@ -336,6 +344,11 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 ---
 
 ## 9. Change log (blueprint)
+
+### 2026-11-17
+
+- **Textos panel expanded:** grouped editors for all public pages (home sections, Ginásio, Natação, Planos, Contacto, Inscrição), swim monthly price grids, and inscrição dropdown labels/options. Subpages wired with `data-i18n`; `applyTexts` supports multiline/`data-i18n-html`. Publish still required for visitors to see changes.
+- **90-day re-enrollment UX:** `needsReenrollment()` from `lastPaymentAt` → `planEnd`; list badge + filter **Precisa inscrição**; modal banner; auto-check annual gym fee when Área includes ginásio; swim inscrição fee always visible with “Obrigatória na 1ª vez.”
 
 ### 2026-11-09
 

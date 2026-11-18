@@ -5522,10 +5522,279 @@
     list.querySelectorAll('[data-edit-cli]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        openClientModal(btn.getAttribute('data-edit-cli'));
+        // Treinos page: open training sheet instead of normal client profile
+        openTrainingSheetModal(btn.getAttribute('data-edit-cli'));
       });
     });
   }
+
+  /* —— Training sheet modal (Treinos → client name) —— */
+  let _sheetClientId = null;
+  let _sheetData = null;
+
+  function closeTrainingSheetModal() {
+    const modal = $('#trainingSheetModal');
+    if (modal) modal.classList.remove('open');
+    _sheetClientId = null;
+    _sheetData = null;
+  }
+
+  async function openTrainingSheetModal(clientId) {
+    if (!clientId) return;
+    _sheetClientId = String(clientId);
+    const c = (store.clients || []).find(x => String(x.id) === _sheetClientId);
+    const title = $('#trainingSheetTitle');
+    const sub = $('#trainingSheetSubtitle');
+    if (title) title.textContent = 'Ficha de treino' + (c && c.name ? ' — ' + c.name : '');
+    if (sub) {
+      sub.textContent = c
+        ? ((c.memberNumber != null ? 'Nº ' + c.memberNumber + ' · ' : '') + (c.email || c.phone || ''))
+        : '';
+    }
+    const body = $('#trainingSheetBody');
+    if (body) body.innerHTML = '<p class="muted" style="font-size:0.85rem">A carregar ficha…</p>';
+    const modal = $('#trainingSheetModal');
+    if (modal) modal.classList.add('open');
+
+    try {
+      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          action: 'get_training_sheet',
+          data: { clientId: _sheetClientId },
+          adminName: getAdminName()
+        }),
+        cache: 'no-store'
+      }, WORKER_FETCH_MS);
+      const json = res.ok ? await res.json() : null;
+      const sheet = json && json.sheet;
+      _sheetData = (sheet && sheet.data) ? JSON.parse(JSON.stringify(sheet.data)) : null;
+      if (!_sheetData) {
+        _sheetData = {
+          header: {
+            title: 'HIPERTROFIA FEMENINO 1',
+            name: (c && c.name) || '',
+            memberNumber: c && c.memberNumber != null ? String(c.memberNumber) : '',
+            schedule: (c && c.schedule) || '',
+            age: c && c.age != null ? c.age : null,
+            sex: 'F',
+            weight: null,
+            height: null,
+            objective: '',
+            obs: ''
+          },
+          methods: { month1: '', month2: '', month3: '', month4: '', linear: '', dosage: '3 R: 12,10,8', speed: '', maxStrength: '', rest: '', level: '' },
+          frequency: '3 DIAS',
+          blocks: [
+            { id: 'B1', label: 'PERNAS', dayHint: '', exercises: [], totalTime: '' },
+            { id: 'B2', label: 'BRAÇOS/COSTAS/PEITO', dayHint: '', exercises: [], totalTime: '' },
+            { id: 'B3', label: 'GLÚTEOS', dayHint: '', exercises: [], totalTime: '' }
+          ],
+          notes: [],
+          evaluations: []
+        };
+      }
+      // Pre-fill name / number from client if blank
+      if (c) {
+        if (!_sheetData.header) _sheetData.header = {};
+        if (!_sheetData.header.name) _sheetData.header.name = c.name || '';
+        if (!_sheetData.header.memberNumber && c.memberNumber != null) {
+          _sheetData.header.memberNumber = String(c.memberNumber);
+        }
+      }
+      renderTrainingSheetForm();
+    } catch (e) {
+      if (body) body.innerHTML = '<p class="muted">Não foi possível carregar a ficha. Tente novamente.</p>';
+      toast(isTimeoutError(e) ? 'Servidor não respondeu' : 'Erro ao carregar ficha');
+    }
+  }
+
+  function renderTrainingSheetForm() {
+    const body = $('#trainingSheetBody');
+    if (!body || !_sheetData) return;
+    const h = _sheetData.header || {};
+    const m = _sheetData.methods || {};
+    const blocks = Array.isArray(_sheetData.blocks) ? _sheetData.blocks : [];
+    const notes = Array.isArray(_sheetData.notes) ? _sheetData.notes : [];
+    const evals = Array.isArray(_sheetData.evaluations) ? _sheetData.evaluations : [];
+
+    let html = '';
+    html += '<div class="form-row"><label>Título</label><input type="text" id="tsTitle" value="' + escapeHtml(h.title || '') + '"></div>';
+    html += '<div class="form-grid-2">';
+    html += '<div class="form-row"><label>Nome</label><input type="text" id="tsName" value="' + escapeHtml(h.name || '') + '"></div>';
+    html += '<div class="form-row"><label>Nº utente</label><input type="text" id="tsMember" value="' + escapeHtml(h.memberNumber || '') + '"></div>';
+    html += '</div>';
+    html += '<div class="form-row"><label>Objectivo</label><input type="text" id="tsObjective" value="' + escapeHtml(h.objective || '') + '"></div>';
+    html += '<div class="form-grid-2">';
+    html += '<div class="form-row"><label>Dosagem</label><input type="text" id="tsDosage" value="' + escapeHtml(m.dosage || '') + '"></div>';
+    html += '<div class="form-row"><label>Frequência</label><input type="text" id="tsFrequency" value="' + escapeHtml(_sheetData.frequency || '') + '"></div>';
+    html += '</div>';
+
+    blocks.forEach((b, bi) => {
+      html += '<div class="ts-block" data-bi="' + bi + '" style="border:1px solid #e5e5e5;border-radius:8px;padding:0.75rem;margin:0.85rem 0">';
+      html += '<div class="form-row"><label>Bloco ' + escapeHtml(b.id || String(bi + 1)) + ' — rótulo</label>';
+      html += '<input type="text" class="ts-block-label" data-bi="' + bi + '" value="' + escapeHtml(b.label || '') + '"></div>';
+      html += '<div class="form-row"><label>Dia / dica</label><input type="text" class="ts-block-hint" data-bi="' + bi + '" value="' + escapeHtml(b.dayHint || '') + '"></div>';
+      const exs = Array.isArray(b.exercises) ? b.exercises : [];
+      html += '<div class="ts-ex-list">';
+      exs.forEach((ex, ei) => {
+        html += '<div class="ts-ex-row form-grid-2" style="gap:0.4rem;margin-bottom:0.4rem" data-bi="' + bi + '" data-ei="' + ei + '">';
+        html += '<input type="text" class="ts-ex-name" placeholder="Exercício" value="' + escapeHtml(ex.name || '') + '">';
+        html += '<div style="display:flex;gap:0.35rem">';
+        html += '<input type="text" class="ts-ex-sets" placeholder="Séries" value="' + escapeHtml(ex.sets || '') + '" style="width:4.5rem">';
+        html += '<input type="text" class="ts-ex-reps" placeholder="Reps" value="' + escapeHtml(ex.reps || '') + '" style="width:4.5rem">';
+        html += '<button type="button" class="icon-btn ts-ex-del" data-bi="' + bi + '" data-ei="' + ei + '" title="Remover">×</button>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+      html += '<button type="button" class="btn-ghost ts-add-ex" data-bi="' + bi + '" style="margin-top:0.35rem;font-size:0.8rem">+ Exercício</button>';
+      html += '</div>';
+    });
+
+    html += '<div class="form-row"><label>Observações (uma por linha)</label>';
+    html += '<textarea id="tsNotes" rows="3" style="width:100%">' + escapeHtml(notes.map(n => typeof n === 'string' ? n : (n.text || '')).join('\n')) + '</textarea></div>';
+
+    // Evaluations (style B)
+    html += '<div style="margin-top:1rem"><strong style="font-size:0.9rem">Avaliações físicas</strong></div>';
+    if (!evals.length) {
+      html += '<p class="muted" style="font-size:0.8rem;margin:0.35rem 0">Ainda sem avaliações.</p>';
+    } else {
+      evals.forEach((ev, ei) => {
+        html += '<div class="ts-eval-card" data-ei="' + ei + '" style="border:1px solid #e5e5e5;border-radius:8px;padding:0.65rem;margin:0.5rem 0;background:#fafafa">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.35rem">';
+        html += '<strong style="font-size:0.85rem">' + escapeHtml(ev.date || '—') + '</strong>';
+        html += '<button type="button" class="icon-btn ts-eval-del" data-ei="' + ei + '" title="Remover">×</button>';
+        html += '</div>';
+        html += '<div class="form-grid-2" style="gap:0.4rem">';
+        html += '<div class="form-row"><label>Peso (kg)</label><input type="text" class="ts-ev-kg" data-ei="' + ei + '" value="' + escapeHtml(ev.kg != null ? String(ev.kg) : '') + '"></div>';
+        html += '<div class="form-row"><label>IMC</label><input type="text" class="ts-ev-imc" data-ei="' + ei + '" value="' + escapeHtml(ev.imc != null ? String(ev.imc) : '') + '"></div>';
+        html += '<div class="form-row"><label>Massa gorda %</label><input type="text" class="ts-ev-mg" data-ei="' + ei + '" value="' + escapeHtml(ev.mg != null ? String(ev.mg) : '') + '"></div>';
+        html += '<div class="form-row"><label>Pulso</label><input type="text" class="ts-ev-pulse" data-ei="' + ei + '" value="' + escapeHtml(ev.pulse != null ? String(ev.pulse) : '') + '"></div>';
+        html += '</div></div>';
+      });
+    }
+    html += '<button type="button" id="tsAddEval" class="btn-ghost" style="margin-top:0.5rem;font-size:0.85rem">+ Avaliação</button>';
+
+    body.innerHTML = html;
+
+    // Bind dynamic controls
+    body.querySelectorAll('.ts-add-ex').forEach(btn => {
+      btn.addEventListener('click', () => {
+        collectSheetFormIntoData();
+        const bi = parseInt(btn.getAttribute('data-bi'), 10);
+        if (!_sheetData.blocks[bi]) return;
+        if (!Array.isArray(_sheetData.blocks[bi].exercises)) _sheetData.blocks[bi].exercises = [];
+        _sheetData.blocks[bi].exercises.push({ name: '', sets: '', reps: '', rest: '', temp: '' });
+        renderTrainingSheetForm();
+      });
+    });
+    body.querySelectorAll('.ts-ex-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        collectSheetFormIntoData();
+        const bi = parseInt(btn.getAttribute('data-bi'), 10);
+        const ei = parseInt(btn.getAttribute('data-ei'), 10);
+        if (_sheetData.blocks[bi] && Array.isArray(_sheetData.blocks[bi].exercises)) {
+          _sheetData.blocks[bi].exercises.splice(ei, 1);
+        }
+        renderTrainingSheetForm();
+      });
+    });
+    body.querySelectorAll('.ts-eval-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        collectSheetFormIntoData();
+        const ei = parseInt(btn.getAttribute('data-ei'), 10);
+        if (Array.isArray(_sheetData.evaluations)) _sheetData.evaluations.splice(ei, 1);
+        renderTrainingSheetForm();
+      });
+    });
+    const addEval = $('#tsAddEval');
+    if (addEval) {
+      addEval.addEventListener('click', () => {
+        collectSheetFormIntoData();
+        if (!Array.isArray(_sheetData.evaluations)) _sheetData.evaluations = [];
+        const today = new Date().toISOString().slice(0, 10);
+        _sheetData.evaluations.unshift({ date: today, kg: null, imc: null, mg: null, pulse: null, pas: null, pad: null, fcMax: null });
+        renderTrainingSheetForm();
+      });
+    }
+  }
+
+  function collectSheetFormIntoData() {
+    if (!_sheetData) return;
+    if (!_sheetData.header) _sheetData.header = {};
+    if (!_sheetData.methods) _sheetData.methods = {};
+    const g = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+    _sheetData.header.title = g('tsTitle');
+    _sheetData.header.name = g('tsName');
+    _sheetData.header.memberNumber = g('tsMember');
+    _sheetData.header.objective = g('tsObjective');
+    _sheetData.methods.dosage = g('tsDosage');
+    _sheetData.frequency = g('tsFrequency');
+
+    const notesRaw = g('tsNotes');
+    _sheetData.notes = String(notesRaw || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+    if (!Array.isArray(_sheetData.blocks)) _sheetData.blocks = [];
+    _sheetData.blocks.forEach((b, bi) => {
+      const labelEl = document.querySelector('.ts-block-label[data-bi="' + bi + '"]');
+      const hintEl = document.querySelector('.ts-block-hint[data-bi="' + bi + '"]');
+      if (labelEl) b.label = labelEl.value;
+      if (hintEl) b.dayHint = hintEl.value;
+      const rows = document.querySelectorAll('.ts-ex-row[data-bi="' + bi + '"]');
+      const exs = [];
+      rows.forEach(row => {
+        const name = (row.querySelector('.ts-ex-name') || {}).value || '';
+        const sets = (row.querySelector('.ts-ex-sets') || {}).value || '';
+        const reps = (row.querySelector('.ts-ex-reps') || {}).value || '';
+        if (name || sets || reps) exs.push({ name, sets, reps, rest: '', temp: '' });
+      });
+      b.exercises = exs;
+    });
+
+    if (!Array.isArray(_sheetData.evaluations)) _sheetData.evaluations = [];
+    _sheetData.evaluations.forEach((ev, ei) => {
+      const kg = document.querySelector('.ts-ev-kg[data-ei="' + ei + '"]');
+      const imc = document.querySelector('.ts-ev-imc[data-ei="' + ei + '"]');
+      const mg = document.querySelector('.ts-ev-mg[data-ei="' + ei + '"]');
+      const pulse = document.querySelector('.ts-ev-pulse[data-ei="' + ei + '"]');
+      if (kg) ev.kg = kg.value !== '' ? kg.value : null;
+      if (imc) ev.imc = imc.value !== '' ? imc.value : null;
+      if (mg) ev.mg = mg.value !== '' ? mg.value : null;
+      if (pulse) ev.pulse = pulse.value !== '' ? pulse.value : null;
+    });
+  }
+
+  async function saveTrainingSheetModal() {
+    if (!_sheetClientId || !_sheetData) return;
+    collectSheetFormIntoData();
+    const btn = $('#trainingSheetSave');
+    if (btn) btn.disabled = true;
+    try {
+      const ok = await adminAction('save_training_sheet', {
+        clientId: _sheetClientId,
+        data: _sheetData
+      });
+      if (ok) {
+        toast('Ficha de treino guardada');
+        closeTrainingSheetModal();
+      } else {
+        toast('Não foi possível guardar a ficha');
+      }
+    } catch (e) {
+      toast(isTimeoutError(e) ? 'Servidor não respondeu' : 'Erro ao guardar ficha');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  $('#closeTrainingSheetModal')?.addEventListener('click', closeTrainingSheetModal);
+  $('#trainingSheetCancel')?.addEventListener('click', closeTrainingSheetModal);
+  $('#trainingSheetSave')?.addEventListener('click', () => { saveTrainingSheetModal(); });
+  $('#trainingSheetModal')?.addEventListener('click', (e) => {
+    if (e.target === $('#trainingSheetModal')) closeTrainingSheetModal();
+  });
 
   let _trainingAddClientId = null;
 

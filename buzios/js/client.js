@@ -144,9 +144,15 @@
 
   var SECTION_TITLES = {
     plan: 'Plano',
+    treino: 'Treino',
     account: 'Minha conta',
     payments: 'Pagamentos'
   };
+
+  var MONTHS_PT = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
 
   function showAuth() {
     document.body.classList.remove('is-dash');
@@ -234,6 +240,27 @@
       }
     }
 
+    // Monthly training count (from Worker me payload)
+    var tPill = $('#trainingsPill');
+    if (tPill) {
+      var n = c.trainingsThisMonth;
+      if (n == null || n === '') {
+        tPill.hidden = true;
+      } else {
+        var now = new Date();
+        var monthLabel = MONTHS_PT[now.getMonth()] + ' ' + now.getFullYear();
+        var count = Number(n) || 0;
+        tPill.hidden = false;
+        tPill.className = 'days-pill trainings-pill';
+        if (count === 0) {
+          tPill.textContent = 'Ainda sem treinos registados em ' + monthLabel;
+        } else {
+          tPill.classList.add('is-ok');
+          tPill.textContent = count + ' treino' + (count === 1 ? '' : 's') + ' em ' + monthLabel;
+        }
+      }
+    }
+
     $('#infoPhone').textContent = c.phone || '—';
     $('#infoEmail').textContent = c.email || '—';
     $('#infoArea').textContent = c.area || '—';
@@ -258,6 +285,109 @@
       html += '</dl>';
       payEl.innerHTML = html;
     }
+
+    renderTrainingSheetReadonly(c.trainingSheet);
+  }
+
+  function renderTrainingSheetReadonly(sheet) {
+    var host = $('#treinoSheetHost');
+    if (!host) return;
+    if (!sheet || typeof sheet !== 'object') {
+      host.innerHTML = '<p class="empty-note" id="treinoEmpty">Ainda não há ficha de treino associada à sua conta. O personal trainer preenche-a no ginásio.</p>';
+      return;
+    }
+    var h = sheet.header || {};
+    var methods = sheet.methods || {};
+    var blocks = Array.isArray(sheet.blocks) ? sheet.blocks : [];
+    var notes = Array.isArray(sheet.notes) ? sheet.notes : [];
+    var evals = Array.isArray(sheet.evaluations) ? sheet.evaluations.slice() : [];
+    evals.sort(function (a, b) {
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+
+    var html = '';
+    html += '<div class="sheet-paper">';
+    html += '<div class="sheet-header">';
+    html += '<div class="sheet-title">' + escapeHtml(h.title || 'Ficha de treino') + '</div>';
+    html += '<div class="sheet-meta">';
+    if (h.name) html += '<span><strong>Nome</strong> ' + escapeHtml(h.name) + '</span>';
+    if (h.memberNumber) html += '<span><strong>Nº</strong> ' + escapeHtml(String(h.memberNumber)) + '</span>';
+    if (h.schedule) html += '<span><strong>Horário</strong> ' + escapeHtml(h.schedule) + '</span>';
+    if (h.objective) html += '<span><strong>Objectivo</strong> ' + escapeHtml(h.objective) + '</span>';
+    html += '</div></div>';
+
+    var methodBits = [];
+    if (methods.dosage) methodBits.push('Dosagem: ' + methods.dosage);
+    if (methods.linear) methodBits.push('Linear: ' + methods.linear);
+    if (sheet.frequency) methodBits.push('Frequência: ' + sheet.frequency);
+    if (methodBits.length) {
+      html += '<div class="sheet-methods">' + escapeHtml(methodBits.join(' · ')) + '</div>';
+    }
+
+    blocks.forEach(function (b) {
+      html += '<div class="sheet-block">';
+      html += '<div class="sheet-block-label">' + escapeHtml(b.label || b.id || 'Bloco');
+      if (b.dayHint) html += ' <span class="sheet-day-hint">' + escapeHtml(b.dayHint) + '</span>';
+      html += '</div>';
+      var exs = Array.isArray(b.exercises) ? b.exercises : [];
+      if (!exs.length) {
+        html += '<p class="empty-note" style="padding:0.35rem 0">Sem exercícios neste bloco.</p>';
+      } else {
+        html += '<ul class="sheet-ex-list">';
+        exs.forEach(function (ex) {
+          var line = (ex.name || '—');
+          var detail = [];
+          if (ex.sets) detail.push(ex.sets + ' séries');
+          if (ex.reps) detail.push(ex.reps + ' reps');
+          if (ex.rest) detail.push('descanso ' + ex.rest);
+          if (ex.temp) detail.push('temp ' + ex.temp);
+          html += '<li><span class="ex-name">' + escapeHtml(line) + '</span>';
+          if (detail.length) html += '<span class="ex-detail">' + escapeHtml(detail.join(' · ')) + '</span>';
+          html += '</li>';
+        });
+        html += '</ul>';
+      }
+      if (b.totalTime) {
+        html += '<div class="sheet-block-time">Tempo total: ' + escapeHtml(b.totalTime) + '</div>';
+      }
+      html += '</div>';
+    });
+
+    if (notes.length) {
+      html += '<div class="sheet-notes"><strong>Observações</strong><ul>';
+      notes.forEach(function (n) {
+        html += '<li>' + escapeHtml(typeof n === 'string' ? n : (n.text || '')) + '</li>';
+      });
+      html += '</ul></div>';
+    }
+
+    html += '<div class="sheet-evals">';
+    html += '<div class="sheet-block-label">Avaliações físicas</div>';
+    if (!evals.length) {
+      html += '<p class="empty-note" style="padding:0.35rem 0">Ainda sem avaliações registadas.</p>';
+    } else {
+      evals.forEach(function (ev) {
+        html += '<div class="sheet-eval-card">';
+        html += '<div class="sheet-eval-date">' + escapeHtml(formatDate(ev.date)) + '</div>';
+        html += '<dl class="sheet-eval-metrics">';
+        var pairs = [
+          ['Peso', ev.kg != null ? ev.kg + ' kg' : null],
+          ['IMC', ev.imc],
+          ['Massa gorda', ev.mg != null ? ev.mg + '%' : null],
+          ['PAS', ev.pas],
+          ['PAD', ev.pad],
+          ['Pulso', ev.pulse],
+          ['FC máx', ev.fcMax]
+        ];
+        pairs.forEach(function (p) {
+          if (p[1] == null || p[1] === '') return;
+          html += '<div class="info-row"><dt>' + escapeHtml(p[0]) + '</dt><dd>' + escapeHtml(String(p[1])) + '</dd></div>';
+        });
+        html += '</dl></div>';
+      });
+    }
+    html += '</div></div>';
+    host.innerHTML = html;
   }
 
   /* ——— Auth forms ——— */
@@ -276,6 +406,8 @@
     $('#formLogin').hidden = tab !== 'login';
     $('#formRegister').hidden = tab !== 'register';
     setAuthError('');
+    var forgotPanel = $('#forgotPanel');
+    if (forgotPanel) forgotPanel.hidden = true;
     $('#authTitle').textContent = tab === 'login' ? 'Área do membro' : 'Criar conta';
     $('#authSub').textContent = tab === 'login'
       ? 'Entre com o email registado no clube.'
@@ -359,6 +491,57 @@
     }
   }
 
+  function setCpError(msg) {
+    var el = $('#cpError');
+    if (!el) return;
+    if (!msg) { el.hidden = true; el.textContent = ''; return; }
+    el.hidden = false;
+    el.textContent = msg;
+  }
+
+  async function onChangePassword(e) {
+    e.preventDefault();
+    setCpError('');
+    var current = ($('#cpCurrent') && $('#cpCurrent').value) || '';
+    var next = ($('#cpNew') && $('#cpNew').value) || '';
+    var confirm = ($('#cpConfirm') && $('#cpConfirm').value) || '';
+    if (!current || !next) {
+      setCpError('Preencha a palavra-passe actual e a nova.');
+      return;
+    }
+    if (next.length < 6) {
+      setCpError('A nova palavra-passe deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (next !== confirm) {
+      setCpError('A confirmação não coincide com a nova palavra-passe.');
+      return;
+    }
+    var btn = $('#btnChangePassword');
+    if (btn) btn.disabled = true;
+    try {
+      await api('change_password', {
+        token: getToken(),
+        currentPassword: current,
+        newPassword: next
+      });
+      if ($('#cpCurrent')) $('#cpCurrent').value = '';
+      if ($('#cpNew')) $('#cpNew').value = '';
+      if ($('#cpConfirm')) $('#cpConfirm').value = '';
+      toast('Palavra-passe actualizada');
+    } catch (err) {
+      setCpError(err.message || 'Não foi possível alterar a palavra-passe');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function toggleForgotPanel() {
+    var panel = $('#forgotPanel');
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+  }
+
   async function bootstrap() {
     var token = getToken();
     if (!token) {
@@ -409,6 +592,12 @@
     bindPasswordToggles();
     $('#formLogin').addEventListener('submit', onLogin);
     $('#formRegister').addEventListener('submit', onRegister);
+
+    var forgotBtn = $('#btnForgotPassword');
+    if (forgotBtn) forgotBtn.addEventListener('click', toggleForgotPanel);
+
+    var cpForm = $('#formChangePassword');
+    if (cpForm) cpForm.addEventListener('submit', onChangePassword);
 
     var logoutIds = ['btnLogout', 'btnLogoutDash'];
     logoutIds.forEach(function (id) {

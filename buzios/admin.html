@@ -907,6 +907,20 @@
     </div>
   </div>
 
+  <!-- Training sheet (Treinos → click client name) -->
+  <div class="modal-backdrop" id="trainingSheetModal" role="dialog" aria-modal="true" aria-labelledby="trainingSheetTitle">
+    <div class="modal" style="max-width:560px;max-height:92vh;display:flex;flex-direction:column">
+      <button type="button" class="modal-close" id="closeTrainingSheetModal" aria-label="Fechar">×</button>
+      <h2 id="trainingSheetTitle" style="margin-bottom:0.35rem">Ficha de treino</h2>
+      <p id="trainingSheetSubtitle" class="muted" style="font-size:0.85rem;margin:0 0 0.75rem"></p>
+      <div id="trainingSheetBody" class="client-modal-scroll" style="flex:1;overflow:auto;padding-right:0.25rem"></div>
+      <div class="form-actions" style="margin-top:0.85rem;flex-shrink:0">
+        <button type="button" id="trainingSheetCancel" class="btn-dialog-cancel">Fechar</button>
+        <button type="button" id="trainingSheetSave" class="btn-dialog-ok">Guardar ficha</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Install admin app help -->
   <div class="modal-backdrop" id="installAppModal">
     <div class="modal" style="max-width:420px">
@@ -926,7 +940,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/products.js"></script>
-  <script src="js/admin.js?v=20261113a"></script>
+  <script src="js/admin.js?v=20261118a"></script>
 
   <script>
     if ('serviceWorker' in navigator) {

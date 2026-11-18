@@ -886,6 +886,47 @@ async function handleAdminData(request, env) {
     }
   }
 
+  if (action === 'get_training_sheet') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const clientId = data && data.clientId;
+    if (!clientId) return json({ error: 'clientId required' }, 400);
+    try {
+      let sheet = await d1GetTrainingSheet(env, clientId);
+      if (!sheet) {
+        const client = await d1FindClientById(env, clientId);
+        sheet = {
+          clientId: String(clientId),
+          data: emptyTrainingSheet(client),
+          updatedAt: null,
+          updatedBy: null
+        };
+      }
+      return json({ ok: true, sheet });
+    } catch (e) {
+      console.error('get_training_sheet', e && e.message);
+      return json({ error: 'D1 read failed: ' + (e && e.message) }, 500);
+    }
+  }
+
+  if (action === 'save_training_sheet') {
+    if (!env.DB) return json({ error: 'D1 not bound' }, 500);
+    const clientId = data && data.clientId;
+    if (!clientId) return json({ error: 'clientId required' }, 400);
+    const sheetData = data && data.data;
+    if (!sheetData || typeof sheetData !== 'object') {
+      return json({ error: 'data object required' }, 400);
+    }
+    try {
+      const adminName = (data && data.adminName) || null;
+      const saved = await d1SaveTrainingSheet(env, clientId, sheetData, adminName);
+      await d1Audit(env, 'save_training_sheet', 'training_sheet', String(clientId), '', adminName);
+      return json({ ok: true, sheet: saved });
+    } catch (e) {
+      console.error('save_training_sheet', e && e.message);
+      return json({ error: 'D1 write failed: ' + (e && e.message) }, 500);
+    }
+  }
+
   // Bulk import monthly training counts from legacy Excel (NUM. VEZES).
   // data.records: [{ memberNumber, year, month, count, name? }]
   // Creates `count` session rows spread across the month (approx. days for history).
@@ -1686,6 +1727,99 @@ async function d1EnsureTrainingsTable(env) {
   } catch (e) { /* ignore */ }
 }
 
+async function d1EnsureTrainingSheetsTable(env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS training_sheets (
+      client_id TEXT PRIMARY KEY,
+      data_json TEXT NOT NULL DEFAULT '{}',
+      updated_at TEXT,
+      updated_by TEXT
+    )`
+  ).run();
+  try {
+    await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_training_sheets_updated ON training_sheets(updated_at)').run();
+  } catch (e) { /* ignore */ }
+}
+
+/** Default empty sheet shaped like the paper (HIPERTROFIA style). Evaluation style B: list of dated evaluations. */
+function emptyTrainingSheet(client) {
+  const name = (client && client.name) || '';
+  const memberNumber = client && client.memberNumber != null ? String(client.memberNumber) : '';
+  return {
+    header: {
+      title: 'HIPERTROFIA FEMENINO 1',
+      name: name,
+      memberNumber: memberNumber,
+      schedule: (client && client.schedule) || '',
+      age: client && client.age != null ? client.age : null,
+      sex: 'F',
+      weight: null,
+      height: null,
+      objective: '',
+      obs: ''
+    },
+    methods: {
+      month1: '',
+      month2: '',
+      month3: '',
+      month4: '',
+      linear: '',
+      dosage: '3 R: 12,10,8',
+      speed: '',
+      maxStrength: '',
+      rest: '',
+      level: ''
+    },
+    frequency: '3 DIAS',
+    blocks: [
+      { id: 'B1', label: 'PERNAS', dayHint: '', exercises: [], totalTime: '' },
+      { id: 'B2', label: 'BRAÇOS/COSTAS/PEITO', dayHint: '', exercises: [], totalTime: '' },
+      { id: 'B3', label: 'GLÚTEOS', dayHint: '', exercises: [], totalTime: '' }
+    ],
+    notes: [],
+    evaluations: []
+  };
+}
+
+async function d1GetTrainingSheet(env, clientId) {
+  await d1EnsureTrainingSheetsTable(env);
+  const res = await env.DB.prepare(
+    'SELECT client_id, data_json, updated_at, updated_by FROM training_sheets WHERE client_id = ? LIMIT 1'
+  )
+    .bind(String(clientId))
+    .first();
+  if (!res) return null;
+  let data = {};
+  try {
+    data = JSON.parse(res.data_json || '{}') || {};
+  } catch (_) {
+    data = {};
+  }
+  return {
+    clientId: res.client_id,
+    data: data,
+    updatedAt: res.updated_at || null,
+    updatedBy: res.updated_by || null
+  };
+}
+
+async function d1SaveTrainingSheet(env, clientId, data, updatedBy) {
+  await d1EnsureTrainingSheetsTable(env);
+  const now = new Date().toISOString();
+  const json = JSON.stringify(data && typeof data === 'object' ? data : {});
+  await env.DB.prepare(
+    `INSERT INTO training_sheets (client_id, data_json, updated_at, updated_by)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(client_id) DO UPDATE SET
+       data_json = excluded.data_json,
+       updated_at = excluded.updated_at,
+       updated_by = excluded.updated_by`
+  )
+    .bind(String(clientId), json, now, updatedBy ? String(updatedBy) : null)
+    .run();
+  return { clientId: String(clientId), data: data || {}, updatedAt: now, updatedBy: updatedBy || null };
+}
+
 function trainingRowFromDb(r) {
   if (!r) return null;
   return {
@@ -2426,9 +2560,9 @@ async function verifyPassword(password, stored) {
   return check === stored;
 }
 
-function publicClient(c) {
+function publicClient(c, extras) {
   if (!c) return null;
-  return {
+  const out = {
     id: c.id,
     memberNumber: c.memberNumber,
     name: c.name,
@@ -2450,6 +2584,32 @@ function publicClient(c) {
     photoUrl: c.photoUrl || null,
     accountStatus: c.accountStatus || null
   };
+  if (extras && typeof extras === 'object') {
+    if (extras.trainingsThisMonth != null) out.trainingsThisMonth = extras.trainingsThisMonth;
+    if (extras.trainingSheet != null) out.trainingSheet = extras.trainingSheet;
+  }
+  return out;
+}
+
+async function d1CountTrainingsThisMonth(env, clientId) {
+  if (!clientId || !env.DB) return 0;
+  try {
+    await d1EnsureTrainingsTable(env);
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const m = now.getUTCMonth() + 1;
+    const monthStart = y + '-' + String(m).padStart(2, '0') + '-01';
+    const nm = m === 12 ? (y + 1) + '-01-01' : y + '-' + String(m + 1).padStart(2, '0') + '-01';
+    const res = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM trainings WHERE client_id = ? AND trained_date >= ? AND trained_date < ?'
+    )
+      .bind(String(clientId), monthStart, nm)
+      .first();
+    return Number(res && res.n) || 0;
+  } catch (e) {
+    console.error('d1CountTrainingsThisMonth', e && e.message);
+    return 0;
+  }
 }
 
 async function d1FindClientByEmail(env, email) {
@@ -2544,7 +2704,8 @@ async function handleClientAuth(request, env) {
       if (!ok) return json({ error: 'Email ou palavra-passe incorrectos' }, 401);
       await d1TouchLogin(env, client.id);
       const token = await signToken(env, client.id);
-      return json({ ok: true, token: token, client: publicClient(client) });
+      const trainingsThisMonth = await d1CountTrainingsThisMonth(env, client.id);
+      return json({ ok: true, token: token, client: publicClient(client, { trainingsThisMonth }) });
     }
 
     if (action === 'register') {
@@ -2568,7 +2729,8 @@ async function handleClientAuth(request, env) {
       await d1SetPasswordHash(env, client.id, hash);
       const token = await signToken(env, client.id);
       const refreshed = await d1FindClientById(env, client.id);
-      return json({ ok: true, token: token, client: publicClient(refreshed || client) });
+      const trainingsThisMonth = await d1CountTrainingsThisMonth(env, client.id);
+      return json({ ok: true, token: token, client: publicClient(refreshed || client, { trainingsThisMonth }) });
     }
 
     if (action === 'me') {
@@ -2576,7 +2738,16 @@ async function handleClientAuth(request, env) {
       if (!clientId) return json({ error: 'Sessão inválida ou expirada' }, 401);
       const client = await d1FindClientById(env, clientId);
       if (!client) return json({ error: 'Sessão inválida' }, 401);
-      return json({ ok: true, client: publicClient(client) });
+      const trainingsThisMonth = await d1CountTrainingsThisMonth(env, clientId);
+      let trainingSheet = null;
+      try {
+        const sheet = await d1GetTrainingSheet(env, clientId);
+        if (sheet && sheet.data) trainingSheet = sheet.data;
+      } catch (_) { /* sheet table may not exist yet */ }
+      return json({
+        ok: true,
+        client: publicClient(client, { trainingsThisMonth, trainingSheet })
+      });
     }
 
     if (action === 'change_password') {

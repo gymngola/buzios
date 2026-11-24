@@ -59,9 +59,10 @@
   const ADMIN_USERS = [
     'Julio Figueiredo',
     'Nataniel Figueiredo',
-    'Keuria',
+    'Keuria Oliveira',
     'Garcia Kissanga',
-    'Amarildo Salvador'
+    'Amarildo Salvador',
+    'Maria Eusébio'
   ];
 
   function getAdminName() {

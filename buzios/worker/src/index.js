@@ -30,15 +30,35 @@ const CORS = {
 const FOLDER = 'buzios';
 const ADMIN_NAME_MARIA = 'Maria Eusébio';
 
-/** Maria uses ADMIN_PASSWORD_MARIA only; everyone else uses ADMIN_PASSWORD only. */
+function normalizeAdminName(name) {
+  try {
+    return String(name || '').trim().normalize('NFC');
+  } catch (e) {
+    return String(name || '').trim();
+  }
+}
+
+/**
+ * Maria: ADMIN_PASSWORD_MARIA only (shared password rejected when her name is selected).
+ * Others: ADMIN_PASSWORD only (Maria's personal password rejected for other names).
+ * If adminName is omitted, accept whichever secret matches (covers older client builds).
+ */
 function isValidAdminPassword(password, adminName, env) {
   if (!password) return false;
-  const name = String(adminName || '').trim();
-  if (name === ADMIN_NAME_MARIA) {
-    const mariaPw = env.ADMIN_PASSWORD_MARIA;
-    return !!(mariaPw && password === mariaPw);
+  const name = normalizeAdminName(adminName);
+  const isMaria = name === normalizeAdminName(ADMIN_NAME_MARIA);
+  const mariaPw = env.ADMIN_PASSWORD_MARIA;
+  const sharedPw = env.ADMIN_PASSWORD;
+
+  if (mariaPw && password === mariaPw) {
+    if (name && !isMaria) return false;
+    return true;
   }
-  return !!(env.ADMIN_PASSWORD && password === env.ADMIN_PASSWORD);
+  if (sharedPw && password === sharedPw) {
+    if (isMaria) return false;
+    return true;
+  }
+  return false;
 }
 
 /** Age in full years from YYYY-MM-DD (local calendar). */

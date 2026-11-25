@@ -11,7 +11,8 @@
  *   0 3 1,7,13,19,25 * *  — every ~6 days at 03:00 UTC → d1BackupToCloudinary
  *
  * Secrets:
- *   ADMIN_PASSWORD
+ *   ADMIN_PASSWORD              — shared staff password
+ *   ADMIN_PASSWORD_MARIA        — personal password for "Maria Eusébio" only
  *   CLOUDINARY_CLOUD_NAME
  *   CLOUDINARY_API_KEY
  *   CLOUDINARY_API_SECRET
@@ -27,6 +28,18 @@ const CORS = {
 };
 
 const FOLDER = 'buzios';
+const ADMIN_NAME_MARIA = 'Maria Eusébio';
+
+/** Maria uses ADMIN_PASSWORD_MARIA only; everyone else uses ADMIN_PASSWORD only. */
+function isValidAdminPassword(password, adminName, env) {
+  if (!password) return false;
+  const name = String(adminName || '').trim();
+  if (name === ADMIN_NAME_MARIA) {
+    const mariaPw = env.ADMIN_PASSWORD_MARIA;
+    return !!(mariaPw && password === mariaPw);
+  }
+  return !!(env.ADMIN_PASSWORD && password === env.ADMIN_PASSWORD);
+}
 
 /** Age in full years from YYYY-MM-DD (local calendar). */
 function ageFromBirthDateISO(iso) {
@@ -166,7 +179,8 @@ async function handleGetCatalog(env) {
 async function handlePublish(request, env) {
   const body = await request.json();
   const { password, catalog } = body || {};
-  if (!password || password !== env.ADMIN_PASSWORD) {
+  const adminName = String((body && body.adminName) || '').trim().slice(0, 80);
+  if (!isValidAdminPassword(password, adminName, env)) {
     return json({ error: 'Unauthorized' }, 401);
   }
   if (!catalog || typeof catalog !== 'object') {
@@ -394,7 +408,7 @@ async function handleAdminData(request, env) {
   const body = await request.json();
   const { password, action, data } = body || {};
   const adminName = String((body && body.adminName) || (data && data.adminName) || '').trim().slice(0, 80);
-  if (!password || password !== env.ADMIN_PASSWORD) {
+  if (!isValidAdminPassword(password, adminName, env)) {
     return json({ error: 'Unauthorized' }, 401);
   }
 

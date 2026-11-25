@@ -69,13 +69,15 @@ cd worker
 ls                    # must show: src  wrangler.toml
 grep -n "count:" src/index.js   # sanity check new code is present
 
-npx wrangler secret put ADMIN_PASSWORD          # same as js/admin.js
+npx wrangler secret put ADMIN_PASSWORD          # shared staff password
+npx wrangler secret put ADMIN_PASSWORD_MARIA    # personal password for Maria Eusébio only
 npx wrangler secret put CLOUDINARY_CLOUD_NAME   # ogtzpc3v
 npx wrangler secret put CLOUDINARY_API_KEY      # Root key recommended
 npx wrangler secret put CLOUDINARY_API_SECRET   # exact secret, no trailing newline
 
 npx wrangler deploy
 ```
+
 
 Live base: `https://buzios-publish.gymngola.workers.dev`
 
@@ -134,8 +136,12 @@ Time Travel alone is only 7 days on Free — keep the Cloudinary snapshots. See 
 
 ### 3. Admin password + named staff
 
-Password exists **only** as Worker secret `ADMIN_PASSWORD` (`npx wrangler secret put ADMIN_PASSWORD`).  
-It is **not** in `js/admin.js`. Login requires a **staff name** (dropdown) + password; POSTs `action: "auth"` and stores password + name in session for API calls / presence / audit.
+Passwords exist **only** as Worker secrets (never in `js/admin.js`):
+
+- `ADMIN_PASSWORD` — shared by all staff **except** Maria Eusébio
+- `ADMIN_PASSWORD_MARIA` — **Maria Eusébio only** (shared password is rejected when her name is selected)
+
+Login requires a **staff name** (dropdown) + the matching password; POSTs `action: "auth"` and stores password + name in session for API calls / presence / audit. Publish also sends `adminName` so Maria can publish with her personal password.
 
 **Force logout all devices:** Guia → “Terminar todas as sessões” (`force_logout_all`) bumps D1 `auth_epoch`. Open panels pick this up on the next presence heartbeat (~40s) and return to login. Hard reload alone does **not** end a session (password stays in `sessionStorage`).
 

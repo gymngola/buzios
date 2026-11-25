@@ -7524,7 +7524,11 @@
       const res = await fetchWithTimeout(PUBLISH_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: getAdminPassword(), catalog })
+        body: JSON.stringify({
+          password: getAdminPassword(),
+          adminName: getAdminName(),
+          catalog
+        })
       }, WORKER_FETCH_MS);
       if (!res.ok) throw new Error(await res.text());
       syncLocalFromState();

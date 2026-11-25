@@ -1346,7 +1346,31 @@ a { color: var(--admin-accent); }
   box-shadow: var(--admin-shadow);
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.clients-summary .stat:hover:not(:disabled) {
+  border-color: #c9d4da;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.clients-summary .stat:focus-visible {
+  outline: none;
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(196, 92, 38, 0.15);
+}
+.clients-summary .stat.active {
+  border-color: var(--admin-accent);
+  background: #fffaf7;
+  box-shadow: 0 0 0 2px rgba(196, 92, 38, 0.12);
+}
+.clients-summary .stat:disabled {
   cursor: default;
+  opacity: 0.85;
 }
 
 .clients-summary .stat::after {
@@ -1564,12 +1588,42 @@ a { color: var(--admin-accent); }
   font-size: 0.82rem;
   margin-right: 0.15rem;
 }
+.clients-old-toggle-host {
+  margin: 0.35rem 0 0.15rem;
+  min-height: 0;
+}
+.clients-old-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.clients-old-toggle input {
+  margin: 0;
+  accent-color: var(--admin-accent);
+}
+.clients-empty .empty-hint {
+  display: inline-block;
+  margin: 0.35rem 0;
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+}
+.clients-empty #showOldClientsBtn {
+  margin-left: 0.35rem;
+}
+
 .client-row .row-badges {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0.25rem;
   margin-left: 0.25rem;
   vertical-align: middle;
+}
+.client-row .row-identity-text .row-name {
+  font-weight: 600;
 }
 .client-row .row-contact {
   font-size: 0.75rem;

@@ -844,11 +844,11 @@
     const summary = $('#clientsSummary');
     if (summary) {
       summary.innerHTML =
-        '<div class="stat ok"><strong>…</strong><span>Activos</span></div>' +
-        '<div class="stat warn"><strong>…</strong><span>A expirar (7d)</span></div>' +
-        '<div class="stat danger"><strong>…</strong><span>Expirados</span></div>' +
-        '<div class="stat danger"><strong>…</strong><span>Em dívida</span></div>' +
-        '<div class="stat neutral"><strong>…</strong><span>Pendentes</span></div>';
+        '<button type="button" class="stat ok" data-stat-filter="activo" disabled><strong>…</strong><span>Activos</span></button>' +
+        '<button type="button" class="stat warn" data-stat-filter="a_expirar" disabled><strong>…</strong><span>A expirar (7d)</span></button>' +
+        '<button type="button" class="stat danger" data-stat-filter="expirado" disabled><strong>…</strong><span>Expirados</span></button>' +
+        '<button type="button" class="stat danger" data-stat-filter="em_divida" disabled><strong>…</strong><span>Em dívida</span></button>' +
+        '<button type="button" class="stat neutral" data-stat-filter="pendente" disabled><strong>…</strong><span>Pendentes</span></button>';
     }
     const list = $('#clientsList');
     if (list && !(store.clients || []).length) {
@@ -2899,10 +2899,13 @@
   });
 
   // —— Clients (membership dates, debt, alerts) ——
-  let clientsFilter = 'all';
+  let clientsFilter = 'activo';
   let clientsSearch = '';
   let clientsSort = 'priority';
   let clientsAgeFilter = '';
+  /** When false, hide clients whose plan ended >24 months ago on Todos / Expirados / Em dívida. */
+  let clientsShowOld = false;
+  const CLIENT_OLD_DAYS = 730; // ~24 months
 
   const CYCLE_MONTHS = { mensal: 1, trimestral: 3, anual: 12, pacote: 1 };
   const ANNUAL_FEE_ID = 'inscricao-anual';
@@ -3272,13 +3275,51 @@
     return age >= min && age <= max;
   }
 
+  /** Plan ended more than ~24 months ago (soft archive for daily lists). */
+  function isVeryOldClient(c) {
+    if (!c) return false;
+    const days = c._daysLeft != null ? c._daysLeft : daysUntil(c.planEnd);
+    if (days === null || days === undefined) return false;
+    return days < -CLIENT_OLD_DAYS;
+  }
+
+  /** Age-out applies on noisy filters only; search always shows matches. */
+  function shouldHideVeryOld(filter) {
+    if (clientsShowOld || clientsSearch) return false;
+    return filter === 'all' || filter === 'expirado' || filter === 'em_divida';
+  }
+
+  function setClientsFilterUI(filter) {
+    clientsFilter = filter;
+    $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(b => {
+      b.classList.toggle('active', b.dataset.filter === filter);
+    });
+    $('#clientsSummary')?.querySelectorAll('[data-stat-filter]').forEach(el => {
+      el.classList.toggle('active', el.getAttribute('data-stat-filter') === filter);
+    });
+  }
+
   function getVisibleClients() {
     const raw = store.clients || [];
     let items = raw.map(enrichClient);
     items = items.filter(c => clientMatchesFilter(c, clientsFilter));
     items = items.filter(c => clientMatchesSearch(c, clientsSearch));
     items = items.filter(c => clientMatchesAgeFilter(c, clientsAgeFilter));
+    if (shouldHideVeryOld(clientsFilter)) {
+      items = items.filter(c => !isVeryOldClient(c));
+    }
     return sortClients(items, clientsSort);
+  }
+
+  /** Count how many would be hidden by the 24‑month soft age-out (current filter + search + age). */
+  function countHiddenVeryOld() {
+    if (!shouldHideVeryOld(clientsFilter)) return 0;
+    const raw = store.clients || [];
+    let items = raw.map(enrichClient);
+    items = items.filter(c => clientMatchesFilter(c, clientsFilter));
+    items = items.filter(c => clientMatchesSearch(c, clientsSearch));
+    items = items.filter(c => clientMatchesAgeFilter(c, clientsAgeFilter));
+    return items.filter(isVeryOldClient).length;
   }
 
   function daysPillHtml(days) {
@@ -3300,13 +3341,47 @@
 
     const summary = $('#clientsSummary');
     if (summary) {
+      const f = clientsFilter;
       summary.innerHTML = `
-        <div class="stat ok"><strong>${stats.activo}</strong><span>Activos</span></div>
-        <div class="stat warn"><strong>${stats.aExpirar}</strong><span>A expirar (7d)</span></div>
-        <div class="stat danger"><strong>${stats.expirado}</strong><span>Expirados</span></div>
-        <div class="stat danger"><strong>${stats.divida}</strong><span>Em dívida</span></div>
-        <div class="stat neutral"><strong>${stats.pendente}</strong><span>Pendentes</span></div>
+        <button type="button" class="stat ok${f === 'activo' ? ' active' : ''}" data-stat-filter="activo" title="Filtrar activos"><strong>${stats.activo}</strong><span>Activos</span></button>
+        <button type="button" class="stat warn${f === 'a_expirar' ? ' active' : ''}" data-stat-filter="a_expirar" title="Filtrar a expirar"><strong>${stats.aExpirar}</strong><span>A expirar (7d)</span></button>
+        <button type="button" class="stat danger${f === 'expirado' ? ' active' : ''}" data-stat-filter="expirado" title="Filtrar expirados"><strong>${stats.expirado}</strong><span>Expirados</span></button>
+        <button type="button" class="stat danger${f === 'em_divida' ? ' active' : ''}" data-stat-filter="em_divida" title="Filtrar em dívida"><strong>${stats.divida}</strong><span>Em dívida</span></button>
+        <button type="button" class="stat neutral${f === 'pendente' ? ' active' : ''}" data-stat-filter="pendente" title="Filtrar pendentes"><strong>${stats.pendente}</strong><span>Pendentes</span></button>
       `;
+    }
+
+    // Soft age-out toggle (Todos / Expirados / Em dívida)
+    const oldToggleHost = $('#clientsOldToggle');
+    if (oldToggleHost) {
+      const canAgeOut = clientsFilter === 'all' || clientsFilter === 'expirado' || clientsFilter === 'em_divida';
+      if (canAgeOut && !clientsSearch) {
+        const hiddenN = clientsShowOld ? 0 : countHiddenVeryOld();
+        // When showing old, estimate how many are old in current filter for the label
+        let oldInView = 0;
+        if (clientsShowOld) {
+          const rawAll = (store.clients || []).map(enrichClient)
+            .filter(c => clientMatchesFilter(c, clientsFilter))
+            .filter(c => clientMatchesAgeFilter(c, clientsAgeFilter));
+          oldInView = rawAll.filter(isVeryOldClient).length;
+        }
+        const n = clientsShowOld ? oldInView : hiddenN;
+        oldToggleHost.hidden = false;
+        oldToggleHost.innerHTML =
+          '<label class="clients-old-toggle">' +
+          '<input type="checkbox" id="clientsShowOldCb"' + (clientsShowOld ? ' checked' : '') + '>' +
+          (clientsShowOld
+            ? ' Mostrar antigos (&gt;24 meses)' + (n ? ' · ' + n : '')
+            : ' Mostrar antigos' + (n ? ' (' + n + ' ocultos)' : '')) +
+          '</label>';
+        $('#clientsShowOldCb')?.addEventListener('change', (e) => {
+          clientsShowOld = !!e.target.checked;
+          renderClients();
+        });
+      } else {
+        oldToggleHost.hidden = true;
+        oldToggleHost.innerHTML = '';
+      }
     }
 
     const filtered = getVisibleClients();
@@ -3330,22 +3405,27 @@
       return;
     }
     if (!filtered.length) {
+      const hiddenOld = countHiddenVeryOld();
       list.innerHTML = `
         <div class="clients-empty">
           Nenhum cliente neste filtro${clientsSearch ? ' / pesquisa' : ''}.
-          <br><button type="button" id="clearClientFiltersBtn">Limpar filtros</button>
+          ${hiddenOld ? '<br><span class="empty-hint">' + hiddenOld + ' cliente(s) com plano terminado há mais de 24 meses estão ocultos.</span>' : ''}
+          <br><button type="button" id="clearClientFiltersBtn">Voltar a Activos</button>
+          ${hiddenOld && !clientsShowOld ? ' <button type="button" id="showOldClientsBtn" class="btn-secondary">Mostrar antigos</button>' : ''}
         </div>`;
       $('#clearClientFiltersBtn')?.addEventListener('click', () => {
-        clientsFilter = 'all';
         clientsSearch = '';
         clientsAgeFilter = '';
+        clientsShowOld = false;
         const search = $('#clientSearch');
         if (search) search.value = '';
         const ageSel = $('#clientAgeFilter');
         if (ageSel) ageSel.value = '';
-        $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(b => {
-          b.classList.toggle('active', b.dataset.filter === 'all');
-        });
+        setClientsFilterUI('activo');
+        renderClients();
+      });
+      $('#showOldClientsBtn')?.addEventListener('click', () => {
+        clientsShowOld = true;
         renderClients();
       });
       updateBulkBar('clients');
@@ -3424,16 +3504,20 @@
                 <span class="row-name" data-edit-cli="${c.id}" title="Editar">${c.memberNumber != null ? '<span class="member-n">Nº ' + escapeHtml(String(c.memberNumber)) + '</span> ' : ''}${escapeHtml(c.name || '—')}</span>
                 <span class="row-badges">
                   <span class="status-badge status-${mem}">${mem}</span>
-                  <span class="status-badge status-${bill}">${bill.replace('_', ' ')}</span>
+                  ${bill !== 'em_dia' ? '<span class="status-badge status-' + bill + '">' + bill.replace('_', ' ') + '</span>' : ''}
                   ${isExpiring ? '<span class="status-badge status-a_expirar">a expirar</span>' : ''}
-                  ${needsReenrollment(c) ? '<span class="status-badge status-precisa_inscricao" title="Sem pagamento há 90+ dias">precisa inscrição</span>' : ''}
-                  ${c.hasCard === 'sim' ? '<span class="status-badge status-card">cartão</span>' : ''}
-                  ${(() => {
-                    const mn = monthTrainingsForClient(c.id);
-                    return '<span class="status-badge status-train" title="Treinos neste mês">' + mn + '× mês</span>';
-                  })()}
+                  ${!isExpiring && needsReenrollment(c) ? '<span class="status-badge status-precisa_inscricao" title="Sem pagamento há 90+ dias">precisa inscrição</span>' : ''}
                 </span>
-                <div class="row-contact">${[contactBits, c.schedule ? 'Horário ' + escapeHtml(c.schedule) : '', c.age != null ? 'Idade ' + escapeHtml(String(c.age)) : ''].filter(Boolean).join(' · ') || '—'}</div>
+                <div class="row-contact">${[
+                  contactBits,
+                  c.schedule ? 'Horário ' + escapeHtml(c.schedule) : '',
+                  c.age != null ? 'Idade ' + escapeHtml(String(c.age)) : '',
+                  c.hasCard === 'sim' ? 'Cartão' : '',
+                  (() => {
+                    const mn = monthTrainingsForClient(c.id);
+                    return mn != null ? (mn + '× mês') : '';
+                  })()
+                ].filter(Boolean).join(' · ') || '—'}</div>
               </div>
             </div>
           </div>
@@ -4907,12 +4991,19 @@
 
   $('#clientFilters')?.querySelectorAll('[data-filter]').forEach(btn => {
     btn.addEventListener('click', () => {
-      clientsFilter = btn.dataset.filter;
-      $('#clientFilters').querySelectorAll('[data-filter]').forEach(b => {
-        b.classList.toggle('active', b.dataset.filter === clientsFilter);
-      });
+      setClientsFilterUI(btn.dataset.filter);
       renderClients();
     });
+  });
+
+  // Clickable stats → same filters as the chip row
+  $('#clientsSummary')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-stat-filter]');
+    if (!btn || btn.disabled) return;
+    const f = btn.getAttribute('data-stat-filter');
+    if (!f) return;
+    setClientsFilterUI(f);
+    renderClients();
   });
 
   $('#inboxFilters')?.querySelectorAll('[data-inbox-filter]').forEach(btn => {

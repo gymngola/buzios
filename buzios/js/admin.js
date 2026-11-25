@@ -887,7 +887,7 @@
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_clients' }),
+        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_clients', adminName: getAdminName() }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) {
@@ -929,7 +929,7 @@
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_submissions' }),
+        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_submissions', adminName: getAdminName() }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) {
@@ -1073,7 +1073,7 @@
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_newsletters' }),
+        body: JSON.stringify({ password: getAdminPassword(), action: 'd1_get_newsletters', adminName: getAdminName() }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) {
@@ -1134,7 +1134,7 @@
         const res = await fetchWithTimeout(ADMIN_DATA_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: getAdminPassword(), action: 'get' }),
+          body: JSON.stringify({ password: getAdminPassword(), action: 'get', adminName: getAdminName() }),
           cache: 'no-store'
         }, WORKER_FETCH_MS);
         workerReachable = true;
@@ -1373,7 +1373,7 @@
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: password, action: 'get_audit_log', data: { limit: 200 } }),
+        body: JSON.stringify({ password: password, action: 'get_audit_log', adminName: getAdminName(), data: { limit: 200 } }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) throw new Error('HTTP ' + res.status);

@@ -6880,7 +6880,7 @@
 
   /**
    * One-shot: align Natação / Especial products + related site texts with DEFAULT_PRODUCTS / DEFAULT_TEXTS
-   * (Especial 6–14, Natação 15–99, 5×→4× / 6×→5× for Natação only). Marks local draft dirty — user must Publish.
+   * All swim modules: 1×–5× only; product ids …-5x/…-6x keep prices. Marks local draft dirty — user must Publish.
    */
   function applySwimAgeFreqUpdate() {
     const defaults = window.DEFAULT_PRODUCTS || [];
@@ -6888,7 +6888,9 @@
     defaults.forEach(p => { byId[p.id] = p; });
     const targetIds = [
       'natacao-mensal-1x', 'natacao-mensal-2x', 'natacao-mensal-3x', 'natacao-mensal-5x', 'natacao-mensal-6x',
-      'natacao-especial-1x', 'natacao-especial-2x', 'natacao-especial-3x', 'natacao-especial-5x', 'natacao-especial-6x'
+      'natacao-especial-1x', 'natacao-especial-2x', 'natacao-especial-3x', 'natacao-especial-5x', 'natacao-especial-6x',
+      'natacao-bebes-1x', 'natacao-bebes-2x', 'natacao-bebes-3x', 'natacao-bebes-5x', 'natacao-bebes-6x',
+      'natacao-hidro-1x', 'natacao-hidro-2x', 'natacao-hidro-3x', 'natacao-hidro-5x', 'natacao-hidro-6x'
     ];
     let nProd = 0;
     products = products.map(p => {
@@ -6908,6 +6910,9 @@
 
     const textKeys = [
       'swim.mod.especial.desc',
+      'swim.mod.especial.4x', 'swim.mod.especial.5x', 'swim.mod.especial.6x',
+      'swim.mod.bebes.4x', 'swim.mod.bebes.5x', 'swim.mod.bebes.6x',
+      'swim.mod.hidro.4x', 'swim.mod.hidro.5x', 'swim.mod.hidro.6x',
       'swim.mod.natacao699.title',
       'swim.mod.natacao699.desc',
       'swim.mod.natacao699.4x',
@@ -6932,15 +6937,21 @@
         texts.en[k] = defTexts.en[k];
       }
     });
-    // Explicit price mapping for Natação 15–99 grid: 4×=45k, 5×=55k
-    texts.pt['swim.mod.natacao699.4x'] = '45.000 Kz';
-    texts.pt['swim.mod.natacao699.5x'] = '55.000 Kz';
-    texts.pt['swim.mod.natacao699.6x'] = '55.000 Kz';
-    if (texts.en) {
-      texts.en['swim.mod.natacao699.4x'] = '45,000 Kz';
-      texts.en['swim.mod.natacao699.5x'] = '55,000 Kz';
-      texts.en['swim.mod.natacao699.6x'] = '55,000 Kz';
-    }
+    // Explicit display prices: 4×/5× for all modules (legacy 6× key mirrors 5×)
+    const priceMapPt = {
+      'swim.mod.bebes.4x': '60.000 Kz', 'swim.mod.bebes.5x': '80.000 Kz', 'swim.mod.bebes.6x': '80.000 Kz',
+      'swim.mod.especial.4x': '65.000 Kz', 'swim.mod.especial.5x': '85.000 Kz', 'swim.mod.especial.6x': '85.000 Kz',
+      'swim.mod.hidro.4x': '60.000 Kz', 'swim.mod.hidro.5x': '80.000 Kz', 'swim.mod.hidro.6x': '80.000 Kz',
+      'swim.mod.natacao699.4x': '45.000 Kz', 'swim.mod.natacao699.5x': '55.000 Kz', 'swim.mod.natacao699.6x': '55.000 Kz'
+    };
+    const priceMapEn = {
+      'swim.mod.bebes.4x': '60,000 Kz', 'swim.mod.bebes.5x': '80,000 Kz', 'swim.mod.bebes.6x': '80,000 Kz',
+      'swim.mod.especial.4x': '65,000 Kz', 'swim.mod.especial.5x': '85,000 Kz', 'swim.mod.especial.6x': '85,000 Kz',
+      'swim.mod.hidro.4x': '60,000 Kz', 'swim.mod.hidro.5x': '80,000 Kz', 'swim.mod.hidro.6x': '80,000 Kz',
+      'swim.mod.natacao699.4x': '45,000 Kz', 'swim.mod.natacao699.5x': '55,000 Kz', 'swim.mod.natacao699.6x': '55,000 Kz'
+    };
+    Object.assign(texts.pt, priceMapPt);
+    if (texts.en) Object.assign(texts.en, priceMapEn);
 
     markDirty();
     renderProducts();
@@ -6952,8 +6963,8 @@
 
   $('#applySwimAgeUpdateBtn')?.addEventListener('click', async () => {
     if (!(await adminConfirm(
-      'Actualizar Especial (6–14 anos) e Natação (15–99, 4×/5×) a partir do código?\n\nIsto cria um rascunho local. Depois clique Publicar no website.',
-      { title: 'Idades Natação', confirmLabel: 'Aplicar' }
+      'Actualizar grelhas de natação (1×–5× em todos os módulos, preços e textos) a partir do código?\n\nIsto cria um rascunho local. Depois clique Publicar no website.',
+      { title: 'Planos de natação', confirmLabel: 'Aplicar' }
     ))) return;
     applySwimAgeFreqUpdate();
   });
@@ -7565,35 +7576,48 @@
         { key: 'swim.mod.bebes.1x', label: 'Bebés — preço 1×', rows: 1 },
         { key: 'swim.mod.bebes.2x', label: 'Bebés — preço 2×', rows: 1 },
         { key: 'swim.mod.bebes.3x', label: 'Bebés — preço 3×', rows: 1 },
-        { key: 'swim.mod.bebes.5x', label: 'Bebés — preço 5×', rows: 1 },
-        { key: 'swim.mod.bebes.6x', label: 'Bebés — preço 6×', rows: 1 },
+        { key: 'swim.mod.bebes.4x', label: 'Bebés — preço 4× (60.000)', rows: 1 },
+        { key: 'swim.mod.bebes.5x', label: 'Bebés — preço 5× (80.000)', rows: 1 },
+        { key: 'swim.mod.bebes.6x', label: 'Bebés — legado 6×', rows: 1 },
         { key: 'swim.mod.especial.title', label: 'Especial — título', rows: 1 },
         { key: 'swim.mod.especial.desc', label: 'Especial — descrição (6–14 anos)', rows: 2 },
         { key: 'swim.mod.especial.1x', label: 'Especial — preço 1×', rows: 1 },
         { key: 'swim.mod.especial.2x', label: 'Especial — preço 2×', rows: 1 },
         { key: 'swim.mod.especial.3x', label: 'Especial — preço 3×', rows: 1 },
-        { key: 'swim.mod.especial.5x', label: 'Especial — preço 5×', rows: 1 },
-        { key: 'swim.mod.especial.6x', label: 'Especial — preço 6×', rows: 1 },
+        { key: 'swim.mod.especial.4x', label: 'Especial — preço 4× (65.000)', rows: 1 },
+        { key: 'swim.mod.especial.5x', label: 'Especial — preço 5× (85.000)', rows: 1 },
+        { key: 'swim.mod.especial.6x', label: 'Especial — legado 6×', rows: 1 },
         { key: 'swim.mod.hidro.title', label: 'Hidroginástica — título', rows: 1 },
         { key: 'swim.mod.hidro.desc', label: 'Hidroginástica — descrição', rows: 2 },
         { key: 'swim.mod.hidro.1x', label: 'Hidroginástica — preço 1×', rows: 1 },
         { key: 'swim.mod.hidro.2x', label: 'Hidroginástica — preço 2×', rows: 1 },
         { key: 'swim.mod.hidro.3x', label: 'Hidroginástica — preço 3×', rows: 1 },
-        { key: 'swim.mod.hidro.5x', label: 'Hidroginástica — preço 5×', rows: 1 },
-        { key: 'swim.mod.hidro.6x', label: 'Hidroginástica — preço 6×', rows: 1 },
-        { key: 'swim.mod.natacao699.title', label: 'Natação 15–99 — título', rows: 1 },
-        { key: 'swim.mod.natacao699.desc', label: 'Natação 15–99 — descrição', rows: 2 },
-        { key: 'swim.mod.natacao699.1x', label: 'Natação 15–99 — preço 1×', rows: 1 },
-        { key: 'swim.mod.natacao699.2x', label: 'Natação 15–99 — preço 2×', rows: 1 },
-        { key: 'swim.mod.natacao699.3x', label: 'Natação 15–99 — preço 3×', rows: 1 },
-        { key: 'swim.mod.natacao699.4x', label: 'Natação 15–99 — preço 4× (45.000)', rows: 1 },
-        { key: 'swim.mod.natacao699.5x', label: 'Natação 15–99 — preço 5× (55.000)', rows: 1 },
-        { key: 'swim.mod.natacao699.6x', label: 'Natação 15–99 — preço legado 6× (não usado na grelha)', rows: 1 },
+        { key: 'swim.mod.hidro.4x', label: 'Hidroginástica — preço 4× (60.000)', rows: 1 },
+        { key: 'swim.mod.hidro.5x', label: 'Hidroginástica — preço 5× (80.000)', rows: 1 },
+        { key: 'swim.mod.hidro.6x', label: 'Hidroginástica — legado 6×', rows: 1 },
+        { key: 'swim.mod.natacao699.title', label: 'Natação 6–99 — título', rows: 1 },
+        { key: 'swim.mod.natacao699.desc', label: 'Natação 6–99 — descrição', rows: 2 },
+        { key: 'swim.mod.natacao699.1x', label: 'Natação 6–99 — preço 1×', rows: 1 },
+        { key: 'swim.mod.natacao699.2x', label: 'Natação 6–99 — preço 2×', rows: 1 },
+        { key: 'swim.mod.natacao699.3x', label: 'Natação 6–99 — preço 3×', rows: 1 },
+        { key: 'swim.mod.natacao699.4x', label: 'Natação 6–99 — preço 4× (45.000)', rows: 1 },
+        { key: 'swim.mod.natacao699.5x', label: 'Natação 6–99 — preço 5× (55.000)', rows: 1 },
+        { key: 'swim.mod.natacao699.6x', label: 'Natação 6–99 — legado 6×', rows: 1 },
         { key: 'swim.mod.hidroterapia.title', label: 'Hidroterapia — título', rows: 1 },
         { key: 'swim.mod.hidroterapia.desc', label: 'Hidroterapia — texto', rows: 3 },
         { key: 'swim.ferias.desc', label: 'Planos de férias — descrição (página Planos)', rows: 2 },
         { key: 'natacao.plans.desc', label: 'Natação página — descrição mensalidades', rows: 2 },
-        { key: 'natacao.ferias.desc', label: 'Natação página — descrição férias', rows: 2 }
+        { key: 'natacao.ferias.desc', label: 'Natação página — descrição férias', rows: 2 },
+        { key: 'natacao.hours.eyebrow', label: 'Horário natação — eyebrow', rows: 1 },
+        { key: 'natacao.hours.title', label: 'Horário natação — título', rows: 1 },
+        { key: 'natacao.hours.desc', label: 'Horário natação — descrição', rows: 2 },
+        { key: 'natacao.hours.mon', label: 'Horário — Segunda (rótulo)', rows: 1 },
+        { key: 'natacao.hours.monVal', label: 'Horário — Segunda (valor)', rows: 1 },
+        { key: 'natacao.hours.wed', label: 'Horário — Quarta (rótulo)', rows: 1 },
+        { key: 'natacao.hours.wedVal', label: 'Horário — Quarta (valor)', rows: 1 },
+        { key: 'natacao.hours.fri', label: 'Horário — Sexta (rótulo)', rows: 1 },
+        { key: 'natacao.hours.friVal', label: 'Horário — Sexta (valor)', rows: 1 },
+        { key: 'natacao.hours.note', label: 'Horário natação — nota (até 20h)', rows: 2 }
       ]
     },
     {
@@ -7627,7 +7651,7 @@
         { key: 'inscricao.opt.mod.bebes', label: 'Módulo — Bebés', rows: 1 },
         { key: 'inscricao.opt.mod.especial', label: 'Módulo — Especial (6–14)', rows: 1 },
         { key: 'inscricao.opt.mod.hidro', label: 'Módulo — Hidroginástica', rows: 1 },
-        { key: 'inscricao.opt.mod.natacao699', label: 'Módulo — Natação 15–99', rows: 1 },
+        { key: 'inscricao.opt.mod.natacao699', label: 'Módulo — Natação 6–99', rows: 1 },
         { key: 'inscricao.opt.freq.1x', label: 'Freq. formulário — 1×', rows: 1 },
         { key: 'inscricao.opt.freq.2x', label: 'Freq. formulário — 2×', rows: 1 },
         { key: 'inscricao.opt.freq.3x', label: 'Freq. formulário — 3×', rows: 1 },

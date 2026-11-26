@@ -211,7 +211,7 @@
                   <option value="bebes" data-i18n="inscricao.opt.mod.bebes">Bebés (6 meses–5 anos · 45 min)</option>
                   <option value="especial" data-i18n="inscricao.opt.mod.especial">Especial — Crianças (6–14 anos · 60 min)</option>
                   <option value="hidro" data-i18n="inscricao.opt.mod.hidro">Hidroginástica (adultos/adolescentes · 60 min)</option>
-                  <option value="mensal" data-i18n="inscricao.opt.mod.natacao699">Natação 15–99 anos (60 min)</option>
+                  <option value="mensal" data-i18n="inscricao.opt.mod.natacao699">Natação 6–99 anos (60 min)</option>
                 </select>
                 <label style="margin-top:0.75rem" data-i18n="inscricao.label.freq">Frequência semanal</label>
                 <select id="eSwimFreq">
@@ -221,7 +221,6 @@
                   <option value="3x" data-i18n="inscricao.opt.freq.3x">3× por semana</option>
                   <option value="4x" data-i18n="inscricao.opt.freq.4x">4× por semana</option>
                   <option value="5x" data-i18n="inscricao.opt.freq.5x">5× por semana</option>
-                  <option value="6x" data-i18n="inscricao.opt.freq.6x">6× por semana</option>
                 </select>
               </div>
               <div class="form-group" id="swimFeriasFields" style="display:none">
@@ -464,10 +463,9 @@
     const SWIM_INSCR_ID = 'natacao-inscricao';
     const ANNUAL_ID = 'inscricao-anual';
     const EXTRA_IDS = ['avaliacao-fisica', 'aulas-avulsas'];
-    const FREQS_DEFAULT = ['1x', '2x', '3x', '5x', '6x'];
-    const FREQS_NATACAO = ['1x', '2x', '3x', '4x', '5x'];
-    /** For Natação 15–99, display freq maps to legacy product id suffix (IDs kept). */
-    const NATACAO_FREQ_TO_ID = { '1x': '1x', '2x': '2x', '3x': '3x', '4x': '5x', '5x': '6x' };
+    /** All swim modules: 1×–5× only. Display 4×/5× map to product ids …-5x / …-6x (IDs kept). */
+    const FREQS_SWIM = ['1x', '2x', '3x', '4x', '5x'];
+    const FREQ_TO_PRODUCT_SUFFIX = { '1x': '1x', '2x': '2x', '3x': '3x', '4x': '5x', '5x': '6x' };
     const MODULE_PREFIX = {
       bebes: 'natacao-bebes-',
       especial: 'natacao-especial-',
@@ -588,28 +586,22 @@
         if (!mod || !freq) return null;
         const prefix = MODULE_PREFIX[mod];
         if (!prefix) return null;
-        // Natação 15–99: 4× → id …-5x, 5× → id …-6x (product IDs unchanged)
-        if (mod === 'mensal') {
-          const suffix = NATACAO_FREQ_TO_ID[freq];
-          return suffix ? prefix + suffix : null;
-        }
-        return prefix + freq;
+        const suffix = FREQ_TO_PRODUCT_SUFFIX[freq];
+        return suffix ? prefix + suffix : null;
       }
       return null;
     }
 
     function syncSwimFreqOptions() {
-      if (!swimFreq || !swimModule) return;
-      const mod = swimModule.value;
-      const freqs = mod === 'mensal' ? FREQS_NATACAO : FREQS_DEFAULT;
+      if (!swimFreq) return;
+      const freqs = FREQS_SWIM;
       const prev = swimFreq.value;
       const labels = {
         '1x': '1× por semana',
         '2x': '2× por semana',
         '3x': '3× por semana',
         '4x': '4× por semana',
-        '5x': '5× por semana',
-        '6x': '6× por semana'
+        '5x': '5× por semana'
       };
       swimFreq.innerHTML = '';
       const empty = document.createElement('option');

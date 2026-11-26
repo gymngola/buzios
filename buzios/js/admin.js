@@ -323,7 +323,9 @@
       const last = getAdminName() || localStorage.getItem('buzios_admin_name') || '';
       if (ADMIN_USERS.indexOf(last) >= 0) sel.value = last;
     }
-    // Auth flag without password or without a selected name → force re-login
+    // Auth flag without password or without a selected name → force clean login.
+    // Common on installed PWA: "stay logged in" leaves localStorage auth, but
+    // sessionStorage (password) is cleared when the app is fully quit.
     const name = getAdminName();
     const hasName = !!(name && ADMIN_USERS.indexOf(name) >= 0);
     if (authed && hasPw && hasName) {
@@ -332,9 +334,19 @@
       }
       setAdminName(name);
       showApp({ resume: true });
-    } else if (authed && (!hasPw || !hasName)) {
-      // Clear stale flag so user picks name + password again
-      sessionStorage.removeItem(LS.auth);
+    } else {
+      // Always land on a clean login screen — never leave half-auth / empty shell
+      try {
+        sessionStorage.removeItem(LS.auth);
+        if (!hasPw) localStorage.removeItem(LS.auth);
+      } catch (e) {}
+      document.documentElement.classList.remove('admin-authed');
+      $('#adminApp')?.classList.add('hidden');
+      $('#loginScreen')?.classList.remove('hidden');
+      if (authed && !hasPw && $('#loginError')) {
+        $('#loginError').textContent = 'Sessão expirada neste dispositivo. Introduza a palavra-passe de novo.';
+        $('#loginError').style.display = 'block';
+      }
     }
   }
   async function showApp(opts) {
@@ -345,7 +357,14 @@
     updateAdminUserLabel();
     if (!resume) toast('A carregar catálogo…');
     await loadState();
-    await loadStore();
+    let ok = await loadStore();
+    // One automatic retry — common on gym Wi‑Fi / installed PWA cold start
+    if (!ok && getAdminPassword()) {
+      await new Promise(r => setTimeout(r, 800));
+      ok = await loadStore();
+    }
+    // If password vanished mid-load (PWA session cleared), forceRemoteLogout already ran
+    if (!getAdminPassword()) return;
     renderAll();
     // Panel may have been restored before store/clients existed — load live data now
     try {
@@ -1122,9 +1141,12 @@
     if (!silent) setSyncStatus('syncing');
     lastOpsLoadError = null;
     try {
-      // No password → cannot call Worker; still try D1 overlays only if we somehow have one
+      // No password → cannot call Worker. Force clean login instead of empty shell.
       if (!getAdminPassword()) {
-        if (!silent) setSyncStatus('error', 'Sessão sem password — volte a entrar');
+        if (!silent) {
+          setSyncStatus('error', 'Sessão sem password — volte a entrar');
+          forceRemoteLogout('Sessão sem palavra-passe neste dispositivo. Entre de novo.');
+        }
         return false;
       }
 
@@ -1139,9 +1161,7 @@
         }, WORKER_FETCH_MS);
         workerReachable = true;
         if (res.status === 401) {
-          setSessionPassword('');
-          sessionStorage.removeItem(LS.auth);
-          if (!silent) setSyncStatus('error', 'Não autorizado');
+          forceRemoteLogout('Não autorizado. Entre de novo com a palavra-passe correcta.');
           return false;
         }
         if (res.ok) {
@@ -3392,11 +3412,20 @@
             ? 'O servidor não respondeu a tempo (rede lenta ou bloqueada).'
             : 'Não foi possível contactar o servidor.';
         list.innerHTML =
-          '<div class="clients-empty">' +
-          '<strong>Clientes não carregaram.</strong> ' +
-          detail +
-          ' Tente outra rede (ex. hotspot) ou recarregue a página.' +
+          '<div class="clients-empty" style="padding:1.5rem;text-align:center">' +
+          '<strong style="display:block;margin-bottom:0.5rem;font-size:1rem">Clientes não carregaram</strong>' +
+          '<span style="display:block;margin-bottom:1rem;color:#666">' + detail + '</span>' +
+          '<button type="button" id="retryLoadStoreBtn" style="padding:0.55rem 1.1rem;border:none;border-radius:8px;background:#c45c26;color:#fff;font-size:0.9rem;cursor:pointer">Tentar novamente</button>' +
+          '<button type="button" id="retryLogoutBtn" style="margin-left:0.5rem;padding:0.55rem 1.1rem;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:0.9rem;cursor:pointer">Voltar ao login</button>' +
           '</div>';
+        $('#retryLoadStoreBtn')?.addEventListener('click', async () => {
+          list.innerHTML = '<div class="clients-empty">A carregar clientes…</div>';
+          await loadStore();
+          renderClients();
+        });
+        $('#retryLogoutBtn')?.addEventListener('click', () => {
+          forceRemoteLogout('Volte a entrar para sincronizar os dados.');
+        });
       } else {
         list.innerHTML =
           '<div class="clients-empty">Nenhum cliente ainda. Surgem automaticamente das inscrições ou adicione com <strong>+ Cliente</strong>.</div>';

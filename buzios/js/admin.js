@@ -7028,16 +7028,14 @@
     toast(`Actualizado: ${nProd} planos + textos (1×–5× apenas). Clique «Publicar no website».`);
   }
 
-  async function confirmAndApplyFromCode() {
-    if (!(await adminConfirm(
-      'Recarregar grelhas e textos de natação a partir do código (1×–5× apenas)?\n\n• Remove campos legados 6×\n• Actualiza preços, títulos e horário\n• Cria rascunho local neste browser\n\nDepois clique «Publicar no website».',
-      { title: 'Recarregar do código', confirmLabel: 'Recarregar' }
-    ))) return;
+  // Immediate apply — no confirmation. The button exists precisely to force
+  // the latest values from source code into the local draft after a deploy.
+  $('#applySwimAgeUpdateBtn')?.addEventListener('click', () => {
     applySwimAgeFreqUpdate();
-  }
-
-  $('#applySwimAgeUpdateBtn')?.addEventListener('click', confirmAndApplyFromCode);
-  $('#reloadTextsFromCodeBtn')?.addEventListener('click', confirmAndApplyFromCode);
+  });
+  $('#reloadTextsFromCodeBtn')?.addEventListener('click', () => {
+    applySwimAgeFreqUpdate();
+  });
 
   function renderProducts() {
     const list = $('#prodList');

@@ -7028,13 +7028,16 @@
     toast(`Actualizado: ${nProd} planos + textos (1×–5× apenas). Clique «Publicar no website».`);
   }
 
-  $('#applySwimAgeUpdateBtn')?.addEventListener('click', async () => {
+  async function confirmAndApplyFromCode() {
     if (!(await adminConfirm(
-      'Actualizar grelhas de natação (1×–5× em todos os módulos, preços e textos) a partir do código?\n\nIsto cria um rascunho local. Depois clique Publicar no website.',
-      { title: 'Planos de natação', confirmLabel: 'Aplicar' }
+      'Recarregar grelhas e textos de natação a partir do código (1×–5× apenas)?\n\n• Remove campos legados 6×\n• Actualiza preços, títulos e horário\n• Cria rascunho local neste browser\n\nDepois clique «Publicar no website».',
+      { title: 'Recarregar do código', confirmLabel: 'Recarregar' }
     ))) return;
     applySwimAgeFreqUpdate();
-  });
+  }
+
+  $('#applySwimAgeUpdateBtn')?.addEventListener('click', confirmAndApplyFromCode);
+  $('#reloadTextsFromCodeBtn')?.addEventListener('click', confirmAndApplyFromCode);
 
   function renderProducts() {
     const list = $('#prodList');

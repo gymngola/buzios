@@ -6878,6 +6878,83 @@
     { key: 'other', title: 'Outros' }
   ];
 
+  /**
+   * One-shot: align Natação / Especial products + related site texts with DEFAULT_PRODUCTS / DEFAULT_TEXTS
+   * (Especial 6–14, Natação 15–99, 5×→4× / 6×→5× for Natação only). Marks local draft dirty — user must Publish.
+   */
+  function applySwimAgeFreqUpdate() {
+    const defaults = window.DEFAULT_PRODUCTS || [];
+    const byId = {};
+    defaults.forEach(p => { byId[p.id] = p; });
+    const targetIds = [
+      'natacao-mensal-1x', 'natacao-mensal-2x', 'natacao-mensal-3x', 'natacao-mensal-5x', 'natacao-mensal-6x',
+      'natacao-especial-1x', 'natacao-especial-2x', 'natacao-especial-3x', 'natacao-especial-5x', 'natacao-especial-6x'
+    ];
+    let nProd = 0;
+    products = products.map(p => {
+      if (!targetIds.includes(p.id) || !byId[p.id]) return p;
+      const d = byId[p.id];
+      nProd += 1;
+      return Object.assign({}, p, {
+        name: d.name,
+        name_en: d.name_en,
+        description: d.description,
+        description_en: d.description_en,
+        features: (d.features || []).slice(),
+        features_en: (d.features_en || []).slice()
+        // price, id, order, active unchanged
+      });
+    });
+
+    const textKeys = [
+      'swim.mod.especial.desc',
+      'swim.mod.natacao699.title',
+      'swim.mod.natacao699.desc',
+      'swim.mod.natacao699.4x',
+      'swim.mod.natacao699.5x',
+      'swim.freq.4x',
+      'inscricao.opt.mod.especial',
+      'inscricao.opt.mod.natacao699',
+      'inscricao.opt.freq.4x',
+      'natacao.plans.desc'
+    ];
+    const defTexts = window.DEFAULT_TEXTS || { pt: {}, en: {} };
+    if (!texts.pt) texts.pt = {};
+    if (!texts.en) texts.en = {};
+    let nText = 0;
+    textKeys.forEach(k => {
+      if (defTexts.pt && defTexts.pt[k] != null) {
+        texts.pt[k] = defTexts.pt[k];
+        nText += 1;
+      }
+      if (defTexts.en && defTexts.en[k] != null) {
+        texts.en[k] = defTexts.en[k];
+      }
+    });
+    // Keep legacy .6x price key pointing at the 5× price so old HTML slots do not show blank
+    if (texts.pt['swim.mod.natacao699.5x']) {
+      texts.pt['swim.mod.natacao699.6x'] = texts.pt['swim.mod.natacao699.5x'];
+    }
+    if (texts.en['swim.mod.natacao699.5x']) {
+      texts.en['swim.mod.natacao699.6x'] = texts.en['swim.mod.natacao699.5x'];
+    }
+
+    markDirty();
+    renderProducts();
+    if (typeof renderTexts === 'function') {
+      try { renderTexts(); } catch (e) {}
+    }
+    toast(`Actualizado: ${nProd} planos + textos. Clique «Publicar no website».`);
+  }
+
+  $('#applySwimAgeUpdateBtn')?.addEventListener('click', async () => {
+    if (!(await adminConfirm(
+      'Actualizar Especial (6–14 anos) e Natação (15–99, 4×/5×) a partir do código?\n\nIsto cria um rascunho local. Depois clique Publicar no website.',
+      { title: 'Idades Natação', confirmLabel: 'Aplicar' }
+    ))) return;
+    applySwimAgeFreqUpdate();
+  });
+
   function renderProducts() {
     const list = $('#prodList');
     if (!list) return;

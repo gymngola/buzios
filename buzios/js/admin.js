@@ -6953,12 +6953,34 @@
     Object.assign(texts.pt, priceMapPt);
     if (texts.en) Object.assign(texts.en, priceMapEn);
 
+    // Force current public copy (overrides stale catalog drafts)
+    Object.assign(texts.pt, {
+      'swim.mod.natacao699.title': 'Natação — 6 aos 99 anos',
+      'swim.mod.natacao699.desc': 'Crianças a partir dos 6 anos, adolescentes e adultos · 60 min',
+      'swim.mod.especial.desc': '6–14 anos · 60 min · sob recomendação médica quando aplicável',
+      'inscricao.opt.mod.natacao699': 'Natação 6–99 anos (60 min)',
+      'inscricao.opt.mod.especial': 'Especial — Crianças (6–14 anos · 60 min)',
+      'natacao.plans.desc': 'Inscrição na escola: 10.500 Kz (única). Escolha o módulo e a frequência (1× a 5× por semana). Desconto de 20% a partir do 3.º membro da mesma família.',
+      'swim.freq.4x': '4× / semana'
+    });
+    if (texts.en) {
+      Object.assign(texts.en, {
+        'swim.mod.natacao699.title': 'Swimming — ages 6 to 99',
+        'swim.mod.natacao699.desc': 'Children from 6, teens and adults · 60 min',
+        'swim.mod.especial.desc': '6–14 years · 60 min · medical recommendation when applicable',
+        'inscricao.opt.mod.natacao699': 'Swimming ages 6–99 (60 min)',
+        'inscricao.opt.mod.especial': 'Special — Children (6–14 years · 60 min)',
+        'natacao.plans.desc': 'School registration: 10,500 Kz (one-time). Choose module and frequency (1× to 5× per week). 20% off from the 3rd family member.',
+        'swim.freq.4x': '4× / week'
+      });
+    }
+
     markDirty();
     renderProducts();
     if (typeof renderTexts === 'function') {
       try { renderTexts(); } catch (e) {}
     }
-    toast(`Actualizado: ${nProd} planos + textos. Clique «Publicar no website».`);
+    toast(`Actualizado: ${nProd} planos + textos (1×–5×, Natação 6–99). Clique «Publicar no website».`);
   }
 
   $('#applySwimAgeUpdateBtn')?.addEventListener('click', async () => {

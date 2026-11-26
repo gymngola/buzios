@@ -328,13 +328,25 @@
               <label>Condições médicas <span class="req">*</span></label>
               <textarea id="eMedical" required placeholder="Indique lesões, alergias, medicação ou restrições. Se não tiver, escreva «Nenhuma»."></textarea>
             </div>
-            <div class="form-group">
-              <label>Horário preferido</label>
+            <div class="form-group" id="schedGymGroup" style="display:none">
+              <label data-i18n="inscricao.label.schedGym">Horário preferido — Ginásio</label>
+              <p class="muted" style="font-size:0.78rem;margin:0.15rem 0 0.45rem" data-i18n="inscricao.hint.schedGym">Horário do ginásio: manhã 06h–12h · tarde 14h–21h · sábados 06h–12h</p>
               <div class="check-row">
-                <label><input type="checkbox" name="sched" value="Manhã (06h–12h)"> Manhã (06h–12h)</label>
-                <label><input type="checkbox" name="sched" value="Tarde (14h–21h)"> Tarde (14h–21h)</label>
-                <label><input type="checkbox" name="sched" value="Fins de semana"> Fins de semana</label>
-                <label><input type="checkbox" name="sched" value="Flexível"> Flexível</label>
+                <label><input type="checkbox" name="schedGym" value="Ginásio: Manhã (06h–12h)"> Manhã (06h–12h)</label>
+                <label><input type="checkbox" name="schedGym" value="Ginásio: Tarde (14h–21h)"> Tarde (14h–21h)</label>
+                <label><input type="checkbox" name="schedGym" value="Ginásio: Fins de semana"> Fins de semana</label>
+                <label><input type="checkbox" name="schedGym" value="Ginásio: Flexível"> Flexível</label>
+              </div>
+            </div>
+            <div class="form-group" id="schedSwimGroup" style="display:none">
+              <label data-i18n="inscricao.label.schedSwim">Horário preferido — Natação</label>
+              <p class="muted" style="font-size:0.78rem;margin:0.15rem 0 0.45rem" data-i18n="inscricao.hint.schedSwim">Seg / Qua / Sex: 06h–19h · Ter / Qui: acordar com o professor · até 20h por acordo</p>
+              <div class="check-row">
+                <label><input type="checkbox" name="schedSwim" value="Natação: Seg / Qua / Sex"> Seg / Qua / Sex</label>
+                <label><input type="checkbox" name="schedSwim" value="Natação: Ter / Qui"> Ter / Qui</label>
+                <label><input type="checkbox" name="schedSwim" value="Natação: Manhã"> Manhã</label>
+                <label><input type="checkbox" name="schedSwim" value="Natação: Tarde"> Tarde</label>
+                <label><input type="checkbox" name="schedSwim" value="Natação: Flexível"> Flexível</label>
               </div>
             </div>
             <div class="form-group">
@@ -640,6 +652,17 @@
       if (planGroupSingle) planGroupSingle.style.display = 'none';
       if (planGroupDual) planGroupDual.style.display = 'none';
 
+      const schedGymGroup = document.getElementById('schedGymGroup');
+      const schedSwimGroup = document.getElementById('schedSwimGroup');
+      if (schedGymGroup) schedGymGroup.style.display = isGym ? 'block' : 'none';
+      if (schedSwimGroup) schedSwimGroup.style.display = isSwim ? 'block' : 'none';
+      if (!isGym) {
+        document.querySelectorAll('input[name="schedGym"]').forEach(c => { c.checked = false; });
+      }
+      if (!isSwim) {
+        document.querySelectorAll('input[name="schedSwim"]').forEach(c => { c.checked = false; });
+      }
+
       if (isGym) fillGymSelect(planGym);
 
       if (area === 'natacao') {
@@ -897,7 +920,10 @@
       btn.disabled = true;
       btn.textContent = 'A enviar…';
 
-      const schedule = Array.from(document.querySelectorAll('input[name="sched"]:checked')).map(c => c.value);
+      const schedule = [
+        ...Array.from(document.querySelectorAll('input[name="schedGym"]:checked')).map(c => c.value),
+        ...Array.from(document.querySelectorAll('input[name="schedSwim"]:checked')).map(c => c.value)
+      ];
       const area = areaSelect.value;
       const lines = selectedLineItems();
 

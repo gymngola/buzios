@@ -209,9 +209,9 @@
                 <select id="eSwimModule">
                   <option value="" data-i18n="inscricao.opt.moduleSelect">Seleccione o módulo…</option>
                   <option value="bebes" data-i18n="inscricao.opt.mod.bebes">Bebés (6 meses–5 anos · 45 min)</option>
-                  <option value="especial" data-i18n="inscricao.opt.mod.especial">Especial — Crianças (2–14 anos · 60 min)</option>
+                  <option value="especial" data-i18n="inscricao.opt.mod.especial">Especial — Crianças (6–14 anos · 60 min)</option>
                   <option value="hidro" data-i18n="inscricao.opt.mod.hidro">Hidroginástica (adultos/adolescentes · 60 min)</option>
-                  <option value="mensal" data-i18n="inscricao.opt.mod.natacao699">Natação 6–99 anos (60 min)</option>
+                  <option value="mensal" data-i18n="inscricao.opt.mod.natacao699">Natação 15–99 anos (60 min)</option>
                 </select>
                 <label style="margin-top:0.75rem" data-i18n="inscricao.label.freq">Frequência semanal</label>
                 <select id="eSwimFreq">
@@ -219,6 +219,7 @@
                   <option value="1x" data-i18n="inscricao.opt.freq.1x">1× por semana</option>
                   <option value="2x" data-i18n="inscricao.opt.freq.2x">2× por semana</option>
                   <option value="3x" data-i18n="inscricao.opt.freq.3x">3× por semana</option>
+                  <option value="4x" data-i18n="inscricao.opt.freq.4x">4× por semana</option>
                   <option value="5x" data-i18n="inscricao.opt.freq.5x">5× por semana</option>
                   <option value="6x" data-i18n="inscricao.opt.freq.6x">6× por semana</option>
                 </select>
@@ -463,7 +464,10 @@
     const SWIM_INSCR_ID = 'natacao-inscricao';
     const ANNUAL_ID = 'inscricao-anual';
     const EXTRA_IDS = ['avaliacao-fisica', 'aulas-avulsas'];
-    const FREQS = ['1x', '2x', '3x', '5x', '6x'];
+    const FREQS_DEFAULT = ['1x', '2x', '3x', '5x', '6x'];
+    const FREQS_NATACAO = ['1x', '2x', '3x', '4x', '5x'];
+    /** For Natação 15–99, display freq maps to legacy product id suffix (IDs kept). */
+    const NATACAO_FREQ_TO_ID = { '1x': '1x', '2x': '2x', '3x': '3x', '4x': '5x', '5x': '6x' };
     const MODULE_PREFIX = {
       bebes: 'natacao-bebes-',
       especial: 'natacao-especial-',
@@ -583,9 +587,45 @@
         const freq = swimFreq.value;
         if (!mod || !freq) return null;
         const prefix = MODULE_PREFIX[mod];
-        return prefix ? prefix + freq : null;
+        if (!prefix) return null;
+        // Natação 15–99: 4× → id …-5x, 5× → id …-6x (product IDs unchanged)
+        if (mod === 'mensal') {
+          const suffix = NATACAO_FREQ_TO_ID[freq];
+          return suffix ? prefix + suffix : null;
+        }
+        return prefix + freq;
       }
       return null;
+    }
+
+    function syncSwimFreqOptions() {
+      if (!swimFreq || !swimModule) return;
+      const mod = swimModule.value;
+      const freqs = mod === 'mensal' ? FREQS_NATACAO : FREQS_DEFAULT;
+      const prev = swimFreq.value;
+      const labels = {
+        '1x': '1× por semana',
+        '2x': '2× por semana',
+        '3x': '3× por semana',
+        '4x': '4× por semana',
+        '5x': '5× por semana',
+        '6x': '6× por semana'
+      };
+      swimFreq.innerHTML = '';
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'Seleccione…';
+      empty.setAttribute('data-i18n', 'inscricao.opt.select');
+      swimFreq.appendChild(empty);
+      freqs.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f;
+        opt.textContent = labels[f] || f;
+        opt.setAttribute('data-i18n', 'inscricao.opt.freq.' + f);
+        swimFreq.appendChild(opt);
+      });
+      if (prev && freqs.includes(prev)) swimFreq.value = prev;
+      else swimFreq.value = '';
     }
 
     function syncSwimTypeUI() {
@@ -645,9 +685,11 @@
     [planGym, extraAval, extraAvul, swimType, swimModule, swimFreq, swimPackage].forEach(el => {
       if (el) el.addEventListener('change', () => {
         if (el === swimType) syncSwimTypeUI();
-        else updateTotal();
+        if (el === swimModule) syncSwimFreqOptions();
+        updateTotal();
       });
     });
+    if (swimModule) syncSwimFreqOptions();
     areaSelect.addEventListener('change', syncAreaUI);
 
     function selectedLineItems() {

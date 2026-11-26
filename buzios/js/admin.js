@@ -7613,8 +7613,12 @@
         { key: 'natacao.hours.desc', label: 'Horário natação — descrição', rows: 2 },
         { key: 'natacao.hours.mon', label: 'Horário — Segunda (rótulo)', rows: 1 },
         { key: 'natacao.hours.monVal', label: 'Horário — Segunda (valor)', rows: 1 },
+        { key: 'natacao.hours.tue', label: 'Horário — Terça (rótulo)', rows: 1 },
+        { key: 'natacao.hours.tueVal', label: 'Horário — Terça (valor)', rows: 1 },
         { key: 'natacao.hours.wed', label: 'Horário — Quarta (rótulo)', rows: 1 },
         { key: 'natacao.hours.wedVal', label: 'Horário — Quarta (valor)', rows: 1 },
+        { key: 'natacao.hours.thu', label: 'Horário — Quinta (rótulo)', rows: 1 },
+        { key: 'natacao.hours.thuVal', label: 'Horário — Quinta (valor)', rows: 1 },
         { key: 'natacao.hours.fri', label: 'Horário — Sexta (rótulo)', rows: 1 },
         { key: 'natacao.hours.friVal', label: 'Horário — Sexta (valor)', rows: 1 },
         { key: 'natacao.hours.note', label: 'Horário natação — nota (até 20h)', rows: 2 }

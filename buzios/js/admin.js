@@ -6886,6 +6886,7 @@
     const defaults = window.DEFAULT_PRODUCTS || [];
     const byId = {};
     defaults.forEach(p => { byId[p.id] = p; });
+    // Product IDs still use legacy …-5x (display 4×) and …-6x (display 5×)
     const targetIds = [
       'natacao-mensal-1x', 'natacao-mensal-2x', 'natacao-mensal-3x', 'natacao-mensal-5x', 'natacao-mensal-6x',
       'natacao-especial-1x', 'natacao-especial-2x', 'natacao-especial-3x', 'natacao-especial-5x', 'natacao-especial-6x',
@@ -6908,79 +6909,123 @@
       });
     });
 
-    const textKeys = [
-      'swim.mod.especial.desc',
-      'swim.mod.especial.4x', 'swim.mod.especial.5x', 'swim.mod.especial.6x',
-      'swim.mod.bebes.4x', 'swim.mod.bebes.5x', 'swim.mod.bebes.6x',
-      'swim.mod.hidro.4x', 'swim.mod.hidro.5x', 'swim.mod.hidro.6x',
-      'swim.mod.natacao699.title',
-      'swim.mod.natacao699.desc',
-      'swim.mod.natacao699.4x',
-      'swim.mod.natacao699.5x',
-      'swim.mod.natacao699.6x',
-      'swim.freq.4x',
-      'inscricao.opt.mod.especial',
-      'inscricao.opt.mod.natacao699',
-      'inscricao.opt.freq.4x',
-      'natacao.plans.desc'
-    ];
-    const defTexts = window.DEFAULT_TEXTS || { pt: {}, en: {} };
     if (!texts.pt) texts.pt = {};
     if (!texts.en) texts.en = {};
-    let nText = 0;
-    textKeys.forEach(k => {
-      if (defTexts.pt && defTexts.pt[k] != null) {
-        texts.pt[k] = defTexts.pt[k];
-        nText += 1;
-      }
-      if (defTexts.en && defTexts.en[k] != null) {
-        texts.en[k] = defTexts.en[k];
-      }
+
+    // Remove all legacy 6× keys from the draft so the admin panel stays clean
+    const legacy6xKeys = [
+      'swim.freq.6x',
+      'swim.mod.bebes.6x', 'swim.mod.especial.6x', 'swim.mod.hidro.6x', 'swim.mod.natacao699.6x',
+      'inscricao.opt.freq.6x'
+    ];
+    legacy6xKeys.forEach(k => {
+      delete texts.pt[k];
+      if (texts.en) delete texts.en[k];
     });
-    // Explicit display prices: 4×/5× for all modules (legacy 6× key mirrors 5×)
+
+    // Full current price grid + titles (1×–5× only)
     const priceMapPt = {
-      'swim.mod.bebes.4x': '60.000 Kz', 'swim.mod.bebes.5x': '80.000 Kz', 'swim.mod.bebes.6x': '80.000 Kz',
-      'swim.mod.especial.4x': '65.000 Kz', 'swim.mod.especial.5x': '85.000 Kz', 'swim.mod.especial.6x': '85.000 Kz',
-      'swim.mod.hidro.4x': '60.000 Kz', 'swim.mod.hidro.5x': '80.000 Kz', 'swim.mod.hidro.6x': '80.000 Kz',
-      'swim.mod.natacao699.4x': '45.000 Kz', 'swim.mod.natacao699.5x': '55.000 Kz', 'swim.mod.natacao699.6x': '55.000 Kz'
+      'swim.freq.1x': '1× / semana',
+      'swim.freq.2x': '2× / semana',
+      'swim.freq.3x': '3× / semana',
+      'swim.freq.4x': '4× / semana',
+      'swim.freq.5x': '5× / semana',
+      'swim.mod.bebes.title': 'Bebés',
+      'swim.mod.bebes.desc': '6 meses–5 anos · 45 min · acompanhamento personalizado',
+      'swim.mod.bebes.1x': '20.000 Kz',
+      'swim.mod.bebes.2x': '30.000 Kz',
+      'swim.mod.bebes.3x': '40.000 Kz',
+      'swim.mod.bebes.4x': '60.000 Kz',
+      'swim.mod.bebes.5x': '80.000 Kz',
+      'swim.mod.especial.title': 'Especial — Crianças',
+      'swim.mod.especial.desc': '6–14 anos · 60 min · sob recomendação médica quando aplicável',
+      'swim.mod.especial.1x': '25.000 Kz',
+      'swim.mod.especial.2x': '35.000 Kz',
+      'swim.mod.especial.3x': '45.000 Kz',
+      'swim.mod.especial.4x': '65.000 Kz',
+      'swim.mod.especial.5x': '85.000 Kz',
+      'swim.mod.hidro.title': 'Hidroginástica',
+      'swim.mod.hidro.desc': 'Adultos e adolescentes · 60 min',
+      'swim.mod.hidro.1x': '20.000 Kz',
+      'swim.mod.hidro.2x': '30.000 Kz',
+      'swim.mod.hidro.3x': '40.000 Kz',
+      'swim.mod.hidro.4x': '60.000 Kz',
+      'swim.mod.hidro.5x': '80.000 Kz',
+      'swim.mod.natacao699.title': 'Natação — 6 aos 99 anos',
+      'swim.mod.natacao699.desc': 'Crianças a partir dos 6 anos, adolescentes e adultos · 60 min',
+      'swim.mod.natacao699.1x': '15.000 Kz',
+      'swim.mod.natacao699.2x': '25.000 Kz',
+      'swim.mod.natacao699.3x': '35.000 Kz',
+      'swim.mod.natacao699.4x': '45.000 Kz',
+      'swim.mod.natacao699.5x': '55.000 Kz',
+      'inscricao.opt.mod.natacao699': 'Natação 6–99 anos (60 min)',
+      'inscricao.opt.mod.especial': 'Especial — Crianças (6–14 anos · 60 min)',
+      'inscricao.opt.freq.1x': '1× por semana',
+      'inscricao.opt.freq.2x': '2× por semana',
+      'inscricao.opt.freq.3x': '3× por semana',
+      'inscricao.opt.freq.4x': '4× por semana',
+      'inscricao.opt.freq.5x': '5× por semana',
+      'natacao.plans.desc': 'Inscrição na escola: 10.500 Kz (única). Escolha o módulo e a frequência (1× a 5× por semana). Desconto de 20% a partir do 3.º membro da mesma família.',
+      'natacao.hours.desc': 'Segunda, quarta e sexta: 06h00–19h00. Terça e quinta: acordar com o professor. Em acordo, as aulas podem prolongar-se até às 20h00.',
+      'natacao.hours.monVal': '06h00 – 19h00',
+      'natacao.hours.tueVal': 'Acordar com o professor',
+      'natacao.hours.wedVal': '06h00 – 19h00',
+      'natacao.hours.thuVal': 'Acordar com o professor',
+      'natacao.hours.friVal': '06h00 – 19h00',
+      'natacao.hours.note': 'Por acordo com o professor, as aulas podem prolongar-se até às 20h00.'
     };
     const priceMapEn = {
-      'swim.mod.bebes.4x': '60,000 Kz', 'swim.mod.bebes.5x': '80,000 Kz', 'swim.mod.bebes.6x': '80,000 Kz',
-      'swim.mod.especial.4x': '65,000 Kz', 'swim.mod.especial.5x': '85,000 Kz', 'swim.mod.especial.6x': '85,000 Kz',
-      'swim.mod.hidro.4x': '60,000 Kz', 'swim.mod.hidro.5x': '80,000 Kz', 'swim.mod.hidro.6x': '80,000 Kz',
-      'swim.mod.natacao699.4x': '45,000 Kz', 'swim.mod.natacao699.5x': '55,000 Kz', 'swim.mod.natacao699.6x': '55,000 Kz'
+      'swim.freq.1x': '1× / week',
+      'swim.freq.2x': '2× / week',
+      'swim.freq.3x': '3× / week',
+      'swim.freq.4x': '4× / week',
+      'swim.freq.5x': '5× / week',
+      'swim.mod.bebes.title': 'Babies',
+      'swim.mod.bebes.desc': '6 months–5 years · 45 min · personal coaching',
+      'swim.mod.bebes.1x': '20,000 Kz',
+      'swim.mod.bebes.2x': '30,000 Kz',
+      'swim.mod.bebes.3x': '40,000 Kz',
+      'swim.mod.bebes.4x': '60,000 Kz',
+      'swim.mod.bebes.5x': '80,000 Kz',
+      'swim.mod.especial.title': 'Special — Children',
+      'swim.mod.especial.desc': '6–14 years · 60 min · medical recommendation when applicable',
+      'swim.mod.especial.1x': '25,000 Kz',
+      'swim.mod.especial.2x': '35,000 Kz',
+      'swim.mod.especial.3x': '45,000 Kz',
+      'swim.mod.especial.4x': '65,000 Kz',
+      'swim.mod.especial.5x': '85,000 Kz',
+      'swim.mod.hidro.title': 'Aqua aerobics',
+      'swim.mod.hidro.desc': 'Adults and teens · 60 min',
+      'swim.mod.hidro.1x': '20,000 Kz',
+      'swim.mod.hidro.2x': '30,000 Kz',
+      'swim.mod.hidro.3x': '40,000 Kz',
+      'swim.mod.hidro.4x': '60,000 Kz',
+      'swim.mod.hidro.5x': '80,000 Kz',
+      'swim.mod.natacao699.title': 'Swimming — ages 6 to 99',
+      'swim.mod.natacao699.desc': 'Children from 6, teens and adults · 60 min',
+      'swim.mod.natacao699.1x': '15,000 Kz',
+      'swim.mod.natacao699.2x': '25,000 Kz',
+      'swim.mod.natacao699.3x': '35,000 Kz',
+      'swim.mod.natacao699.4x': '45,000 Kz',
+      'swim.mod.natacao699.5x': '55,000 Kz',
+      'inscricao.opt.mod.natacao699': 'Swimming ages 6–99 (60 min)',
+      'inscricao.opt.mod.especial': 'Special — Children (6–14 years · 60 min)',
+      'inscricao.opt.freq.1x': '1× per week',
+      'inscricao.opt.freq.2x': '2× per week',
+      'inscricao.opt.freq.3x': '3× per week',
+      'inscricao.opt.freq.4x': '4× per week',
+      'inscricao.opt.freq.5x': '5× per week',
+      'natacao.plans.desc': 'School registration: 10,500 Kz (one-time). Choose module and frequency (1× to 5× per week). 20% off from the 3rd family member.'
     };
     Object.assign(texts.pt, priceMapPt);
     if (texts.en) Object.assign(texts.en, priceMapEn);
-
-    // Force current public copy (overrides stale catalog drafts)
-    Object.assign(texts.pt, {
-      'swim.mod.natacao699.title': 'Natação — 6 aos 99 anos',
-      'swim.mod.natacao699.desc': 'Crianças a partir dos 6 anos, adolescentes e adultos · 60 min',
-      'swim.mod.especial.desc': '6–14 anos · 60 min · sob recomendação médica quando aplicável',
-      'inscricao.opt.mod.natacao699': 'Natação 6–99 anos (60 min)',
-      'inscricao.opt.mod.especial': 'Especial — Crianças (6–14 anos · 60 min)',
-      'natacao.plans.desc': 'Inscrição na escola: 10.500 Kz (única). Escolha o módulo e a frequência (1× a 5× por semana). Desconto de 20% a partir do 3.º membro da mesma família.',
-      'swim.freq.4x': '4× / semana'
-    });
-    if (texts.en) {
-      Object.assign(texts.en, {
-        'swim.mod.natacao699.title': 'Swimming — ages 6 to 99',
-        'swim.mod.natacao699.desc': 'Children from 6, teens and adults · 60 min',
-        'swim.mod.especial.desc': '6–14 years · 60 min · medical recommendation when applicable',
-        'inscricao.opt.mod.natacao699': 'Swimming ages 6–99 (60 min)',
-        'inscricao.opt.mod.especial': 'Special — Children (6–14 years · 60 min)',
-        'natacao.plans.desc': 'School registration: 10,500 Kz (one-time). Choose module and frequency (1× to 5× per week). 20% off from the 3rd family member.',
-        'swim.freq.4x': '4× / week'
-      });
-    }
 
     markDirty();
     renderProducts();
     if (typeof renderTexts === 'function') {
       try { renderTexts(); } catch (e) {}
     }
-    toast(`Actualizado: ${nProd} planos + textos (1×–5×, Natação 6–99). Clique «Publicar no website».`);
+    toast(`Actualizado: ${nProd} planos + textos (1×–5× apenas). Clique «Publicar no website».`);
   }
 
   $('#applySwimAgeUpdateBtn')?.addEventListener('click', async () => {
@@ -7592,39 +7637,34 @@
         { key: 'swim.freq.3x', label: 'Frequência 3×', rows: 1 },
         { key: 'swim.freq.4x', label: 'Frequência 4×', rows: 1 },
         { key: 'swim.freq.5x', label: 'Frequência 5×', rows: 1 },
-        { key: 'swim.freq.6x', label: 'Frequência 6×', rows: 1 },
         { key: 'swim.mod.bebes.title', label: 'Bebés — título', rows: 1 },
         { key: 'swim.mod.bebes.desc', label: 'Bebés — descrição', rows: 2 },
         { key: 'swim.mod.bebes.1x', label: 'Bebés — preço 1×', rows: 1 },
         { key: 'swim.mod.bebes.2x', label: 'Bebés — preço 2×', rows: 1 },
         { key: 'swim.mod.bebes.3x', label: 'Bebés — preço 3×', rows: 1 },
-        { key: 'swim.mod.bebes.4x', label: 'Bebés — preço 4× (60.000)', rows: 1 },
-        { key: 'swim.mod.bebes.5x', label: 'Bebés — preço 5× (80.000)', rows: 1 },
-        { key: 'swim.mod.bebes.6x', label: 'Bebés — legado 6×', rows: 1 },
-        { key: 'swim.mod.especial.title', label: 'Especial — título', rows: 1 },
+        { key: 'swim.mod.bebes.4x', label: 'Bebés — preço 4×', rows: 1 },
+        { key: 'swim.mod.bebes.5x', label: 'Bebés — preço 5×', rows: 1 },
+        { key: 'swim.mod.especial.title', label: 'Especial — Crianças — título', rows: 1 },
         { key: 'swim.mod.especial.desc', label: 'Especial — descrição (6–14 anos)', rows: 2 },
         { key: 'swim.mod.especial.1x', label: 'Especial — preço 1×', rows: 1 },
         { key: 'swim.mod.especial.2x', label: 'Especial — preço 2×', rows: 1 },
         { key: 'swim.mod.especial.3x', label: 'Especial — preço 3×', rows: 1 },
-        { key: 'swim.mod.especial.4x', label: 'Especial — preço 4× (65.000)', rows: 1 },
-        { key: 'swim.mod.especial.5x', label: 'Especial — preço 5× (85.000)', rows: 1 },
-        { key: 'swim.mod.especial.6x', label: 'Especial — legado 6×', rows: 1 },
+        { key: 'swim.mod.especial.4x', label: 'Especial — preço 4×', rows: 1 },
+        { key: 'swim.mod.especial.5x', label: 'Especial — preço 5×', rows: 1 },
         { key: 'swim.mod.hidro.title', label: 'Hidroginástica — título', rows: 1 },
         { key: 'swim.mod.hidro.desc', label: 'Hidroginástica — descrição', rows: 2 },
         { key: 'swim.mod.hidro.1x', label: 'Hidroginástica — preço 1×', rows: 1 },
         { key: 'swim.mod.hidro.2x', label: 'Hidroginástica — preço 2×', rows: 1 },
         { key: 'swim.mod.hidro.3x', label: 'Hidroginástica — preço 3×', rows: 1 },
-        { key: 'swim.mod.hidro.4x', label: 'Hidroginástica — preço 4× (60.000)', rows: 1 },
-        { key: 'swim.mod.hidro.5x', label: 'Hidroginástica — preço 5× (80.000)', rows: 1 },
-        { key: 'swim.mod.hidro.6x', label: 'Hidroginástica — legado 6×', rows: 1 },
+        { key: 'swim.mod.hidro.4x', label: 'Hidroginástica — preço 4×', rows: 1 },
+        { key: 'swim.mod.hidro.5x', label: 'Hidroginástica — preço 5×', rows: 1 },
         { key: 'swim.mod.natacao699.title', label: 'Natação 6–99 — título', rows: 1 },
         { key: 'swim.mod.natacao699.desc', label: 'Natação 6–99 — descrição', rows: 2 },
         { key: 'swim.mod.natacao699.1x', label: 'Natação 6–99 — preço 1×', rows: 1 },
         { key: 'swim.mod.natacao699.2x', label: 'Natação 6–99 — preço 2×', rows: 1 },
         { key: 'swim.mod.natacao699.3x', label: 'Natação 6–99 — preço 3×', rows: 1 },
-        { key: 'swim.mod.natacao699.4x', label: 'Natação 6–99 — preço 4× (45.000)', rows: 1 },
-        { key: 'swim.mod.natacao699.5x', label: 'Natação 6–99 — preço 5× (55.000)', rows: 1 },
-        { key: 'swim.mod.natacao699.6x', label: 'Natação 6–99 — legado 6×', rows: 1 },
+        { key: 'swim.mod.natacao699.4x', label: 'Natação 6–99 — preço 4×', rows: 1 },
+        { key: 'swim.mod.natacao699.5x', label: 'Natação 6–99 — preço 5×', rows: 1 },
         { key: 'swim.mod.hidroterapia.title', label: 'Hidroterapia — título', rows: 1 },
         { key: 'swim.mod.hidroterapia.desc', label: 'Hidroterapia — texto', rows: 3 },
         { key: 'swim.ferias.desc', label: 'Planos de férias — descrição (página Planos)', rows: 2 },
@@ -7683,7 +7723,6 @@
         { key: 'inscricao.opt.freq.3x', label: 'Freq. formulário — 3×', rows: 1 },
         { key: 'inscricao.opt.freq.4x', label: 'Freq. formulário — 4×', rows: 1 },
         { key: 'inscricao.opt.freq.5x', label: 'Freq. formulário — 5×', rows: 1 },
-        { key: 'inscricao.opt.freq.6x', label: 'Freq. formulário — 6×', rows: 1 },
         { key: 'inscricao.opt.pkg.10', label: 'Pacote 10 aulas', rows: 1 },
         { key: 'inscricao.opt.pkg.15', label: 'Pacote 15 aulas', rows: 1 },
         { key: 'inscricao.opt.pkg.25', label: 'Pacote 25 aulas', rows: 1 }

@@ -419,6 +419,16 @@
             <p class="muted" style="font-size:0.75rem;margin-top:0.25rem">Valores indicativos. A equipa confirma na inscrição.</p>
           </div>
 
+          <div class="form-group" style="margin-bottom:1rem">
+            <div class="check-row">
+              <label style="display:flex;align-items:flex-start;gap:0.5rem;font-size:0.88rem;line-height:1.45;cursor:pointer">
+                <input type="checkbox" id="eAcceptReg" required style="margin-top:0.2rem;flex-shrink:0">
+                <span>Li e aceito o <a href="regulamento-ginasio.html" target="_blank" rel="noopener">Regulamento Interno do Ginásio</a> e/ou da <a href="regulamento-ferias.html" target="_blank" rel="noopener">Escola de Natação (planos de férias)</a>, conforme a área escolhida.</span>
+              </label>
+            </div>
+            <p id="regError" class="muted" style="display:none;color:var(--color-accent);font-size:0.8rem;margin-top:0.35rem">Para enviar a inscrição, aceite o regulamento interno.</p>
+          </div>
+
           <button type="submit" class="btn btn-primary btn-block" id="enrollSubmit">Enviar inscrição</button>
           <p id="enrollFeedback" class="form-feedback" role="status" aria-live="polite" hidden></p>
           <p class="muted text-center mt-2" style="font-size:0.8rem">Ao enviar, a equipa Búzios recebe os seus dados e entra em contacto.</p>
@@ -438,6 +448,10 @@
         <a href="contacto.html">Contacto</a>
         <a href="conta.html">Entrar</a>
       </nav>
+      <div class="footer-legal">
+        <a href="regulamento-ginasio.html" data-i18n="footer.legal.regGym">Regulamento ginásio</a>
+        <a href="regulamento-ferias.html" data-i18n="footer.legal.regFerias">Regulamento férias</a>
+      </div>
       <div class="footer-brand"><img src="icons/logo.png" width="64" height="64" alt="Búzios Health Club · La Casa de Ferro"></div>
       <p class="footer-copy">© <span id="year"></span> Búzios Health Club · La Casa de Ferro</p>
     </div>
@@ -917,6 +931,15 @@
       e.preventDefault();
       const btn = document.getElementById('enrollSubmit');
       clearEnrollFeedback();
+      const regCb = document.getElementById('eAcceptReg');
+      const regErr = document.getElementById('regError');
+      if (regErr) regErr.style.display = 'none';
+      if (!regCb || !regCb.checked) {
+        if (regErr) regErr.style.display = 'block';
+        if (regCb) regCb.focus();
+        showEnrollFeedback((window.DEFAULT_TEXTS && window.DEFAULT_TEXTS.pt && window.DEFAULT_TEXTS.pt['inscricao.reg.error']) || 'Para enviar a inscrição, aceite o regulamento interno.');
+        return;
+      }
       btn.disabled = true;
       btn.textContent = 'A enviar…';
 
@@ -1025,6 +1048,7 @@
         documents,
         paymentProof: documents.paymentProof ? documents.paymentProof.url : null,
         attachments,
+        acceptedRegulamento: true,
         status: 'novo',
         createdAt: new Date().toISOString()
       };

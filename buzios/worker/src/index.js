@@ -826,12 +826,14 @@ async function handleAdminData(request, env) {
          FROM trainings WHERE client_id = ?
          GROUP BY month ORDER BY month DESC`
       ).bind(clientId).all();
+      // Indexed lookup only (idx_audit_entity_id). Training sessions live in
+      // `trainings` — no longer written to audit_log (add/delete/update).
       const auditQ = await env.DB.prepare(
         `SELECT id, at, action, entity, entity_id, detail
          FROM audit_log
-         WHERE entity_id = ? OR (entity = 'training' AND detail LIKE ?)
+         WHERE entity_id = ?
          ORDER BY id DESC LIMIT ?`
-      ).bind(clientId, clientId + '%', limit).all();
+      ).bind(clientId, limit).all();
       return json({
         ok: true,
         trainings: (trainingsQ.results || []).map(trainingRowFromDb),
@@ -859,7 +861,8 @@ async function handleAdminData(request, env) {
         note: data && data.note,
         recordedBy: adminName || (data && data.recordedBy) || ''
       });
-      await d1Audit(env, 'add_training', 'training', row.id, clientId + (row.note ? ' · ' + row.note : ''), adminName);
+      // No audit_log row — trainings table is source of truth; avoids flooding
+      // global Histórico and expensive client-history scans.
       return json({ ok: true, training: row });
     } catch (e) {
       console.error('add_training', e && e.message);
@@ -873,7 +876,7 @@ async function handleAdminData(request, env) {
     if (!id) return json({ error: 'id required' }, 400);
     try {
       await d1DeleteTraining(env, id);
-      await d1Audit(env, 'delete_training', 'training', id, '', adminName);
+      // No audit_log — same rationale as add_training
       return json({ ok: true });
     } catch (e) {
       console.error('delete_training', e && e.message);
@@ -892,7 +895,7 @@ async function handleAdminData(request, env) {
         note: data && data.note
       });
       if (!row) return json({ error: 'Sessão não encontrada' }, 404);
-      await d1Audit(env, 'update_training', 'training', id, (row.note || '').slice(0, 120), adminName);
+      // No audit_log — same rationale as add_training
       return json({ ok: true, training: row });
     } catch (e) {
       console.error('update_training', e && e.message);

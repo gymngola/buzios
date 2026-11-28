@@ -350,6 +350,7 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 - **Payment retention:** client `payments[]` kept up to **1000** newest on add/edit/delete (was 50). Admin-only (`js/admin.js`); Worker stores whatever array is sent. Already-truncated rows under the old 50-cap are not recoverable.
 - **Histórico de pagamentos UI:** shows 40 rows, then **Carregar mais (N restantes)**; visible count resets when the client modal opens. Histórico do cliente timeline already used the full array — no change there.
 - **Histórico (audit log):** admin requests up to **5000** entries; Worker `get_audit_log` max raised 500 → **5000**. Redeploy Worker required.
+- **D1 audit efficiency:** migration `0010_audit_entity_id.sql` (`idx_audit_entity_id`, `idx_audit_id_desc`). Client history audit query is indexed `WHERE entity_id = ?` only. Training add/delete/update no longer write to `audit_log` (avoids full-table scans + Histórico noise; Treinos / Histórico de treinos unchanged).
 
 ### 2026-11-17
 

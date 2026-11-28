@@ -352,6 +352,7 @@ Several staff devices can keep admin open:
 - **Histórico de pagamentos** list shows 40, then **Carregar mais (N restantes)**; reset when the client modal opens.
 - Admin only (`js/admin.js`); no Worker/schema change. Rows already discarded under the old 50-cap are not recoverable.
 - **Histórico** (global audit): request/cap raised to **5000** rows (`js/admin.js` + Worker `get_audit_log`). Redeploy Worker required.
+- **D1 audit efficiency:** migration `0010_audit_entity_id.sql`; `get_client_history` uses indexed `entity_id = ?` only; **no** `add_training` / `delete_training` / `update_training` rows in `audit_log`. Apply migration + redeploy Worker.
 
 ### 2026-11-17 — Textos expansion + 90-day re-enrollment
 

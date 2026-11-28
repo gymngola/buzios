@@ -313,9 +313,10 @@
   }
 
   function checkAuth() {
-    const authed =
-      sessionStorage.getItem(LS.auth) === '1' ||
-      localStorage.getItem(LS.auth) === '1';
+    // Session only: password + auth flag live in sessionStorage (survive hard reload,
+    // not full tab/PWA close). Never use localStorage for auth — shared devices.
+    try { localStorage.removeItem(LS.auth); } catch (e) {}
+    const authed = sessionStorage.getItem(LS.auth) === '1';
     const hasPw = !!getAdminPassword();
     // Pre-fill last user on the login form
     const sel = $('#adminUser');
@@ -323,22 +324,15 @@
       const last = getAdminName() || localStorage.getItem('buzios_admin_name') || '';
       if (ADMIN_USERS.indexOf(last) >= 0) sel.value = last;
     }
-    // Auth flag without password or without a selected name → force clean login.
-    // Common on installed PWA: "stay logged in" leaves localStorage auth, but
-    // sessionStorage (password) is cleared when the app is fully quit.
     const name = getAdminName();
     const hasName = !!(name && ADMIN_USERS.indexOf(name) >= 0);
     if (authed && hasPw && hasName) {
-      if (localStorage.getItem(LS.auth) === '1' && $('#stayLoggedIn')) {
-        $('#stayLoggedIn').checked = true;
-      }
       setAdminName(name);
       showApp({ resume: true });
     } else {
       // Always land on a clean login screen — never leave half-auth / empty shell
       try {
         sessionStorage.removeItem(LS.auth);
-        if (!hasPw) localStorage.removeItem(LS.auth);
       } catch (e) {}
       document.documentElement.classList.remove('admin-authed');
       $('#adminApp')?.classList.add('hidden');
@@ -443,10 +437,8 @@
       setSessionPassword(password);
       setAdminName(adminName);
       if (data.authEpoch != null) setAuthEpoch(data.authEpoch);
-      const stay = $('#stayLoggedIn') && $('#stayLoggedIn').checked;
       sessionStorage.setItem(LS.auth, '1');
-      if (stay) localStorage.setItem(LS.auth, '1');
-      else localStorage.removeItem(LS.auth);
+      try { localStorage.removeItem(LS.auth); } catch (e) {}
       if (errEl) errEl.style.display = 'none';
       showApp();
       return true;

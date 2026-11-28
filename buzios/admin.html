@@ -13,13 +13,10 @@
   <link rel="icon" href="/icons/admin-192.png" type="image/png">
   <title>Admin — Búzios Health Club</title>
   <script>
-    /* Avoid login flash on reload when session is already valid */
+    /* Avoid login flash on reload when this tab still has a session */
     (function () {
       try {
-        if (
-          sessionStorage.getItem('buzios_admin_auth') === '1' ||
-          localStorage.getItem('buzios_admin_auth') === '1'
-        ) {
+        if (sessionStorage.getItem('buzios_admin_auth') === '1') {
           document.documentElement.classList.add('admin-authed');
         }
       } catch (e) {}
@@ -96,10 +93,6 @@
       <input type="password" id="adminPass" placeholder="Palavra-passe" autocomplete="current-password">
       <button type="button" class="pass-toggle" id="passToggle" aria-label="Mostrar palavra-passe">Mostrar</button>
     </div>
-    <label class="stay-logged" style="display:flex;align-items:center;gap:0.5rem;margin:0.85rem 0 0;font-size:0.85rem;color:#555;cursor:pointer;user-select:none">
-      <input type="checkbox" id="stayLoggedIn" style="width:auto;margin:0">
-      Manter sessão iniciada
-    </label>
     <button type="button" id="loginBtn">Entrar</button>
     <p id="loginError" style="color:#b33;font-size:0.8rem;margin-top:0.75rem;display:none">Palavra-passe incorrecta</p>
   </div>

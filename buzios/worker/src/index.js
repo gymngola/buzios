@@ -787,15 +787,37 @@ async function handleAdminData(request, env) {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
     const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 5000);
     const entityId = data && data.entityId ? String(data.entityId).slice(0, 80) : '';
+    const beforeIdRaw = data && data.beforeId != null ? parseInt(data.beforeId, 10) : NaN;
+    const beforeId = Number.isFinite(beforeIdRaw) && beforeIdRaw > 0 ? beforeIdRaw : null;
     let results;
     if (entityId) {
+      if (beforeId) {
+        const q = await env.DB.prepare(
+          `SELECT id, at, action, entity, entity_id, detail
+           FROM audit_log
+           WHERE entity_id = ? AND id < ?
+           ORDER BY id DESC
+           LIMIT ?`
+        ).bind(entityId, beforeId, limit).all();
+        results = q.results || [];
+      } else {
+        const q = await env.DB.prepare(
+          `SELECT id, at, action, entity, entity_id, detail
+           FROM audit_log
+           WHERE entity_id = ?
+           ORDER BY id DESC
+           LIMIT ?`
+        ).bind(entityId, limit).all();
+        results = q.results || [];
+      }
+    } else if (beforeId) {
       const q = await env.DB.prepare(
         `SELECT id, at, action, entity, entity_id, detail
          FROM audit_log
-         WHERE entity_id = ?
+         WHERE id < ?
          ORDER BY id DESC
          LIMIT ?`
-      ).bind(entityId, limit).all();
+      ).bind(beforeId, limit).all();
       results = q.results || [];
     } else {
       const q = await env.DB.prepare(
@@ -806,7 +828,13 @@ async function handleAdminData(request, env) {
       ).bind(limit).all();
       results = q.results || [];
     }
-    return json({ ok: true, entries: results || [], count: (results || []).length });
+    const entries = results || [];
+    return json({
+      ok: true,
+      entries,
+      count: entries.length,
+      hasMore: entries.length >= limit
+    });
   }
 
   if (action === 'get_client_history') {

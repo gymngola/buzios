@@ -1356,56 +1356,141 @@
     }
   }
 
-  function renderAuditLog(entries) {
-    const box = $('#auditList');
-    if (!box) return;
-    if (!entries || !entries.length) {
-      box.innerHTML = '<p class="empty-hint" style="color:#888;font-size:0.9rem">Ainda não há registos. As acções de guardar, arquivar e apagar passam a aparecer aqui.</p>';
-      return;
-    }
-    const rows = entries.map(function (e) {
-      const label = AUDIT_ACTION_LABELS[e.action] || e.action || '—';
-      const entity = e.entity ? String(e.entity) : '';
-      const idShort = e.entity_id ? String(e.entity_id).slice(0, 12) : '';
-      const detail = e.detail ? String(e.detail) : '';
-      const meta = [entity, idShort].filter(Boolean).join(' · ');
-      return (
-        '<div class="audit-row">' +
-          '<span class="audit-when">' + formatAuditWhen(e.at) + '</span>' +
-          '<span class="audit-action">' + label + '</span>' +
-          (meta ? '<span class="audit-meta">' + meta + '</span>' : '') +
-          (detail ? '<span class="audit-detail">' + detail + '</span>' : '') +
-        '</div>'
-      );
-    }).join('');
-    box.innerHTML = rows;
+  /** Global Histórico: page size for initial load and each “Carregar mais”. */
+  const AUDIT_PAGE_SIZE = 200;
+  let auditEntries = [];
+  let auditHasMore = false;
+  let auditLoading = false;
+
+  function auditRowHtml(e) {
+    const label = AUDIT_ACTION_LABELS[e.action] || e.action || '—';
+    const entity = e.entity ? String(e.entity) : '';
+    const idShort = e.entity_id ? String(e.entity_id).slice(0, 12) : '';
+    const detail = e.detail ? String(e.detail) : '';
+    const meta = [entity, idShort].filter(Boolean).join(' · ');
+    return (
+      '<div class="audit-row">' +
+        '<span class="audit-when">' + formatAuditWhen(e.at) + '</span>' +
+        '<span class="audit-action">' + label + '</span>' +
+        (meta ? '<span class="audit-meta">' + meta + '</span>' : '') +
+        (detail ? '<span class="audit-detail">' + detail + '</span>' : '') +
+      '</div>'
+    );
   }
 
-  async function loadAuditLog() {
+  function updateAuditLoadMore() {
     const box = $('#auditList');
-    if (box) box.innerHTML = '<p class="empty-hint" style="color:#888;font-size:0.9rem">A carregar…</p>';
+    if (!box) return;
+    const parent = box.parentElement;
+    if (!parent) return;
+    const existing = parent.querySelector('#auditLoadMoreWrap');
+    if (existing) existing.remove();
+    if (!auditHasMore || !auditEntries.length) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'auditLoadMoreWrap';
+    wrap.style.cssText = 'text-align:center;margin-top:0.75rem';
+    wrap.innerHTML =
+      '<button type="button" class="btn-ghost" id="auditLoadMoreBtn"' +
+      (auditLoading ? ' disabled' : '') +
+      '>Carregar mais</button>';
+    box.insertAdjacentElement('afterend', wrap);
+    const btn = wrap.querySelector('#auditLoadMoreBtn');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        loadAuditLog({ append: true });
+      });
+    }
+  }
+
+  function renderAuditLog(entries, opts) {
+    const box = $('#auditList');
+    if (!box) return;
+    const append = !!(opts && opts.append);
+    if (!append) {
+      if (!entries || !entries.length) {
+        box.innerHTML =
+          '<p class="empty-hint" style="color:#888;font-size:0.9rem">Ainda não há registos. As acções de guardar, arquivar e apagar passam a aparecer aqui.</p>';
+        updateAuditLoadMore();
+        return;
+      }
+      box.innerHTML = entries.map(auditRowHtml).join('');
+    } else if (entries && entries.length) {
+      box.insertAdjacentHTML('beforeend', entries.map(auditRowHtml).join(''));
+    }
+    updateAuditLoadMore();
+  }
+
+  async function loadAuditLog(opts) {
+    const append = !!(opts && opts.append);
+    const box = $('#auditList');
+    if (auditLoading) return;
+    if (!append && box) {
+      box.innerHTML = '<p class="empty-hint" style="color:#888;font-size:0.9rem">A carregar…</p>';
+      const parent = box.parentElement;
+      const existing = parent && parent.querySelector('#auditLoadMoreWrap');
+      if (existing) existing.remove();
+    }
     const password = getAdminPassword();
     if (!password) {
-      if (box) box.innerHTML = '<p class="empty-hint" style="color:#b33;font-size:0.9rem">Sessão inválida. Volte a entrar.</p>';
+      if (box) {
+        box.innerHTML =
+          '<p class="empty-hint" style="color:#b33;font-size:0.9rem">Sessão inválida. Volte a entrar.</p>';
+      }
       return;
     }
+    const dataPayload = { limit: AUDIT_PAGE_SIZE };
+    if (append && auditEntries.length) {
+      const last = auditEntries[auditEntries.length - 1];
+      const lastId = last && last.id != null ? parseInt(last.id, 10) : NaN;
+      if (!Number.isFinite(lastId) || lastId <= 0) return;
+      dataPayload.beforeId = lastId;
+    }
+    auditLoading = true;
+    updateAuditLoadMore();
     try {
-      const res = await fetchWithTimeout(ADMIN_DATA_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: password, action: 'get_audit_log', adminName: getAdminName(), data: { limit: 5000 } }),
-        cache: 'no-store'
-      }, WORKER_FETCH_MS);
+      const res = await fetchWithTimeout(
+        ADMIN_DATA_URL,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            password: password,
+            action: 'get_audit_log',
+            adminName: getAdminName(),
+            data: dataPayload
+          }),
+          cache: 'no-store'
+        },
+        WORKER_FETCH_MS
+      );
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       if (!data || !data.ok) throw new Error((data && data.error) || 'Falha');
-      renderAuditLog(data.entries || []);
+      const page = data.entries || [];
+      if (append) {
+        auditEntries = auditEntries.concat(page);
+        auditHasMore = data.hasMore === true || page.length >= AUDIT_PAGE_SIZE;
+        renderAuditLog(page, { append: true });
+      } else {
+        auditEntries = page;
+        auditHasMore = data.hasMore === true || page.length >= AUDIT_PAGE_SIZE;
+        renderAuditLog(page, { append: false });
+      }
     } catch (err) {
       console.warn('audit log', err);
-      if (box) {
-        box.innerHTML = '<p class="empty-hint" style="color:#b33;font-size:0.9rem">Não foi possível carregar o histórico' +
-          (isTimeoutError(err) ? ' (timeout de rede).' : '.') + '</p>';
+      if (!append && box) {
+        box.innerHTML =
+          '<p class="empty-hint" style="color:#b33;font-size:0.9rem">Não foi possível carregar o histórico' +
+          (isTimeoutError(err) ? ' (timeout de rede).' : '.') +
+          '</p>';
       }
+      if (append) {
+        auditHasMore = true;
+        updateAuditLoadMore();
+      }
+    } finally {
+      auditLoading = false;
+      updateAuditLoadMore();
     }
   }
 

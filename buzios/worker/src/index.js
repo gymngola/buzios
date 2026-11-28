@@ -785,7 +785,7 @@ async function handleAdminData(request, env) {
 
   if (action === 'get_audit_log') {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
-    const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 500);
+    const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 5000);
     const entityId = data && data.entityId ? String(data.entityId).slice(0, 80) : '';
     let results;
     if (entityId) {

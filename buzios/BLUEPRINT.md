@@ -235,7 +235,7 @@ Closes on **outside click** or **Escape**.
 
 ### Client data (store / D1)
 
-Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `birthDate`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `goals`, `medicalConditions`, `notes`, `payments[]` (each: `id`, `amount`, `paidAt` or legacy `date`, `method`, `note`, …), `historyNotes[]` (manual timeline notes: `id`, `type`, `text`, `at`, `recordedBy`), `attachments` / `documents` / `paymentProof`, `photoUrl`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.  
+Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `birthDate`, `schedule`, `hasCard` (`""` | `"sim"` | `"nao"`), `planName` / `planId`, `price`, `billingCycle`, `planStart`, `planEnd`, `membershipStatus`, `billingStatus` (includes **`desistente`**), `emergencyName`, `emergencyPhone`, `goals`, `medicalConditions`, `notes`, `payments[]` (each: `id`, `amount`, `paidAt` or legacy `date`, `method`, `note`, …; **up to 1000 newest kept on save**), `historyNotes[]` (manual timeline notes: `id`, `type`, `text`, `at`, `recordedBy`), `attachments` / `documents` / `paymentProof`, `photoUrl`, `lastPaymentAt`, `createdAt`, `fromSubmission`, `fromImport`, `archivedAt`.  
 `goals`, `medicalConditions`, `attachments`, `documents`, `paymentProof`, `birthDate`, `historyNotes`, extras live in D1 `documents_json` (with the usual client columns for indexed fields).
 
 **Edit client modal (updated 2026-11-12 evening):**
@@ -250,7 +250,7 @@ Typical fields: `id`, `name`, `phone`, `email`, `area`, `memberNumber`, `age`, `
   - **Pagar e activar plano** — first payment / new membership: payment + `activo` + `em_dia`; plan dates kept if already filled, otherwise today → today+cycle. Does **not** extend from an existing end. Default when opening **Novo cliente**; payment section auto-opens
   - **Pagar e renovar plano** — payment + extend plan end from current end (or today if expired/missing) + `activo` + `em_dia`
 - Preview line under the payment fields follows the selected mode.
-- **Histórico de pagamentos** is its own section (list + edit/delete only; newest first).
+- **Histórico de pagamentos** is its own section (list + edit/delete only; newest first). Shows **40** rows then **Carregar mais**; on write the client keeps up to **1000** newest payments (`PAYMENTS_KEEP` in `js/admin.js`).
 - Status chips at top (membership, billing, days-to-expiry)
 - Quick actions when editing: WhatsApp · Renovar (jumps to **Registar pagamento**) · Copiar telefone
 - Plan as **select from catalog** (grouped ginásio/natação) + “Outro” custom name; selecting a plan fills price + cycle
@@ -268,7 +268,7 @@ Legacy notes dumps (`Nº · Horário · Cartão · Idade` and labeled Objectivos
 - **D1 `trainings`:** `id`, `client_id`, `trained_at`, `trained_date`, `recorded_by`, `note`, `created_at`.
 - **Histórico de treinos** (modal): training list only (+ Treino, edit/delete).
 - **Histórico do cliente** (modal): timeline of payments + **manual notes** + audit events + “cliente criado” (trainings stay in their own section). Year filter; summary counts. Worker `get_client_history` for trainings/audit. **+ Nota** adds a manual entry (`historyNotes` on the client: type Nota/Contacto/Aviso/Outro, text, date/time, `recordedBy` = staff login name). Edit/delete on notes and on payment rows in this timeline.
-- **Histórico de pagamentos** (modal): payment list only, **newest first** (`paidAt` or legacy import `date`); edit/delete icons; scrollbar does not cover action buttons.
+- **Histórico de pagamentos** (modal): payment list only, **newest first** (`paidAt` or legacy import `date`); edit/delete icons; scrollbar does not cover action buttons. Initial **40** visible rows + **Carregar mais**; retention on save is **1000** newest (admin-side only).
 
 ---
 
@@ -344,6 +344,12 @@ Address: Rua 21-C, travessa 5, nº 57-59, Bairro do Benfica · Kifica (Rua do gi
 ---
 
 ## 9. Change log (blueprint)
+
+### 2026-11-28
+
+- **Payment retention:** client `payments[]` kept up to **1000** newest on add/edit/delete (was 50). Admin-only (`js/admin.js`); Worker stores whatever array is sent. Already-truncated rows under the old 50-cap are not recoverable.
+- **Histórico de pagamentos UI:** shows 40 rows, then **Carregar mais (N restantes)**; visible count resets when the client modal opens. Histórico do cliente timeline already used the full array — no change there.
+- **Histórico (audit log):** admin requests up to **5000** entries; Worker `get_audit_log` max raised 500 → **5000**. Redeploy Worker required.
 
 ### 2026-11-17
 

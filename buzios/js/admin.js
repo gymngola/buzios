@@ -1393,7 +1393,7 @@
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: password, action: 'get_audit_log', adminName: getAdminName(), data: { limit: 200 } }),
+        body: JSON.stringify({ password: password, action: 'get_audit_log', adminName: getAdminName(), data: { limit: 5000 } }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -3661,6 +3661,11 @@
   }
 
   /** paidAt (new) or date (legacy import) — always prefer newest-first elsewhere */
+  /** Max payments kept on the client row when saving (newest first). */
+  const PAYMENTS_KEEP = 1000;
+  /** Initial visible rows in payment history list; “Carregar mais” adds 40. */
+  let payHistoryVisible = 40;
+
   function paymentAt(p) {
     if (!p) return '';
     return String(p.paidAt || p.date || '');
@@ -3679,13 +3684,17 @@
   function renderPayHistory(payments) {
     const el = $('#cPayHistory');
     if (!el) return;
+    const existingMore = el.parentElement && el.parentElement.querySelector('#cLoadMorePaymentsWrap');
+    if (existingMore) existingMore.remove();
     const list = sortPaymentsNewestFirst(payments);
     if (!list.length) {
       el.innerHTML = '<li style="color:#999">Ainda sem pagamentos registados.</li>';
       return;
     }
     const methodLabel = { cash: 'Numerário', transfer: 'Transferência', multicaixa: 'Multicaixa', other: 'Outro' };
-    el.innerHTML = list.slice(0, 40).map((p, idx) => {
+    const visible = Math.min(payHistoryVisible, list.length);
+    const hasMore = visible < list.length;
+    el.innerHTML = list.slice(0, visible).map((p, idx) => {
       const when = formatPaymentWhen(p);
       const amt = p.amount != null ? Number(p.amount).toLocaleString('pt') + ' Kz' : '';
       const method = methodLabel[p.method] || p.method || '';
@@ -3720,6 +3729,24 @@
         deletePayment(btn.getAttribute('data-pay-del'));
       });
     });
+
+    if (hasMore) {
+      const wrap = document.createElement('div');
+      wrap.id = 'cLoadMorePaymentsWrap';
+      wrap.style.cssText = 'text-align:center;margin-top:0.5rem';
+      wrap.innerHTML = '<button type="button" class="btn-ghost" id="cLoadMorePayments">Carregar mais (' + (list.length - visible) + ' restantes)</button>';
+      el.insertAdjacentElement('afterend', wrap);
+      const moreBtn = wrap.querySelector('#cLoadMorePayments');
+      if (moreBtn) {
+        moreBtn.addEventListener('click', () => {
+          payHistoryVisible = Math.min(payHistoryVisible + 40, list.length);
+          const c = editingClientId
+            ? (store.clients || []).find(x => x.id === editingClientId)
+            : null;
+          renderPayHistory((c && c.payments) || payments);
+        });
+      }
+    }
   }
 
   function findPaymentIndex(payments, payId) {
@@ -3761,7 +3788,7 @@
     payments.splice(idx, 1);
     const sortedLeft = sortPaymentsNewestFirst(payments);
     const data = enrichClient(Object.assign({}, existing, {
-      payments: sortedLeft.slice(0, 50),
+      payments: sortedLeft.slice(0, PAYMENTS_KEEP),
       lastPaymentAt: paymentAt(sortedLeft[0]) || null
     }));
     await adminAction('update_client', data);
@@ -3849,7 +3876,7 @@
     const sorted = sortPaymentsNewestFirst(payments);
 
     const data = enrichClient(Object.assign({}, existing, {
-      payments: sorted.slice(0, 50),
+      payments: sorted.slice(0, PAYMENTS_KEEP),
       lastPaymentAt: paymentAt(sorted[0]) || existing.lastPaymentAt || null
     }));
     closePayEditModal();
@@ -4384,6 +4411,7 @@
       if (none) none.checked = true;
     }
     updatePayPreview();
+    payHistoryVisible = 40;
     renderPayHistory(c?.payments);
 
     const archBtn = $('#archiveClientBtn');
@@ -4578,7 +4606,7 @@
       membershipStatus: 'activo',
       billingStatus: 'em_dia',
       lastPaymentAt: payment.paidAt,
-      payments: payments.slice(0, 50)
+      payments: payments.slice(0, PAYMENTS_KEEP)
     }));
     await adminAction('update_client', data);
     toast('Período renovado até ' + formatDatePT(end));
@@ -5146,7 +5174,7 @@
       payments.unshift(payment);
       const sortedPay = sortPaymentsNewestFirst(payments);
       const data = readClientForm(Object.assign({}, existing || {}, {
-        payments: sortedPay.slice(0, 50),
+        payments: sortedPay.slice(0, PAYMENTS_KEEP),
         lastPaymentAt: payment.paidAt
       }));
       data.planStart = start;
@@ -5154,7 +5182,7 @@
       data.membershipStatus = 'activo';
       data.billingStatus = 'em_dia';
       data.lastPaymentAt = paymentAt(sortedPay[0]) || paidAt;
-      data.payments = sortedPay.slice(0, 50);
+      data.payments = sortedPay.slice(0, PAYMENTS_KEEP);
       data.billingCycle = cycle;
       data.price = planPriceFromForm() || (existing && existing.price) || null;
       data.annualFee = false;
@@ -5193,7 +5221,7 @@
       payments.unshift(payment);
       const sortedPay = sortPaymentsNewestFirst(payments);
       const data = readClientForm(Object.assign({}, existing || {}, {
-        payments: sortedPay.slice(0, 50),
+        payments: sortedPay.slice(0, PAYMENTS_KEEP),
         lastPaymentAt: payment.paidAt
       }));
       data.planStart = data.planStart || start;
@@ -5201,7 +5229,7 @@
       data.membershipStatus = 'activo';
       data.billingStatus = 'em_dia';
       data.lastPaymentAt = paymentAt(sortedPay[0]) || paidAt;
-      data.payments = sortedPay.slice(0, 50);
+      data.payments = sortedPay.slice(0, PAYMENTS_KEEP);
       data.billingCycle = cycle;
       data.price = planPriceFromForm() || (existing && existing.price) || null;
       data.annualFee = false;
@@ -5230,12 +5258,12 @@
     payments.unshift(payment);
     const sortedOnly = sortPaymentsNewestFirst(payments);
     const data = readClientForm(Object.assign({}, existing || {}, {
-      payments: sortedOnly.slice(0, 50),
+      payments: sortedOnly.slice(0, PAYMENTS_KEEP),
       lastPaymentAt: paymentAt(sortedOnly[0]) || paidAt
     }));
     data.billingStatus = 'em_dia';
     data.lastPaymentAt = paymentAt(sortedOnly[0]) || paidAt;
-    data.payments = sortedOnly.slice(0, 50);
+    data.payments = sortedOnly.slice(0, PAYMENTS_KEEP);
     data.annualFee = false;
     data.swimFee = false;
     data.extras = [];

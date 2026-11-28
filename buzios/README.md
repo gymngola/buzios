@@ -308,7 +308,7 @@ Dense operational list for membership staff:
   - **Só registar pagamento** — history + billing em dia; plan dates / membership unchanged
   - **Pagar e activar plano** — first payment / new membership: payment + plan dates (keep form dates if set, else today → today+cycle) + activo + em dia. Default when opening **Novo cliente**.
   - **Pagar e renovar plano** — extends plan end from current end (or today if expired/missing) + activo + em dia
-- Payment history is a separate list (newest first). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
+- Payment history is a separate list (newest first). UI shows **40** rows then **Carregar mais**; on save the client keeps up to **1000** newest payments (`PAYMENTS_KEEP` in `js/admin.js`). Histórico do cliente supports **+ Nota** (staff-attributed manual notes on `historyNotes`).
 
 See `BLUEPRINT.md` for full workflow and data fields.
 
@@ -345,6 +345,13 @@ Several staff devices can keep admin open:
 - Bulk checkbox selection is kept in memory across poll re-renders
 
 ## Recent changes
+
+### 2026-11-28 — Payment retention 1000 + audit log 5000
+
+- Client `payments[]` kept up to **1000** newest on every add/edit/delete (was 50).
+- **Histórico de pagamentos** list shows 40, then **Carregar mais (N restantes)**; reset when the client modal opens.
+- Admin only (`js/admin.js`); no Worker/schema change. Rows already discarded under the old 50-cap are not recoverable.
+- **Histórico** (global audit): request/cap raised to **5000** rows (`js/admin.js` + Worker `get_audit_log`). Redeploy Worker required.
 
 ### 2026-11-17 — Textos expansion + 90-day re-enrollment
 

@@ -6153,13 +6153,15 @@
     }
   }
 
-  let clientHistoryCache = { clientId: '', trainings: [], audit: [], payments: [] };
+  let clientHistoryCache = { clientId: '', trainings: [], monthCounts: [], audit: [], payments: [] };
   let clientHistoryYear = '';
+  let clientTrainingsVisible = 80;
 
   async function loadClientTrainings(clientId) {
     const host = $('#cTrainingsHost');
     if (!host || !clientId) return;
     host.innerHTML = '<p class="muted" style="font-size:0.8rem">A carregar treinos…</p>';
+    clientTrainingsVisible = 80;
     try {
       const res = await fetchWithTimeout(ADMIN_DATA_URL, {
         method: 'POST',
@@ -6168,7 +6170,7 @@
           password: getAdminPassword(),
           action: 'get_client_history',
           adminName: getAdminName(),
-          data: { clientId, limit: 400 }
+          data: { clientId, limit: 1000 }
         }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
@@ -6176,11 +6178,12 @@
       const data = await res.json();
       clientHistoryCache = Object.assign({}, clientHistoryCache, {
         clientId,
-        trainings: (data && data.trainings) || []
+        trainings: (data && data.trainings) || [],
+        monthCounts: (data && data.monthCounts) || []
       });
       renderClientTrainingsOnly(host, clientId);
     } catch (e) {
-      clientHistoryCache = Object.assign({}, clientHistoryCache, { clientId, trainings: [] });
+      clientHistoryCache = Object.assign({}, clientHistoryCache, { clientId, trainings: [], monthCounts: [] });
       renderClientTrainingsOnly(host, clientId);
       host.insertAdjacentHTML('beforeend', '<p class="muted" style="font-size:0.75rem">Não foi possível carregar treinos do servidor.</p>');
     }
@@ -6190,6 +6193,7 @@
     const host = ensureClientHistoryHost();
     if (!host || !clientId) return;
     host.innerHTML = '<p class="muted" style="font-size:0.8rem">A carregar histórico do cliente…</p>';
+    clientTrainingsVisible = 80;
     const existing = (store.clients || []).find(x => x.id === clientId);
     const payments = (existing && existing.payments) || [];
     try {
@@ -6200,7 +6204,7 @@
           password: getAdminPassword(),
           action: 'get_client_history',
           adminName: getAdminName(),
-          data: { clientId, limit: 300 }
+          data: { clientId, limit: 1000 }
         }),
         cache: 'no-store'
       }, WORKER_FETCH_MS);
@@ -6209,6 +6213,7 @@
       clientHistoryCache = {
         clientId,
         trainings: (data && data.trainings) || [],
+        monthCounts: (data && data.monthCounts) || [],
         audit: (data && data.audit) || [],
         payments: payments,
         historyNotes: (existing && Array.isArray(existing.historyNotes)) ? existing.historyNotes : [],
@@ -6222,6 +6227,7 @@
       clientHistoryCache = {
         clientId,
         trainings: [],
+        monthCounts: [],
         audit: [],
         payments: payments,
         historyNotes: (existing && Array.isArray(existing.historyNotes)) ? existing.historyNotes : [],
@@ -6235,58 +6241,92 @@
 
   function renderClientTrainingsOnly(host, clientId) {
     if (!host) return;
-    const cache = clientHistoryCache.clientId === clientId ? clientHistoryCache : { trainings: [] };
+    const cache = clientHistoryCache.clientId === clientId ? clientHistoryCache : { trainings: [], monthCounts: [] };
     const trainings = (cache.trainings || []).slice().sort((a, b) =>
       String(b.trainedAt || b.trainedDate || '').localeCompare(String(a.trainedAt || a.trainedDate || ''))
     );
+    const monthCounts = Array.isArray(cache.monthCounts) ? cache.monthCounts : [];
+    const totalAll = monthCounts.reduce((s, r) => s + (Number(r.n) || 0), 0) || trainings.length;
     const month = todayISO().slice(0, 7);
     const todayN = trainings.filter(t => t.trainedDate === todayISO()).length;
-    const monthN = trainings.filter(t => (t.trainedDate || '').startsWith(month)).length;
+    // Prefer full monthCounts for current month; fall back to filtered recent list
+    const monthFromAgg = monthCounts.find(r => r.month === month);
+    const monthN = monthFromAgg ? (Number(monthFromAgg.n) || 0) : trainings.filter(t => (t.trainedDate || '').startsWith(month)).length;
 
-    // Group by YYYY-MM for monthly summary
-    const byMonth = {};
-    trainings.forEach(t => {
-      const m = (t.trainedDate || '').slice(0, 7);
-      if (!m) return;
-      byMonth[m] = (byMonth[m] || 0) + 1;
-    });
-    const monthRows = Object.keys(byMonth).sort().reverse().slice(0, 18).map(m => {
-      const [y, mo] = m.split('-');
-      const label = (mo || '') + '/' + (y || '');
-      return '<div class="t-month-row"><span>' + escapeHtml(label) + '</span><strong>' + byMonth[m] + '×</strong></div>';
-    }).join('');
+    // Monthly chips from complete aggregation (not limited recent list)
+    let monthRows = '';
+    if (monthCounts.length) {
+      monthRows = monthCounts.slice(0, 24).map(r => {
+        const m = r.month || '';
+        const [y, mo] = m.split('-');
+        const label = (mo || '') + '/' + (y || '');
+        return '<div class="t-month-row"><span>' + escapeHtml(label) + '</span><strong>' + (Number(r.n) || 0) + '×</strong></div>';
+      }).join('');
+    } else {
+      // Fallback if older worker has no monthCounts
+      const byMonth = {};
+      trainings.forEach(t => {
+        const m = (t.trainedDate || '').slice(0, 7);
+        if (!m) return;
+        byMonth[m] = (byMonth[m] || 0) + 1;
+      });
+      monthRows = Object.keys(byMonth).sort().reverse().slice(0, 18).map(m => {
+        const [y, mo] = m.split('-');
+        const label = (mo || '') + '/' + (y || '');
+        return '<div class="t-month-row"><span>' + escapeHtml(label) + '</span><strong>' + byMonth[m] + '×</strong></div>';
+      }).join('');
+    }
+
+    const visible = Math.min(clientTrainingsVisible, trainings.length);
+    const hasMore = visible < trainings.length;
+    const truncatedNote = totalAll > trainings.length
+      ? '<p class="muted" style="font-size:0.75rem;margin:0.35rem 0 0">A mostrar os ' + trainings.length + ' mais recentes · totais por mês incluem todo o histórico.</p>'
+      : '';
+
+    function rowHtml(t) {
+      const when = t.trainedAt
+        ? new Date(t.trainedAt).toLocaleString('pt', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : formatDatePT(t.trainedDate);
+      const by = t.recordedBy ? ' · ' + escapeHtml(t.recordedBy) : '';
+      const note = t.note ? ' — ' + escapeHtml(t.note) : '';
+      return '<li>' +
+        '<span class="client-training-text">' + escapeHtml(when) + by + note + '</span>' +
+        '<span class="training-session-actions">' +
+        '<button type="button" class="pay-icon-btn" data-edit-training="' + escapeHtml(t.id) + '" data-trained-at="' + escapeHtml(t.trainedAt || '') + '" data-note="' + escapeHtml(t.note || '') + '" title="Editar" aria-label="Editar treino">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+        '</button>' +
+        '<button type="button" class="pay-icon-btn pay-icon-danger" data-del-training="' + escapeHtml(t.id) + '" title="Apagar" aria-label="Apagar treino">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>' +
+        '</button></span></li>';
+    }
 
     host.innerHTML =
       '<div class="client-trainings-head">' +
         '<div class="client-history-stats">' +
-          '<strong>' + todayN + '</strong> hoje · <strong>' + monthN + '</strong> este mês · <strong>' + trainings.length + '</strong> no total' +
+          '<strong>' + todayN + '</strong> hoje · <strong>' + monthN + '</strong> este mês · <strong>' + totalAll + '</strong> no total' +
         '</div>' +
         '<button type="button" class="btn-train" id="cAddTrainingBtn" title="Registar treino em qualquer dia">+ Treino</button>' +
       '</div>' +
       (monthRows
         ? '<div class="t-month-summary"><div class="t-month-title">Por mês</div>' + monthRows + '</div>'
         : '') +
+      truncatedNote +
       (trainings.length
-        ? '<ul class="client-training-list">' + trainings.slice(0, 80).map(t => {
-            const when = t.trainedAt
-              ? new Date(t.trainedAt).toLocaleString('pt', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-              : formatDatePT(t.trainedDate);
-            const by = t.recordedBy ? ' · ' + escapeHtml(t.recordedBy) : '';
-            const note = t.note ? ' — ' + escapeHtml(t.note) : '';
-            return '<li>' +
-              '<span class="client-training-text">' + escapeHtml(when) + by + note + '</span>' +
-              '<span class="training-session-actions">' +
-              '<button type="button" class="pay-icon-btn" data-edit-training="' + escapeHtml(t.id) + '" data-trained-at="' + escapeHtml(t.trainedAt || '') + '" data-note="' + escapeHtml(t.note || '') + '" title="Editar" aria-label="Editar treino">' +
-              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
-              '</button>' +
-              '<button type="button" class="pay-icon-btn pay-icon-danger" data-del-training="' + escapeHtml(t.id) + '" title="Apagar" aria-label="Apagar treino">' +
-              '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>' +
-              '</button></span></li>';
-          }).join('') + '</ul>'
+        ? '<ul class="client-training-list">' + trainings.slice(0, visible).map(rowHtml).join('') + '</ul>' +
+          (hasMore
+            ? '<div style="text-align:center;margin-top:0.5rem"><button type="button" class="btn-ghost" id="cLoadMoreTrainings">Carregar mais (' + (trainings.length - visible) + ' restantes)</button></div>'
+            : '')
         : '<p class="muted" style="font-size:0.85rem">Ainda sem treinos registados. Use <strong>+ Treino</strong> (pode escolher ontem) ou o painel Treinos.</p>');
 
     const addBtn = host.querySelector('#cAddTrainingBtn');
     if (addBtn) addBtn.addEventListener('click', () => openTrainingAddModal(clientId, { date: todayISO() }));
+    const moreBtn = host.querySelector('#cLoadMoreTrainings');
+    if (moreBtn) {
+      moreBtn.addEventListener('click', () => {
+        clientTrainingsVisible = Math.min(clientTrainingsVisible + 80, trainings.length);
+        renderClientTrainingsOnly(host, clientId);
+      });
+    }
     host.querySelectorAll('[data-edit-training]').forEach(btn => {
       btn.addEventListener('click', () => {
         editTrainingSession(btn.getAttribute('data-edit-training'), {

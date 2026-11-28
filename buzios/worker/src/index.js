@@ -813,7 +813,7 @@ async function handleAdminData(request, env) {
     if (!env.DB) return json({ error: 'D1 not bound' }, 500);
     const clientId = String((data && data.clientId) || '').trim();
     if (!clientId) return json({ error: 'clientId required' }, 400);
-    const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 500);
+    const limit = Math.min(Math.max(parseInt(data && data.limit, 10) || 200, 1), 1000);
     try {
       await d1EnsureTrainingsTable(env);
       const trainingsQ = await env.DB.prepare(
@@ -821,6 +821,11 @@ async function handleAdminData(request, env) {
          FROM trainings WHERE client_id = ?
          ORDER BY trained_at DESC LIMIT ?`
       ).bind(clientId, limit).all();
+      const monthCountsQ = await env.DB.prepare(
+        `SELECT substr(trained_date, 1, 7) AS month, COUNT(*) AS n
+         FROM trainings WHERE client_id = ?
+         GROUP BY month ORDER BY month DESC`
+      ).bind(clientId).all();
       const auditQ = await env.DB.prepare(
         `SELECT id, at, action, entity, entity_id, detail
          FROM audit_log
@@ -830,6 +835,10 @@ async function handleAdminData(request, env) {
       return json({
         ok: true,
         trainings: (trainingsQ.results || []).map(trainingRowFromDb),
+        monthCounts: (monthCountsQ.results || []).map(r => ({
+          month: r.month,
+          n: Number(r.n) || 0
+        })),
         audit: auditQ.results || []
       });
     } catch (e) {
